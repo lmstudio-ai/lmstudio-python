@@ -1,8 +1,0 @@
-{
-  "references": [
-    { "path": "./tsconfig.cjs.json" },
-    { "path": "./tsconfig.esm.json" },
-    { "path": "./tsconfig.types.json" }
-  ],
-  "include": []
-}

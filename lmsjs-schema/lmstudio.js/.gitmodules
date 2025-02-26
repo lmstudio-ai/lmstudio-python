@@ -1,3 +1,0 @@
-[submodule "packages/lms-cli"]
-	path = packages/lms-cli
-	url = git@github.com:lmstudio-ai/lmstudio-cli.git

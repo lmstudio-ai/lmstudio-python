@@ -1,7 +1,0 @@
-node_modules
-dist
-*.tsbuildinfo
-.parcel-cache
-coverage
-.env
-.DS_Store

@@ -1,3 +1,3 @@
 [submodule "lmsjs-schema/lmstudio.js"]
 	path = lmsjs-schema/lmstudio.js
-	url = https://github.com/lmstudio-ai/lmstudio.js
+	url = https://github.com/lmstudio-ai/lmstudio.js.git
