@@ -6,7 +6,7 @@ from typing import Any, Sequence, Type, TypeVar
 
 from .sdk_api import LMStudioValueError
 from .schemas import DictSchema, DictObject, ModelSchema
-from ._lmsjs_models import (
+from ._sdk_models import (
     EmbeddingLoadModelConfig,
     EmbeddingLoadModelConfigDict,
     KvConfig,

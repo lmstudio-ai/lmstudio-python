@@ -43,7 +43,7 @@ def _find_unknown_numbered_schemas(schema_names: Set[str]) -> FrozenSet[str]:
 def test_no_automatic_schema_numbering() -> None:
     # Ensure the schema conversion only produces named types
     numbered_schemas: set[str] = set()
-    for name, obj in lmstudio._lmsjs_models.__dict__.items():
+    for name, obj in lmstudio._sdk_models.__dict__.items():
         if isinstance(obj, type) and issubclass(obj, Struct) and name[-1].isdigit():
             numbered_schemas.add(name)
     unknown_numbered_schemas = _find_unknown_numbered_schemas(numbered_schemas)

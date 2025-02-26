@@ -16,7 +16,7 @@ from lmstudio import (
     LMStudioChannelClosedError,
 )
 from lmstudio.json_api import ChannelEndpoint
-from lmstudio._lmsjs_models import LlmPredictionConfigDict
+from lmstudio._sdk_models import LlmPredictionConfigDict
 
 # Imports from the nominal "SDK" used in some test cases
 from .lmstudio import ErrFunc

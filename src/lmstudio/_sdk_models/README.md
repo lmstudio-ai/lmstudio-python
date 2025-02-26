@@ -8,4 +8,4 @@ These files should NOT be modified: if the messaging protocol details
 change, updates should be made in lmstudio.js first, and then exported
 to the Python SDK via the automated code generation.
 
-See the `lmsjs-schema` exporter folder for additional details.
+See the `sdk-schema` exporter folder for additional details.

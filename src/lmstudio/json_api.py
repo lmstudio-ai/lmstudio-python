@@ -59,7 +59,7 @@ from ._kv_config import (
     load_config_to_kv_config_stack,
     prediction_config_to_kv_config_stack,
 )
-from ._lmsjs_models import (
+from ._sdk_models import (
     DownloadProgressUpdate,
     EmbeddingChannelLoadModelCreationParameter,
     EmbeddingChannelLoadModelCreationParameterDict,
