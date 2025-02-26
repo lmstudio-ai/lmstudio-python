@@ -1,0 +1,22 @@
+{
+  "name": "@lmstudio/scaffold-node-typescript-empty",
+  "version": "0.4.7",
+  "description": "",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "start": "tsc && node --enable-source-maps dist/index.js",
+    "build": "tsc"
+  },
+  "author": "Your Name",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@lmstudio/sdk": "^0.4.7"
+  },
+  "gitHead": "2c64ecd012968f0b104222a52265b64d05650c49",
+  "devDependencies": {
+    "@types/node": "^22.13.1",
+    "typescript": "^5.7.2"
+  }
+}

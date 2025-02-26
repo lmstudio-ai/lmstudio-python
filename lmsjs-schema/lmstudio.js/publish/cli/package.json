@@ -1,0 +1,30 @@
+{
+  "name": "@lmstudio/cli",
+  "version": "0.0.36",
+  "description": "LM Studio CLI",
+  "main": "dist/index.js",
+  "scripts": {
+    "build-rollup": "rollup -c",
+    "build-inject-variables": "node ./injectVariables.js",
+    "build": "npm run build-rollup && npm run build-inject-variables",
+    "make-bin:win32": "powershell -File make-bin-win32.ps1",
+    "make-bin:linux": "bash make-bin-linux.sh",
+    "make-bin:darwin": "bash make-bin-darwin.sh",
+    "make-bin": "run-script-os",
+    "make": "npm run build && npm run make-bin",
+    "watch": "rollup -wc"
+  },
+  "files": [
+    "dist/index.js"
+  ],
+  "author": "",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@lmstudio/lms-cli": "^0.3.32"
+  },
+  "devDependencies": {
+    "postject": "^1.0.0-alpha.6",
+    "run-script-os": "^1.1.6"
+  },
+  "gitHead": "2c64ecd012968f0b104222a52265b64d05650c49"
+}

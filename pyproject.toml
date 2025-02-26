@@ -1,0 +1,136 @@
+[project]
+name = "lmstudio"
+version = "1.0.0b1"
+description = "LM Studio Python SDK (pre-release public alpha)"
+authors = [
+    {name = "LM Studio", email = "team@lmstudio.ai"},
+]
+maintainers = [
+    {name = "Alyssa Coghlan", email = "ncoghlan@gmail.com"},
+    {name = "Christian Zhou-Zheng", email = "christianzhouzheng@gmail.com"},
+]
+
+# Note: unless explicitly noted, the actual minimum dependencies may be
+#       lower than recorded (PDM sets the minimum to the latest version
+#       available when each dependency is first added to the project).
+
+dependencies = [
+    "httpx>=0.27.2",
+    "httpx-ws>=0.7.0",
+    "msgspec>=0.18.6",
+    # Minimum msgspec version for 3.13 compatibility
+    "msgspec>=0.19.0 ; python_version >= '3.13'",
+    "typing-extensions>=4.12.2",
+]
+
+# Keep this in sync with the target Python version in sync-lmsjs-schema.py
+requires-python = ">=3.11"
+
+readme = "README.md"
+license = {text = "Apache 2.0"}
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Typing :: Typed",
+]
+
+[project.urls]
+# Note: actual URLs are still to be determined
+#       In particular, the docs url assumes common SDK docs
+#       with inline parallel examples for each language,
+#       which may not be how this ends up working.
+Homepage = "https://github.com/lmstudio-ai/lmstudio-sdk-python"
+Documentation = "https://lmstudio.ai/docs/sdk/"
+Issues = "https://github.com/lmstudio-ai/lmstudio-sdk-python/issues"
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+[tool.pdm]
+distribution = true
+
+
+[tool.pdm.dev-dependencies]
+dev = [
+    "tox>=4.16.0",
+    "tox-gh>=1.3.2",
+    "tox-pdm>=0.7.2",
+    "pytest>=8.3.1",
+    "pytest-asyncio>=0.24.0",
+    "pytest-subtests>=0.13.1",
+    "ruff>=0.5.4",
+    "mypy>=1.11.0",
+    "coverage[toml]>=7.6.4",
+]
+bootstrap = [
+    "pdm>=2.16.1",
+]
+sync-lmsjs-schema = [
+    # Needs https://github.com/koxudaxi/datamodel-code-generator/issues/2211 fix
+    "datamodel-code-generator[http]>=0.26.4",
+]
+docs = [
+    "sphinx>=8.1.3",
+    "sphinx-inline-tabs>=2023.4.21",
+    "furo>=2024.8.6",
+]
+
+[tool.pytest.ini_options]
+# Allow skipping tests that require a local LM Studio instance
+addopts = "--strict-markers"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "lmstudio: marks tests as needing LM Studio (deselect with '-m \"not lmstudio\"')",
+    "wip: marks tests as a work-in-progress (select with '-m \"wip\"')"
+]
+# Warnings should only be emitted when being specifically tested
+filterwarnings = [
+    "error",
+    "ignore:.*the async API is not yet stable:FutureWarning"
+]
+# Capture log info from network client libraries
+log_format = "%(asctime)s %(levelname)s %(message)s"
+log_date_format = "%Y-%m-%d %H:%M:%S"
+# Each async test case gets a fresh event loop by default
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.coverage.run]
+relative_files = true
+source_pkgs = [
+    "lmstudio",
+]
+source = [
+    "tests/",
+]
+
+[tool.coverage.paths]
+source = [
+    "src/",
+    "**/.tox/**/site-packages/",
+]
+
+[tool.ruff]
+# Assume Python 3.11
+target-version = "py311"
+
+[tool.ruff.lint]
+# Enable all `pydocstyle` rules, limiting to those that adhere to the
+# Google convention via `convention = "google"`, below.
+extend-select = ["D"]
+
+# Disable `D105` (it's OK to skip writing docstrings for every magic method)
+ignore = ["D105", "D417"]
+
+[tool.ruff.lint.pydocstyle]
+# https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html#example-google
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+# Skip checking docstrings in the test suite
+"tests/**" = ["D"]

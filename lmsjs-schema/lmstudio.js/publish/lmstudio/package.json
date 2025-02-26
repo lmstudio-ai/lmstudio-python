@@ -1,0 +1,23 @@
+{
+  "name": "lmstudio",
+  "version": "0.0.22",
+  "description": "LM Studio Setup Tool",
+  "main": "dist/index.js",
+  "scripts": {
+    "build-rollup": "rollup -c",
+    "build": "npm run build-rollup",
+    "watch": "rollup -wc"
+  },
+  "files": [
+    "dist/index.js"
+  ],
+  "bin": "dist/index.js",
+  "author": "",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "@lmstudio/lms-lmstudio": "^0.0.22",
+    "postject": "^1.0.0-alpha.6",
+    "run-script-os": "^1.1.6"
+  },
+  "gitHead": "2c64ecd012968f0b104222a52265b64d05650c49"
+}

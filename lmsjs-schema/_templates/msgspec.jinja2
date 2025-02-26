@@ -1,0 +1,76 @@
+{% if fields %}
+###############################################################################
+# {{ class_name }}
+###############################################################################
+{% set struct_name = class_name %}
+{% set struct_kwargs = (base_class_kwargs|default({})) %}
+{% set tag_field_name = struct_kwargs.get("tag_field", "").strip("'") %}
+{% set dict_name = class_name + "Dict" %}
+
+{% for decorator in decorators %}
+{{ decorator }}
+{% endfor %}
+class {{ struct_name }}({{ base_class }}["{{ dict_name }}"]{%- for key, value in struct_kwargs.items() -%}
+, {{ key }}={{ value }}
+{%- endfor -%}):
+{%- if description %}
+    """{{ description | indent(4) }}"""
+{%- endif %}
+{% for field in fields -%}
+    {%- if field.name == tag_field_name %}
+    {%- if field.annotated %}
+    {{ field.name }}: {{ field.annotated }} = {{ struct_kwargs["tag"] }}
+    {%- else %}
+    {{ field.name }}: {{ field.type_hint }} = {{ struct_kwargs["tag"] }}
+    {%- endif %}
+    {%- else %}
+    {%- if not field.annotated and field.field %}
+    {{ field.name }}: {{ field.type_hint }} = {{ field.field }}
+    {%- else %}
+    {%- if field.annotated and not field.field %}
+    {{ field.name }}: {{ field.annotated }}
+    {%- elif field.annotated and field.field %}
+    {{ field.name }}: {{ field.annotated }} = {{ field.field }}
+    {%- else %}
+    {{ field.name }}: {{ field.type_hint }}
+    {%- endif %}
+    {%- if not field.field and (not field.required or field.data_type.is_optional or field.nullable)
+            %} = {{ field.represented_default }}
+    {%- endif -%}
+    {%- endif %}
+    {%- endif -%}
+    {%- if field.docstring %}
+    """{{ field.docstring | indent(4) }}"""
+    {%- endif %}
+{%- endfor %}
+
+class {{ dict_name }}(TypedDict):
+    """Corresponding typed dictionary definition for {{ struct_name }}.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+{% for field in fields -%}
+    {%- set field_name = field.original_name or field.name -%}
+    {%- if field.name == tag_field_name %}
+    {{ field_name }}: Literal[{{ struct_kwargs["tag"] }}]
+    {%- else %}
+    {%- set field_hint = field.annotated or field.type_hint -%}
+    {%- if field_hint.endswith("| None") %}
+    {{ field_name }}: NotRequired[{{ field_hint }}]
+    {%- else %}
+    {{ field_name }}: {{ field_hint }}
+    {%- endif %}
+    {%- endif -%}
+    {%- if field.docstring %}
+    """{{ field.docstring | indent(4) }}"""
+    {%- endif %}
+{%- endfor %}
+{% else %}
+class {{ class_name }}():
+{%- if description %}
+    """{{ description | indent(4) }}"""
+{% else %}
+    pass
+{% endif %}
+{% endif %}

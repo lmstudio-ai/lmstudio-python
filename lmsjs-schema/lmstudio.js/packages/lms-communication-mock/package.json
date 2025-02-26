@@ -1,0 +1,34 @@
+{
+  "name": "@lmstudio/lms-communication-mock",
+  "version": "0.4.8",
+  "description": "",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/types/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@lmstudio/lms-communication": "^0.6.8",
+    "@lmstudio/lms-communication-client": "^0.6.8",
+    "@lmstudio/lms-communication-server": "^0.6.8"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "require": "./dist/cjs/index.js",
+      "import": "./dist/esm/index.js",
+      "default": "./dist/esm/index.js"
+    }
+  },
+  "files": [
+    "./dist/cjs/**/*.js",
+    "./dist/esm/package.json",
+    "./dist/esm/**/*.js",
+    "./dist/types/**/*.d.ts"
+  ],
+  "author": "",
+  "license": "Apache-2.0",
+  "sideEffects": false,
+  "gitHead": "2c64ecd012968f0b104222a52265b64d05650c49"
+}

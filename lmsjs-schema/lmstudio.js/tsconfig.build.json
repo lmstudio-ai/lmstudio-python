@@ -1,0 +1,22 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/lms-shared-types" },
+    { "path": "packages/lms-kv-config" },
+    { "path": "packages/lms-isomorphic" },
+    { "path": "packages/lms-common" },
+    { "path": "packages/lms-common-server" },
+    { "path": "packages/lms-communication" },
+    { "path": "packages/lms-communication-client" },
+    { "path": "packages/lms-communication-server" },
+    { "path": "packages/lms-communication-mock" },
+    { "path": "packages/lms-external-backend-interfaces" },
+    { "path": "packages/lms-client" },
+    { "path": "packages/lms-lmstudio" },
+    { "path": "packages/lms-es-plugin-runner" },
+    { "path": "packages/lms-json-schema" },
+    { "path": "packages/template" },
+    { "path": "publish/sdk" }
+  ],
+  "exclude": ["*.test.ts"]
+}

@@ -1,0 +1,7291 @@
+{
+  "type": "object",
+  "properties": {
+    "diagnostics": {
+      "$ref": "#/definitions/pseudo/diagnostics"
+    },
+    "embedding": {
+      "$ref": "#/definitions/pseudo/embedding"
+    },
+    "files": {
+      "$ref": "#/definitions/pseudo/files"
+    },
+    "llm": {
+      "$ref": "#/definitions/pseudo/llm"
+    },
+    "plugins": {
+      "$ref": "#/definitions/pseudo/plugins"
+    },
+    "repository": {
+      "$ref": "#/definitions/pseudo/repository"
+    },
+    "system": {
+      "$ref": "#/definitions/pseudo/system"
+    }
+  },
+  "required": [
+    "diagnostics",
+    "embedding",
+    "files",
+    "llm",
+    "plugins",
+    "repository",
+    "system"
+  ],
+  "additionalProperties": false,
+  "definitions": {
+    "logLevel": {
+      "type": "string",
+      "enum": [
+        "debug",
+        "info",
+        "warn",
+        "error"
+      ]
+    },
+    "allowableEnvVarKeys": {
+      "type": "string",
+      "enum": [
+        "HSA_OVERRIDE_GFX_VERSION"
+      ]
+    },
+    "allowableEnvVars": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "propertyNames": {
+        "enum": [
+          "HSA_OVERRIDE_GFX_VERSION"
+        ]
+      }
+    },
+    "artifactManifest": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/pluginManifest"
+        },
+        {
+          "$ref": "#/definitions/presetManifest"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "plugin": "#/definitions/pluginManifest",
+          "preset": "#/definitions/presetManifest"
+        },
+        "propertyName": "type"
+      }
+    },
+    "artifactManifestBase": {
+      "type": "object",
+      "properties": {
+        "owner": {
+          "$ref": "#/definitions/kebabCase"
+        },
+        "name": {
+          "$ref": "#/definitions/kebabCase"
+        },
+        "description": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "owner",
+        "name",
+        "description"
+      ],
+      "additionalProperties": false
+    },
+    "kebabCase": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "backendNotification": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "noAutoDismiss": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "title"
+      ],
+      "additionalProperties": false
+    },
+    "chatHistoryData": {
+      "type": "object",
+      "properties": {
+        "messages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/chatMessageData"
+          }
+        }
+      },
+      "required": [
+        "messages"
+      ],
+      "additionalProperties": false
+    },
+    "chatMessageData": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/chatMessageDataAssistant"
+        },
+        {
+          "$ref": "#/definitions/chatMessageDataUser"
+        },
+        {
+          "$ref": "#/definitions/chatMessageDataSystem"
+        },
+        {
+          "$ref": "#/definitions/chatMessageDataTool"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "assistant": "#/definitions/chatMessageDataAssistant",
+          "user": "#/definitions/chatMessageDataUser",
+          "system": "#/definitions/chatMessageDataSystem",
+          "tool": "#/definitions/chatMessageDataTool"
+        },
+        "propertyName": "role"
+      }
+    },
+    "chatMessagePartData": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/chatMessagePartTextData"
+        },
+        {
+          "$ref": "#/definitions/chatMessagePartFileData"
+        },
+        {
+          "$ref": "#/definitions/chatMessagePartToolCallRequestData"
+        },
+        {
+          "$ref": "#/definitions/chatMessagePartToolCallResultData"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "text": "#/definitions/chatMessagePartTextData",
+          "file": "#/definitions/chatMessagePartFileData",
+          "toolCallRequest": "#/definitions/chatMessagePartToolCallRequestData",
+          "toolCallResult": "#/definitions/chatMessagePartToolCallResultData"
+        },
+        "propertyName": "type"
+      }
+    },
+    "chatMessagePartFileData": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "file",
+          "default": "file",
+          "title": "Type"
+        },
+        "name": {
+          "type": "string"
+        },
+        "identifier": {
+          "type": "string"
+        },
+        "sizeBytes": {
+          "type": "integer"
+        },
+        "fileType": {
+          "$ref": "#/definitions/fileType"
+        }
+      },
+      "required": [
+        "type",
+        "name",
+        "identifier",
+        "sizeBytes",
+        "fileType"
+      ],
+      "additionalProperties": false
+    },
+    "chatMessagePartTextData": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "text",
+          "default": "text",
+          "title": "Type"
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "chatMessagePartToolCallRequestData": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "toolCallRequest",
+          "default": "toolCallRequest",
+          "title": "Type"
+        },
+        "toolCallRequest": {
+          "$ref": "#/definitions/toolCallRequest"
+        }
+      },
+      "required": [
+        "type",
+        "toolCallRequest"
+      ],
+      "additionalProperties": false
+    },
+    "chatMessagePartToolCallResultData": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "toolCallResult",
+          "default": "toolCallResult",
+          "title": "Type"
+        },
+        "content": {
+          "type": "string"
+        },
+        "toolCallId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "content"
+      ],
+      "additionalProperties": false
+    },
+    "chatMessageRoleData": {
+      "type": "string",
+      "enum": [
+        "assistant",
+        "user",
+        "system",
+        "tool"
+      ]
+    },
+    "functionToolCallRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "const": "function",
+          "default": "function",
+          "title": "Type"
+        },
+        "arguments": {
+          "type": "object",
+          "additionalProperties": {}
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "toolCallRequest": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/functionToolCallRequest"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "function": "#/definitions/functionToolCallRequest"
+        },
+        "propertyName": "type"
+      }
+    },
+    "citationSource": {
+      "type": "object",
+      "properties": {
+        "fileName": {
+          "type": "string"
+        },
+        "absoluteFilePath": {
+          "type": "string"
+        },
+        "pageNumber": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 2,
+              "items": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            }
+          ]
+        },
+        "lineNumber": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 2,
+              "items": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "required": [
+        "fileName"
+      ],
+      "additionalProperties": false
+    },
+    "colorPalette": {
+      "type": "string",
+      "enum": [
+        "red",
+        "green",
+        "blue",
+        "yellow",
+        "orange",
+        "purple",
+        "default"
+      ]
+    },
+    "diagnosticsLogEventData": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/diagnosticsLogEventDataLlmPredictionInput"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "llm.prediction.input": "#/definitions/diagnosticsLogEventDataLlmPredictionInput"
+        },
+        "propertyName": "type"
+      }
+    },
+    "diagnosticsLogEvent": {
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "type": "number"
+        },
+        "data": {
+          "$ref": "#/definitions/diagnosticsLogEventData"
+        }
+      },
+      "required": [
+        "timestamp",
+        "data"
+      ],
+      "additionalProperties": false
+    },
+    "embeddingLoadModelConfig": {
+      "type": "object",
+      "properties": {
+        "gpuOffload": {
+          "$ref": "#/definitions/gpuSetting"
+        },
+        "contextLength": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "ropeFrequencyBase": {
+          "type": "number"
+        },
+        "ropeFrequencyScale": {
+          "type": "number"
+        },
+        "keepModelInMemory": {
+          "type": "boolean"
+        },
+        "tryMmap": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "embeddingModelAdditionalInfo": {
+      "type": "object",
+      "properties": {
+        "maxContextLength": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "maxContextLength"
+      ],
+      "additionalProperties": false
+    },
+    "embeddingModelInfo": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "embedding",
+          "default": "embedding",
+          "title": "Type"
+        },
+        "modelKey": {
+          "type": "string"
+        },
+        "format": {
+          "$ref": "#/definitions/modelCompatibilityType"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "sizeBytes": {
+          "type": "integer"
+        },
+        "paramsString": {
+          "type": "string"
+        },
+        "architecture": {
+          "type": "string"
+        },
+        "maxContextLength": {
+          "$ref": "#/definitions/embeddingModelAdditionalInfo/properties/maxContextLength"
+        }
+      },
+      "required": [
+        "type",
+        "modelKey",
+        "format",
+        "displayName",
+        "path",
+        "sizeBytes",
+        "maxContextLength"
+      ],
+      "additionalProperties": false
+    },
+    "embeddingModelInstanceAdditionalInfo": {
+      "type": "object",
+      "properties": {
+        "contextLength": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "contextLength"
+      ],
+      "additionalProperties": false
+    },
+    "embeddingModelInstanceInfo": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "embedding",
+          "default": "embedding",
+          "title": "Type"
+        },
+        "modelKey": {
+          "$ref": "#/definitions/embeddingModelInfo/properties/modelKey"
+        },
+        "format": {
+          "$ref": "#/definitions/modelCompatibilityType"
+        },
+        "displayName": {
+          "$ref": "#/definitions/embeddingModelInfo/properties/displayName"
+        },
+        "path": {
+          "$ref": "#/definitions/embeddingModelInfo/properties/path"
+        },
+        "sizeBytes": {
+          "$ref": "#/definitions/embeddingModelInfo/properties/sizeBytes"
+        },
+        "paramsString": {
+          "$ref": "#/definitions/embeddingModelInfo/properties/paramsString"
+        },
+        "architecture": {
+          "$ref": "#/definitions/embeddingModelInfo/properties/architecture"
+        },
+        "identifier": {
+          "type": "string"
+        },
+        "instanceReference": {
+          "type": "string"
+        },
+        "maxContextLength": {
+          "$ref": "#/definitions/embeddingModelAdditionalInfo/properties/maxContextLength"
+        },
+        "contextLength": {
+          "$ref": "#/definitions/embeddingModelInstanceAdditionalInfo/properties/contextLength"
+        }
+      },
+      "required": [
+        "type",
+        "modelKey",
+        "format",
+        "displayName",
+        "path",
+        "sizeBytes",
+        "identifier",
+        "instanceReference",
+        "maxContextLength",
+        "contextLength"
+      ],
+      "additionalProperties": false
+    },
+    "errorDisplayData": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/errorDisplayDataGenericSpecificModelUnloaded"
+        },
+        {
+          "$ref": "#/definitions/errorDisplayDataGenericNoModelMatchingQuery"
+        },
+        {
+          "$ref": "#/definitions/errorDisplayDataGenericPathNotFound"
+        },
+        {
+          "$ref": "#/definitions/errorDisplayDataGenericIdentifierNotFound"
+        },
+        {
+          "$ref": "#/definitions/errorDisplayDataGenericDomainMismatch"
+        },
+        {
+          "$ref": "#/definitions/errorDisplayDataGenericEngineDoesNotSupportFeature"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "generic.specificModelUnloaded": "#/definitions/errorDisplayDataGenericSpecificModelUnloaded",
+          "generic.noModelMatchingQuery": "#/definitions/errorDisplayDataGenericNoModelMatchingQuery",
+          "generic.pathNotFound": "#/definitions/errorDisplayDataGenericPathNotFound",
+          "generic.identifierNotFound": "#/definitions/errorDisplayDataGenericIdentifierNotFound",
+          "generic.domainMismatch": "#/definitions/errorDisplayDataGenericDomainMismatch",
+          "generic.engineDoesNotSupportFeature": "#/definitions/errorDisplayDataGenericEngineDoesNotSupportFeature"
+        },
+        "propertyName": "code"
+      }
+    },
+    "serializedLMSExtendedError": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "Unknown error"
+        },
+        "cause": {},
+        "suggestion": {},
+        "errorData": {},
+        "displayData": {},
+        "stack": {},
+        "rootTitle": {}
+      },
+      "additionalProperties": false
+    },
+    "fileNamespace": {
+      "type": "string",
+      "enum": [
+        "local",
+        "base64"
+      ]
+    },
+    "parsedFileIdentifier": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/parsedFileIdentifierLocal"
+        },
+        {
+          "$ref": "#/definitions/parsedFileIdentifierBase64"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "local": "#/definitions/parsedFileIdentifierLocal",
+          "base64": "#/definitions/parsedFileIdentifierBase64"
+        },
+        "propertyName": "type"
+      }
+    },
+    "fileType": {
+      "type": "string",
+      "enum": [
+        "image",
+        "text/plain",
+        "application/pdf",
+        "application/word",
+        "text/other",
+        "unknown"
+      ]
+    },
+    "kvConfigFieldDependency": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "condition": {
+          "$ref": "#/definitions/kvConfigFieldDependencyCondition"
+        }
+      },
+      "required": [
+        "key",
+        "condition"
+      ],
+      "additionalProperties": false
+    },
+    "kvConfigField": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "value": {}
+      },
+      "required": [
+        "key"
+      ],
+      "additionalProperties": false
+    },
+    "kvConfigLayerName": {
+      "type": "string",
+      "enum": [
+        "currentlyLoaded",
+        "apiOverride",
+        "conversationSpecific",
+        "conversationGlobal",
+        "serverSession",
+        "httpServerRequestOverride",
+        "completeModeFormatting",
+        "instance",
+        "userModelDefault",
+        "virtualModel",
+        "modelDefault",
+        "hardware"
+      ]
+    },
+    "kvConfig": {
+      "type": "object",
+      "properties": {
+        "fields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/kvConfigField"
+          }
+        }
+      },
+      "required": [
+        "fields"
+      ],
+      "additionalProperties": false
+    },
+    "kvConfigStackLayer": {
+      "type": "object",
+      "properties": {
+        "layerName": {
+          "$ref": "#/definitions/kvConfigLayerName"
+        },
+        "config": {
+          "$ref": "#/definitions/kvConfig"
+        }
+      },
+      "required": [
+        "layerName",
+        "config"
+      ],
+      "additionalProperties": false
+    },
+    "kvConfigStack": {
+      "type": "object",
+      "properties": {
+        "layers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/kvConfigStackLayer"
+          }
+        }
+      },
+      "required": [
+        "layers"
+      ],
+      "additionalProperties": false
+    },
+    "contentBlockStyle": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/contentBlockStyleDefault"
+        },
+        {
+          "$ref": "#/definitions/contentBlockStyleCustomLabel"
+        },
+        {
+          "$ref": "#/definitions/contentBlockStyleThinking"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "default": "#/definitions/contentBlockStyleDefault",
+          "customLabel": "#/definitions/contentBlockStyleCustomLabel",
+          "thinking": "#/definitions/contentBlockStyleThinking"
+        },
+        "propertyName": "type"
+      }
+    },
+    "llmApplyPromptTemplateOpts": {
+      "type": "object",
+      "properties": {
+        "omitBosToken": {
+          "type": "boolean"
+        },
+        "omitEosToken": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "llmContextReference": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/llmContextReferenceJsonFile"
+        },
+        {
+          "$ref": "#/definitions/llmContextReferenceYamlFile"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "jsonFile": "#/definitions/llmContextReferenceJsonFile",
+          "yamlFile": "#/definitions/llmContextReferenceYamlFile"
+        },
+        "propertyName": "type"
+      }
+    },
+    "gpuSetting": {
+      "type": "object",
+      "properties": {
+        "ratio": {
+          "$ref": "#/definitions/llmLlamaAccelerationOffloadRatio"
+        },
+        "mainGpu": {
+          "type": "integer"
+        },
+        "splitStrategy": {
+          "$ref": "#/definitions/llmSplitStrategy"
+        }
+      },
+      "additionalProperties": false
+    },
+    "llmLlamaAccelerationOffloadRatio": {
+      "anyOf": [
+        {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        {
+          "type": "string",
+          "const": "max"
+        },
+        {
+          "type": "string",
+          "const": "off"
+        }
+      ]
+    },
+    "llmLlamaCacheQuantizationType": {
+      "type": "string",
+      "enum": [
+        "f32",
+        "f16",
+        "q8_0",
+        "q4_0",
+        "q4_1",
+        "iq4_nl",
+        "q5_0",
+        "q5_1"
+      ]
+    },
+    "llmLoadModelConfig": {
+      "type": "object",
+      "properties": {
+        "gpuOffload": {
+          "$ref": "#/definitions/gpuSetting"
+        },
+        "contextLength": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "ropeFrequencyBase": {
+          "type": "number"
+        },
+        "ropeFrequencyScale": {
+          "type": "number"
+        },
+        "evalBatchSize": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "flashAttention": {
+          "type": "boolean"
+        },
+        "keepModelInMemory": {
+          "type": "boolean"
+        },
+        "seed": {
+          "type": "integer"
+        },
+        "useFp16ForKVCache": {
+          "type": "boolean"
+        },
+        "tryMmap": {
+          "type": "boolean"
+        },
+        "numExperts": {
+          "type": "integer"
+        },
+        "llamaKCacheQuantizationType": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "f32",
+                "f16",
+                "q8_0",
+                "q4_0",
+                "q4_1",
+                "iq4_nl",
+                "q5_0",
+                "q5_1"
+              ]
+            },
+            {
+              "type": "boolean",
+              "const": false
+            }
+          ]
+        },
+        "llamaVCacheQuantizationType": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "f32",
+                "f16",
+                "q8_0",
+                "q4_0",
+                "q4_1",
+                "iq4_nl",
+                "q5_0",
+                "q5_1"
+              ]
+            },
+            {
+              "type": "boolean",
+              "const": false
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "llmMlxKvCacheBitsType": {
+      "type": "number",
+      "enum": [
+        8,
+        6,
+        4,
+        3,
+        2
+      ]
+    },
+    "llmMlxKvCacheGroupSizeTypes": {
+      "type": "number",
+      "enum": [
+        32,
+        64,
+        128
+      ]
+    },
+    "llmMlxKvCacheQuantization": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "bits": {
+          "$ref": "#/definitions/llmMlxKvCacheBitsType"
+        },
+        "groupSize": {
+          "$ref": "#/definitions/llmMlxKvCacheGroupSizeTypes"
+        },
+        "quantizedStart": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "enabled",
+        "bits",
+        "groupSize",
+        "quantizedStart"
+      ],
+      "additionalProperties": false
+    },
+    "llmSplitStrategy": {
+      "type": "string",
+      "enum": [
+        "evenly",
+        "favorMainGpu"
+      ]
+    },
+    "llmAdditionalInfo": {
+      "type": "object",
+      "properties": {
+        "vision": {
+          "type": "boolean"
+        },
+        "trainedForToolUse": {
+          "type": "boolean"
+        },
+        "maxContextLength": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "vision",
+        "trainedForToolUse",
+        "maxContextLength"
+      ],
+      "additionalProperties": false
+    },
+    "llmInfo": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "llm",
+          "default": "llm",
+          "title": "Type"
+        },
+        "modelKey": {
+          "$ref": "#/definitions/embeddingModelInfo/properties/modelKey"
+        },
+        "format": {
+          "$ref": "#/definitions/modelCompatibilityType"
+        },
+        "displayName": {
+          "$ref": "#/definitions/embeddingModelInfo/properties/displayName"
+        },
+        "path": {
+          "$ref": "#/definitions/embeddingModelInfo/properties/path"
+        },
+        "sizeBytes": {
+          "$ref": "#/definitions/embeddingModelInfo/properties/sizeBytes"
+        },
+        "paramsString": {
+          "$ref": "#/definitions/embeddingModelInfo/properties/paramsString"
+        },
+        "architecture": {
+          "$ref": "#/definitions/embeddingModelInfo/properties/architecture"
+        },
+        "vision": {
+          "$ref": "#/definitions/llmAdditionalInfo/properties/vision"
+        },
+        "trainedForToolUse": {
+          "$ref": "#/definitions/llmAdditionalInfo/properties/trainedForToolUse"
+        },
+        "maxContextLength": {
+          "$ref": "#/definitions/llmAdditionalInfo/properties/maxContextLength"
+        }
+      },
+      "required": [
+        "type",
+        "modelKey",
+        "format",
+        "displayName",
+        "path",
+        "sizeBytes",
+        "vision",
+        "trainedForToolUse",
+        "maxContextLength"
+      ],
+      "additionalProperties": false
+    },
+    "llmInstanceAdditionalInfo": {
+      "type": "object",
+      "properties": {
+        "contextLength": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "contextLength"
+      ],
+      "additionalProperties": false
+    },
+    "llmInstanceInfo": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "llm",
+          "default": "llm",
+          "title": "Type"
+        },
+        "modelKey": {
+          "$ref": "#/definitions/embeddingModelInfo/properties/modelKey"
+        },
+        "format": {
+          "$ref": "#/definitions/modelCompatibilityType"
+        },
+        "displayName": {
+          "$ref": "#/definitions/embeddingModelInfo/properties/displayName"
+        },
+        "path": {
+          "$ref": "#/definitions/embeddingModelInfo/properties/path"
+        },
+        "sizeBytes": {
+          "$ref": "#/definitions/embeddingModelInfo/properties/sizeBytes"
+        },
+        "paramsString": {
+          "$ref": "#/definitions/embeddingModelInfo/properties/paramsString"
+        },
+        "architecture": {
+          "$ref": "#/definitions/embeddingModelInfo/properties/architecture"
+        },
+        "identifier": {
+          "$ref": "#/definitions/embeddingModelInstanceInfo/properties/identifier"
+        },
+        "instanceReference": {
+          "$ref": "#/definitions/embeddingModelInstanceInfo/properties/instanceReference"
+        },
+        "vision": {
+          "$ref": "#/definitions/llmAdditionalInfo/properties/vision"
+        },
+        "trainedForToolUse": {
+          "$ref": "#/definitions/llmAdditionalInfo/properties/trainedForToolUse"
+        },
+        "maxContextLength": {
+          "$ref": "#/definitions/llmAdditionalInfo/properties/maxContextLength"
+        },
+        "contextLength": {
+          "$ref": "#/definitions/llmInstanceAdditionalInfo/properties/contextLength"
+        }
+      },
+      "required": [
+        "type",
+        "modelKey",
+        "format",
+        "displayName",
+        "path",
+        "sizeBytes",
+        "identifier",
+        "instanceReference",
+        "vision",
+        "trainedForToolUse",
+        "maxContextLength",
+        "contextLength"
+      ],
+      "additionalProperties": false
+    },
+    "llmContextOverflowPolicy": {
+      "type": "string",
+      "enum": [
+        "stopAtLimit",
+        "truncateMiddle",
+        "rollingWindow"
+      ]
+    },
+    "llmLlamaLogitBiasConfig": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "minItems": 2,
+        "maxItems": 2,
+        "items": [
+          {
+            "type": "number"
+          },
+          {
+            "$ref": "#/definitions/llmLlamaSingleLogitBiasModification"
+          }
+        ]
+      }
+    },
+    "llmLlamaMirostatSamplingConfig": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "number",
+          "enum": [
+            0,
+            1,
+            2
+          ]
+        },
+        "learningRate": {
+          "type": "number"
+        },
+        "targetEntropy": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "version",
+        "learningRate",
+        "targetEntropy"
+      ],
+      "additionalProperties": false
+    },
+    "llmLlamaSingleLogitBiasModification": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "string",
+          "const": "-inf"
+        }
+      ]
+    },
+    "llmPredictionConfigInput": {
+      "type": "object",
+      "properties": {
+        "maxTokens": {
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "not": {}
+                },
+                {
+                  "type": "integer",
+                  "minimum": -1
+                }
+              ]
+            },
+            {
+              "type": "boolean",
+              "const": false
+            }
+          ]
+        },
+        "temperature": {
+          "type": "number",
+          "minimum": 0
+        },
+        "stopStrings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "toolCallStopStrings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "contextOverflowPolicy": {
+          "$ref": "#/definitions/llmContextOverflowPolicy"
+        },
+        "structured": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/zodSchema"
+            },
+            {
+              "$ref": "#/definitions/llmStructuredPredictionSetting"
+            }
+          ]
+        },
+        "rawTools": {
+          "$ref": "#/definitions/llmToolUseSetting"
+        },
+        "topKSampling": {
+          "type": "number"
+        },
+        "repeatPenalty": {
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "not": {}
+                },
+                {
+                  "type": "number"
+                }
+              ]
+            },
+            {
+              "type": "boolean",
+              "const": false
+            }
+          ]
+        },
+        "minPSampling": {
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "not": {}
+                },
+                {
+                  "type": "number"
+                }
+              ]
+            },
+            {
+              "type": "boolean",
+              "const": false
+            }
+          ]
+        },
+        "topPSampling": {
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "not": {}
+                },
+                {
+                  "type": "number"
+                }
+              ]
+            },
+            {
+              "type": "boolean",
+              "const": false
+            }
+          ]
+        },
+        "cpuThreads": {
+          "type": "integer"
+        },
+        "promptTemplate": {
+          "$ref": "#/definitions/llmPromptTemplate"
+        },
+        "draftModel": {
+          "type": "string"
+        },
+        "speculativeDecodingNumDraftTokensExact": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "speculativeDecodingMinDraftLengthToConsider": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "speculativeDecodingMinContinueDraftingProbability": {
+          "type": "number"
+        },
+        "reasoningParsing": {
+          "$ref": "#/definitions/llmReasoningParsing"
+        }
+      },
+      "additionalProperties": false
+    },
+    "llmPredictionConfig": {
+      "type": "object",
+      "properties": {
+        "maxTokens": {
+          "$ref": "#/definitions/llmPredictionConfigInput/properties/maxTokens"
+        },
+        "temperature": {
+          "$ref": "#/definitions/llmPredictionConfigInput/properties/temperature"
+        },
+        "stopStrings": {
+          "$ref": "#/definitions/llmPredictionConfigInput/properties/stopStrings"
+        },
+        "toolCallStopStrings": {
+          "$ref": "#/definitions/llmPredictionConfigInput/properties/toolCallStopStrings"
+        },
+        "contextOverflowPolicy": {
+          "$ref": "#/definitions/llmPredictionConfigInput/properties/contextOverflowPolicy"
+        },
+        "structured": {
+          "$ref": "#/definitions/llmStructuredPredictionSetting"
+        },
+        "rawTools": {
+          "$ref": "#/definitions/llmPredictionConfigInput/properties/rawTools"
+        },
+        "topKSampling": {
+          "$ref": "#/definitions/llmPredictionConfigInput/properties/topKSampling"
+        },
+        "repeatPenalty": {
+          "$ref": "#/definitions/llmPredictionConfigInput/properties/repeatPenalty"
+        },
+        "minPSampling": {
+          "$ref": "#/definitions/llmPredictionConfigInput/properties/minPSampling"
+        },
+        "topPSampling": {
+          "$ref": "#/definitions/llmPredictionConfigInput/properties/topPSampling"
+        },
+        "cpuThreads": {
+          "$ref": "#/definitions/llmPredictionConfigInput/properties/cpuThreads"
+        },
+        "promptTemplate": {
+          "$ref": "#/definitions/llmPredictionConfigInput/properties/promptTemplate"
+        },
+        "draftModel": {
+          "$ref": "#/definitions/llmPredictionConfigInput/properties/draftModel"
+        },
+        "speculativeDecodingNumDraftTokensExact": {
+          "$ref": "#/definitions/llmPredictionConfigInput/properties/speculativeDecodingNumDraftTokensExact"
+        },
+        "speculativeDecodingMinDraftLengthToConsider": {
+          "$ref": "#/definitions/llmPredictionConfigInput/properties/speculativeDecodingMinDraftLengthToConsider"
+        },
+        "speculativeDecodingMinContinueDraftingProbability": {
+          "$ref": "#/definitions/llmPredictionConfigInput/properties/speculativeDecodingMinContinueDraftingProbability"
+        },
+        "reasoningParsing": {
+          "$ref": "#/definitions/llmPredictionConfigInput/properties/reasoningParsing"
+        }
+      },
+      "additionalProperties": false
+    },
+    "llmReasoningParsing": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "startString": {
+          "type": "string"
+        },
+        "endString": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "enabled",
+        "startString",
+        "endString"
+      ],
+      "additionalProperties": false
+    },
+    "llmPredictionFragmentReasoningType": {
+      "type": "string",
+      "enum": [
+        "none",
+        "reasoning",
+        "reasoningStartTag",
+        "reasoningEndTag"
+      ]
+    },
+    "llmPredictionFragment": {
+      "type": "object",
+      "properties": {
+        "content": {
+          "type": "string"
+        },
+        "tokensCount": {
+          "type": "integer"
+        },
+        "containsDrafted": {
+          "type": "boolean"
+        },
+        "reasoningType": {
+          "$ref": "#/definitions/llmPredictionFragmentReasoningType"
+        }
+      },
+      "required": [
+        "content",
+        "tokensCount",
+        "containsDrafted",
+        "reasoningType"
+      ],
+      "additionalProperties": false
+    },
+    "llmGenInfo": {
+      "type": "object",
+      "properties": {
+        "indexedModelIdentifier": {
+          "type": "string"
+        },
+        "identifier": {
+          "type": "string"
+        },
+        "loadModelConfig": {
+          "$ref": "#/definitions/kvConfig"
+        },
+        "predictionConfig": {
+          "$ref": "#/definitions/kvConfig"
+        },
+        "stats": {
+          "$ref": "#/definitions/llmPredictionStats"
+        }
+      },
+      "required": [
+        "indexedModelIdentifier",
+        "identifier",
+        "loadModelConfig",
+        "predictionConfig",
+        "stats"
+      ],
+      "additionalProperties": false
+    },
+    "llmPredictionStats": {
+      "type": "object",
+      "properties": {
+        "stopReason": {
+          "$ref": "#/definitions/llmPredictionStopReason"
+        },
+        "tokensPerSecond": {
+          "type": "number"
+        },
+        "numGpuLayers": {
+          "type": "number"
+        },
+        "timeToFirstTokenSec": {
+          "type": "number"
+        },
+        "promptTokensCount": {
+          "type": "integer"
+        },
+        "predictedTokensCount": {
+          "type": "integer"
+        },
+        "totalTokensCount": {
+          "type": "integer"
+        },
+        "usedDraftModelKey": {
+          "type": "string"
+        },
+        "totalDraftTokensCount": {
+          "type": "integer"
+        },
+        "acceptedDraftTokensCount": {
+          "type": "integer"
+        },
+        "rejectedDraftTokensCount": {
+          "type": "integer"
+        },
+        "ignoredDraftTokensCount": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "stopReason"
+      ],
+      "additionalProperties": false
+    },
+    "llmPredictionStopReason": {
+      "type": "string",
+      "enum": [
+        "userStopped",
+        "modelUnloaded",
+        "failed",
+        "eosFound",
+        "stopStringFound",
+        "toolCalls",
+        "maxPredictedTokensReached",
+        "contextLengthReached"
+      ]
+    },
+    "llmJinjaInputConfig": {
+      "type": "object",
+      "properties": {
+        "messagesConfig": {
+          "$ref": "#/definitions/llmJinjaInputMessagesConfig"
+        },
+        "useTools": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "messagesConfig",
+        "useTools"
+      ],
+      "additionalProperties": false
+    },
+    "llmJinjaInputMessagesConfig": {
+      "type": "object",
+      "properties": {
+        "contentConfig": {
+          "$ref": "#/definitions/llmJinjaInputMessagesContentConfig"
+        }
+      },
+      "required": [
+        "contentConfig"
+      ],
+      "additionalProperties": false
+    },
+    "llmJinjaInputMessagesContentConfig": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/llmJinjaInputMessagesContentConfigString"
+        },
+        {
+          "$ref": "#/definitions/llmJinjaInputMessagesContentConfigArray"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "string": "#/definitions/llmJinjaInputMessagesContentConfigString",
+          "array": "#/definitions/llmJinjaInputMessagesContentConfigArray"
+        },
+        "propertyName": "type"
+      }
+    },
+    "llmJinjaInputMessagesContentConfigTextFieldName": {
+      "type": "string",
+      "enum": [
+        "content",
+        "text"
+      ]
+    },
+    "llmJinjaInputMessagesContentImagesConfig": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/llmJinjaInputMessagesContentImagesConfigSimple"
+        },
+        {
+          "$ref": "#/definitions/llmJinjaInputMessagesContentImagesConfigNumbered"
+        },
+        {
+          "$ref": "#/definitions/llmJinjaInputMessagesContentImagesConfigObject"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "simple": "#/definitions/llmJinjaInputMessagesContentImagesConfigSimple",
+          "numbered": "#/definitions/llmJinjaInputMessagesContentImagesConfigNumbered",
+          "object": "#/definitions/llmJinjaInputMessagesContentImagesConfigObject"
+        },
+        "propertyName": "type"
+      }
+    },
+    "llmJinjaPromptTemplate": {
+      "type": "object",
+      "properties": {
+        "template": {
+          "type": "string"
+        },
+        "bosToken": {
+          "type": "string"
+        },
+        "eosToken": {
+          "type": "string"
+        },
+        "inputConfig": {
+          "$ref": "#/definitions/llmJinjaInputConfig"
+        }
+      },
+      "required": [
+        "template",
+        "bosToken",
+        "eosToken",
+        "inputConfig"
+      ],
+      "additionalProperties": false
+    },
+    "llmManualPromptTemplate": {
+      "type": "object",
+      "properties": {
+        "beforeSystem": {
+          "type": "string"
+        },
+        "afterSystem": {
+          "type": "string"
+        },
+        "beforeUser": {
+          "type": "string"
+        },
+        "afterUser": {
+          "type": "string"
+        },
+        "beforeAssistant": {
+          "type": "string"
+        },
+        "afterAssistant": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "beforeSystem",
+        "afterSystem",
+        "beforeUser",
+        "afterUser",
+        "beforeAssistant",
+        "afterAssistant"
+      ],
+      "additionalProperties": false
+    },
+    "llmPromptTemplate": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/llmPromptTemplateType"
+        },
+        "manualPromptTemplate": {
+          "$ref": "#/definitions/llmManualPromptTemplate"
+        },
+        "jinjaPromptTemplate": {
+          "$ref": "#/definitions/llmJinjaPromptTemplate"
+        },
+        "stopStrings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "type",
+        "stopStrings"
+      ],
+      "additionalProperties": false
+    },
+    "llmPromptTemplateType": {
+      "type": "string",
+      "enum": [
+        "manual",
+        "jinja"
+      ]
+    },
+    "llmStructuredPredictionSetting": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/llmStructuredPredictionType"
+        },
+        "jsonSchema": {
+          "$ref": "#/definitions/functionToolCallRequest/properties/arguments/additionalProperties"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "llmStructuredPredictionType": {
+      "type": "string",
+      "enum": [
+        "none",
+        "json"
+      ]
+    },
+    "llmToolArray": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/llmTool"
+      }
+    },
+    "llmToolParameters": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/llmToolParametersObject"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "object": "#/definitions/llmToolParametersObject"
+        },
+        "propertyName": "type"
+      }
+    },
+    "llmTool": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/llmToolFunction"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "function": "#/definitions/llmToolFunction"
+        },
+        "propertyName": "type"
+      }
+    },
+    "llmToolUseSetting": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/llmToolUseSettingNone"
+        },
+        {
+          "$ref": "#/definitions/llmToolUseSettingToolArray"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "none": "#/definitions/llmToolUseSettingNone",
+          "toolArray": "#/definitions/llmToolUseSettingToolArray"
+        },
+        "propertyName": "type"
+      }
+    },
+    "generatorUpdate": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/processingUpdateStatusCreate"
+        },
+        {
+          "$ref": "#/definitions/processingUpdateStatusUpdate"
+        },
+        {
+          "$ref": "#/definitions/processingUpdateStatusRemove"
+        },
+        {
+          "$ref": "#/definitions/processingUpdateCitationBlockCreate"
+        },
+        {
+          "$ref": "#/definitions/processingUpdateDebugInfoBlockCreate"
+        },
+        {
+          "$ref": "#/definitions/processingUpdateContentBlockCreate"
+        },
+        {
+          "$ref": "#/definitions/processingUpdateContentBlockAppendText"
+        },
+        {
+          "$ref": "#/definitions/processingUpdateContentBlockReplaceText"
+        },
+        {
+          "$ref": "#/definitions/processingUpdateContentBlockAttachGenInfo"
+        },
+        {
+          "$ref": "#/definitions/processingUpdateContentBlockSetStyle"
+        },
+        {
+          "$ref": "#/definitions/processingUpdateSetSenderName"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "status.create": "#/definitions/processingUpdateStatusCreate",
+          "status.update": "#/definitions/processingUpdateStatusUpdate",
+          "status.remove": "#/definitions/processingUpdateStatusRemove",
+          "citationBlock.create": "#/definitions/processingUpdateCitationBlockCreate",
+          "debugInfoBlock.create": "#/definitions/processingUpdateDebugInfoBlockCreate",
+          "contentBlock.create": "#/definitions/processingUpdateContentBlockCreate",
+          "contentBlock.appendText": "#/definitions/processingUpdateContentBlockAppendText",
+          "contentBlock.replaceText": "#/definitions/processingUpdateContentBlockReplaceText",
+          "contentBlock.attachGenInfo": "#/definitions/processingUpdateContentBlockAttachGenInfo",
+          "contentBlock.setStyle": "#/definitions/processingUpdateContentBlockSetStyle",
+          "setSenderName": "#/definitions/processingUpdateSetSenderName"
+        },
+        "propertyName": "type"
+      }
+    },
+    "preprocessorUpdate": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/processingUpdateStatusCreate"
+        },
+        {
+          "$ref": "#/definitions/processingUpdateStatusUpdate"
+        },
+        {
+          "$ref": "#/definitions/processingUpdateStatusRemove"
+        },
+        {
+          "$ref": "#/definitions/processingUpdateCitationBlockCreate"
+        },
+        {
+          "$ref": "#/definitions/processingUpdateDebugInfoBlockCreate"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "status.create": "#/definitions/processingUpdateStatusCreate",
+          "status.update": "#/definitions/processingUpdateStatusUpdate",
+          "status.remove": "#/definitions/processingUpdateStatusRemove",
+          "citationBlock.create": "#/definitions/processingUpdateCitationBlockCreate",
+          "debugInfoBlock.create": "#/definitions/processingUpdateDebugInfoBlockCreate"
+        },
+        "propertyName": "type"
+      }
+    },
+    "blockLocation": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/blockLocationBeforeId"
+        },
+        {
+          "$ref": "#/definitions/blockLocationAfterId"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "beforeId": "#/definitions/blockLocationBeforeId",
+          "afterId": "#/definitions/blockLocationAfterId"
+        },
+        "propertyName": "type"
+      }
+    },
+    "processingUpdateCitationBlockCreate": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "citationBlock.create",
+          "default": "citationBlock.create",
+          "title": "Type"
+        },
+        "id": {
+          "type": "string"
+        },
+        "citedText": {
+          "type": "string"
+        },
+        "fileName": {
+          "type": "string"
+        },
+        "fileIdentifier": {
+          "type": "string"
+        },
+        "pageNumber": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 2,
+              "items": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            }
+          ]
+        },
+        "lineNumber": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 2,
+              "items": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "citedText",
+        "fileName",
+        "fileIdentifier"
+      ],
+      "additionalProperties": false
+    },
+    "processingUpdateContentBlockAppendText": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "contentBlock.appendText",
+          "default": "contentBlock.appendText",
+          "title": "Type"
+        },
+        "id": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        },
+        "tokensCount": {
+          "type": "integer"
+        },
+        "fromDraftModel": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "processingUpdateContentBlockAttachGenInfo": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "contentBlock.attachGenInfo",
+          "default": "contentBlock.attachGenInfo",
+          "title": "Type"
+        },
+        "id": {
+          "type": "string"
+        },
+        "genInfo": {
+          "$ref": "#/definitions/llmGenInfo"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "genInfo"
+      ],
+      "additionalProperties": false
+    },
+    "processingUpdateContentBlockCreate": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "contentBlock.create",
+          "default": "contentBlock.create",
+          "title": "Type"
+        },
+        "id": {
+          "type": "string"
+        },
+        "includeInContext": {
+          "type": "boolean"
+        },
+        "style": {
+          "$ref": "#/definitions/contentBlockStyle"
+        },
+        "prefix": {
+          "type": "string"
+        },
+        "suffix": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "includeInContext"
+      ],
+      "additionalProperties": false
+    },
+    "processingUpdateContentBlockReplaceText": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "contentBlock.replaceText",
+          "default": "contentBlock.replaceText",
+          "title": "Type"
+        },
+        "id": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "processingUpdateContentBlockSetPrefix": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "contentBlock.setPrefix",
+          "default": "contentBlock.setPrefix",
+          "title": "Type"
+        },
+        "id": {
+          "type": "string"
+        },
+        "prefix": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "prefix"
+      ],
+      "additionalProperties": false
+    },
+    "processingUpdateContentBlockSetStyle": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "contentBlock.setStyle",
+          "default": "contentBlock.setStyle",
+          "title": "Type"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "$ref": "#/definitions/contentBlockStyle"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "style"
+      ],
+      "additionalProperties": false
+    },
+    "processingUpdateContentBlockSetSuffix": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "contentBlock.setSuffix",
+          "default": "contentBlock.setSuffix",
+          "title": "Type"
+        },
+        "id": {
+          "type": "string"
+        },
+        "suffix": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "suffix"
+      ],
+      "additionalProperties": false
+    },
+    "processingUpdateDebugInfoBlockCreate": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "debugInfoBlock.create",
+          "default": "debugInfoBlock.create",
+          "title": "Type"
+        },
+        "id": {
+          "type": "string"
+        },
+        "debugInfo": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "debugInfo"
+      ],
+      "additionalProperties": false
+    },
+    "processingUpdate": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/processingUpdateStatusCreate"
+        },
+        {
+          "$ref": "#/definitions/processingUpdateStatusUpdate"
+        },
+        {
+          "$ref": "#/definitions/processingUpdateStatusRemove"
+        },
+        {
+          "$ref": "#/definitions/processingUpdateCitationBlockCreate"
+        },
+        {
+          "$ref": "#/definitions/processingUpdateDebugInfoBlockCreate"
+        },
+        {
+          "$ref": "#/definitions/processingUpdateContentBlockCreate"
+        },
+        {
+          "$ref": "#/definitions/processingUpdateContentBlockAppendText"
+        },
+        {
+          "$ref": "#/definitions/processingUpdateContentBlockReplaceText"
+        },
+        {
+          "$ref": "#/definitions/processingUpdateContentBlockSetPrefix"
+        },
+        {
+          "$ref": "#/definitions/processingUpdateContentBlockSetSuffix"
+        },
+        {
+          "$ref": "#/definitions/processingUpdateContentBlockAttachGenInfo"
+        },
+        {
+          "$ref": "#/definitions/processingUpdateContentBlockSetStyle"
+        },
+        {
+          "$ref": "#/definitions/processingUpdateSetSenderName"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "status.create": "#/definitions/processingUpdateStatusCreate",
+          "status.update": "#/definitions/processingUpdateStatusUpdate",
+          "status.remove": "#/definitions/processingUpdateStatusRemove",
+          "citationBlock.create": "#/definitions/processingUpdateCitationBlockCreate",
+          "debugInfoBlock.create": "#/definitions/processingUpdateDebugInfoBlockCreate",
+          "contentBlock.create": "#/definitions/processingUpdateContentBlockCreate",
+          "contentBlock.appendText": "#/definitions/processingUpdateContentBlockAppendText",
+          "contentBlock.replaceText": "#/definitions/processingUpdateContentBlockReplaceText",
+          "contentBlock.setPrefix": "#/definitions/processingUpdateContentBlockSetPrefix",
+          "contentBlock.setSuffix": "#/definitions/processingUpdateContentBlockSetSuffix",
+          "contentBlock.attachGenInfo": "#/definitions/processingUpdateContentBlockAttachGenInfo",
+          "contentBlock.setStyle": "#/definitions/processingUpdateContentBlockSetStyle",
+          "setSenderName": "#/definitions/processingUpdateSetSenderName"
+        },
+        "propertyName": "type"
+      }
+    },
+    "processingUpdateSetSenderName": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "setSenderName",
+          "default": "setSenderName",
+          "title": "Type"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "processingUpdateStatusCreate": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "status.create",
+          "default": "status.create",
+          "title": "Type"
+        },
+        "id": {
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/definitions/statusStepState"
+        },
+        "location": {
+          "$ref": "#/definitions/blockLocation"
+        },
+        "indentation": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "processingUpdateStatusRemove": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "status.remove",
+          "default": "status.remove",
+          "title": "Type"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "id"
+      ],
+      "additionalProperties": false
+    },
+    "processingUpdateStatusUpdate": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "status.update",
+          "default": "status.update",
+          "title": "Type"
+        },
+        "id": {
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/definitions/statusStepState"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "statusStepState": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "$ref": "#/definitions/statusStepStatus"
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "statusStepStatus": {
+      "type": "string",
+      "enum": [
+        "waiting",
+        "loading",
+        "done",
+        "error",
+        "canceled"
+      ]
+    },
+    "getModelOpts": {
+      "type": "object",
+      "properties": {
+        "modelTag": {
+          "type": "string"
+        },
+        "ignoreUserConfig": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "modelCompatibilityType": {
+      "type": "string",
+      "enum": [
+        "gguf",
+        "safetensors",
+        "onnx",
+        "ggml",
+        "mlx_placeholder",
+        "torch_safetensors"
+      ]
+    },
+    "modelDomainType": {
+      "type": "string",
+      "enum": [
+        "llm",
+        "embedding",
+        "imageGen",
+        "transcription",
+        "tts"
+      ]
+    },
+    "modelInfo": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/llmInfo"
+        },
+        {
+          "$ref": "#/definitions/embeddingModelInfo"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "llm": "#/definitions/llmInfo",
+          "embedding": "#/definitions/embeddingModelInfo"
+        },
+        "propertyName": "type"
+      }
+    },
+    "modelInstanceInfo": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/llmInstanceInfo"
+        },
+        {
+          "$ref": "#/definitions/embeddingModelInstanceInfo"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "llm": "#/definitions/llmInstanceInfo",
+          "embedding": "#/definitions/embeddingModelInstanceInfo"
+        },
+        "propertyName": "type"
+      }
+    },
+    "modelInfoBase": {
+      "type": "object",
+      "properties": {
+        "modelKey": {
+          "$ref": "#/definitions/embeddingModelInfo/properties/modelKey"
+        },
+        "format": {
+          "$ref": "#/definitions/modelCompatibilityType"
+        },
+        "displayName": {
+          "$ref": "#/definitions/embeddingModelInfo/properties/displayName"
+        },
+        "path": {
+          "$ref": "#/definitions/embeddingModelInfo/properties/path"
+        },
+        "sizeBytes": {
+          "$ref": "#/definitions/embeddingModelInfo/properties/sizeBytes"
+        },
+        "paramsString": {
+          "$ref": "#/definitions/embeddingModelInfo/properties/paramsString"
+        },
+        "architecture": {
+          "$ref": "#/definitions/embeddingModelInfo/properties/architecture"
+        }
+      },
+      "required": [
+        "modelKey",
+        "format",
+        "displayName",
+        "path",
+        "sizeBytes"
+      ],
+      "additionalProperties": false
+    },
+    "modelInstanceInfoBase": {
+      "type": "object",
+      "properties": {
+        "modelKey": {
+          "$ref": "#/definitions/embeddingModelInfo/properties/modelKey"
+        },
+        "format": {
+          "$ref": "#/definitions/modelCompatibilityType"
+        },
+        "displayName": {
+          "$ref": "#/definitions/embeddingModelInfo/properties/displayName"
+        },
+        "path": {
+          "$ref": "#/definitions/embeddingModelInfo/properties/path"
+        },
+        "sizeBytes": {
+          "$ref": "#/definitions/embeddingModelInfo/properties/sizeBytes"
+        },
+        "paramsString": {
+          "$ref": "#/definitions/embeddingModelInfo/properties/paramsString"
+        },
+        "architecture": {
+          "$ref": "#/definitions/embeddingModelInfo/properties/architecture"
+        },
+        "identifier": {
+          "$ref": "#/definitions/embeddingModelInstanceInfo/properties/identifier"
+        },
+        "instanceReference": {
+          "$ref": "#/definitions/embeddingModelInstanceInfo/properties/instanceReference"
+        }
+      },
+      "required": [
+        "modelKey",
+        "format",
+        "displayName",
+        "path",
+        "sizeBytes",
+        "identifier",
+        "instanceReference"
+      ],
+      "additionalProperties": false
+    },
+    "modelQuery": {
+      "type": "object",
+      "properties": {
+        "domain": {
+          "$ref": "#/definitions/modelDomainType"
+        },
+        "identifier": {
+          "$ref": "#/definitions/reasonableKeyString"
+        },
+        "path": {
+          "$ref": "#/definitions/reasonableKeyString"
+        },
+        "vision": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "modelSpecifier": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/modelSpecifierQuery"
+        },
+        {
+          "$ref": "#/definitions/modelSpecifierInstanceReference"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "query": "#/definitions/modelSpecifierQuery",
+          "instanceReference": "#/definitions/modelSpecifierInstanceReference"
+        },
+        "propertyName": "type"
+      }
+    },
+    "pluginManifest": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "plugin",
+          "default": "plugin",
+          "title": "Type"
+        },
+        "runner": {
+          "$ref": "#/definitions/pluginRunnerType"
+        },
+        "owner": {
+          "$ref": "#/definitions/kebabCase"
+        },
+        "name": {
+          "$ref": "#/definitions/kebabCase"
+        },
+        "description": {
+          "$ref": "#/definitions/artifactManifestBase/properties/description"
+        },
+        "revision": {
+          "$ref": "#/definitions/artifactManifestBase/properties/revision"
+        }
+      },
+      "required": [
+        "type",
+        "runner",
+        "owner",
+        "name",
+        "description"
+      ],
+      "additionalProperties": false
+    },
+    "pluginRunnerType": {
+      "type": "string",
+      "enum": [
+        "ecmascript"
+      ]
+    },
+    "presetManifest": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "preset",
+          "default": "preset",
+          "title": "Type"
+        },
+        "owner": {
+          "$ref": "#/definitions/kebabCase"
+        },
+        "name": {
+          "$ref": "#/definitions/kebabCase"
+        },
+        "description": {
+          "$ref": "#/definitions/artifactManifestBase/properties/description"
+        },
+        "revision": {
+          "$ref": "#/definitions/artifactManifestBase/properties/revision"
+        }
+      },
+      "required": [
+        "type",
+        "owner",
+        "name",
+        "description"
+      ],
+      "additionalProperties": false
+    },
+    "reasonableKeyString": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024
+    },
+    "downloadProgressUpdate": {
+      "type": "object",
+      "properties": {
+        "downloadedBytes": {
+          "type": "integer"
+        },
+        "totalBytes": {
+          "type": "integer"
+        },
+        "speedBytesPerSecond": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "downloadedBytes",
+        "totalBytes",
+        "speedBytesPerSecond"
+      ],
+      "additionalProperties": false
+    },
+    "modelSearchOpts": {
+      "type": "object",
+      "properties": {
+        "searchTerm": {
+          "type": "string"
+        },
+        "limit": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 25
+        },
+        "compatibilityTypes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/modelCompatibilityType"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "modelSearchResultDownloadOptionData": {
+      "type": "object",
+      "properties": {
+        "quantization": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "sizeBytes": {
+          "type": "integer"
+        },
+        "fitEstimation": {
+          "type": "string",
+          "enum": [
+            "fullGPUOffload",
+            "partialGPUOffload",
+            "fitWithoutGPU",
+            "willNotFit"
+          ]
+        },
+        "recommended": {
+          "type": "boolean"
+        },
+        "downloadIdentifier": {
+          "type": "string"
+        },
+        "indexedModelIdentifier": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "sizeBytes",
+        "fitEstimation",
+        "downloadIdentifier",
+        "indexedModelIdentifier"
+      ],
+      "additionalProperties": false
+    },
+    "modelSearchResultEntryData": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "identifier": {
+          "$ref": "#/definitions/modelSearchResultIdentifier"
+        },
+        "exact": {
+          "type": "boolean"
+        },
+        "staffPick": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "name",
+        "identifier"
+      ],
+      "additionalProperties": false
+    },
+    "modelSearchResultIdentifier": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/modelSearchResultIdentifierCatalog"
+        },
+        {
+          "$ref": "#/definitions/modelSearchResultIdentifierHf"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "catalog": "#/definitions/modelSearchResultIdentifierCatalog",
+          "hf": "#/definitions/modelSearchResultIdentifierHf"
+        },
+        "propertyName": "type"
+      }
+    },
+    "internalRetrievalResultEntry": {
+      "type": "object",
+      "properties": {
+        "content": {
+          "type": "string"
+        },
+        "score": {
+          "type": "number"
+        },
+        "sourceIndex": {
+          "type": "integer"
+        },
+        "pageNumber": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 2,
+              "items": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            }
+          ]
+        },
+        "lineNumber": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 2,
+              "items": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "required": [
+        "content",
+        "score",
+        "sourceIndex"
+      ],
+      "additionalProperties": false
+    },
+    "internalRetrievalResult": {
+      "type": "object",
+      "properties": {
+        "entries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/internalRetrievalResultEntry"
+          }
+        }
+      },
+      "required": [
+        "entries"
+      ],
+      "additionalProperties": false
+    },
+    "retrievalChunk": {
+      "type": "object",
+      "properties": {
+        "content": {
+          "type": "string"
+        },
+        "score": {
+          "type": "number"
+        },
+        "citation": {
+          "$ref": "#/definitions/citationSource"
+        }
+      },
+      "required": [
+        "content",
+        "score",
+        "citation"
+      ],
+      "additionalProperties": false
+    },
+    "retrievalChunkingMethod": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/retrievalChunkingMethodRecursive-v1"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "recursive-v1": "#/definitions/retrievalChunkingMethodRecursive-v1"
+        },
+        "propertyName": "type"
+      }
+    },
+    "retrievalFileProcessingStep": {
+      "type": "string",
+      "enum": [
+        "loading",
+        "chunking",
+        "embedding"
+      ]
+    },
+    "accelerator": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "deviceId": {
+          "type": "integer"
+        },
+        "totalMemoryBytes": {
+          "type": "integer"
+        },
+        "type": {
+          "$ref": "#/definitions/acceleratorType"
+        }
+      },
+      "required": [
+        "name",
+        "deviceId",
+        "totalMemoryBytes",
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "acceleratorType": {
+      "type": "string",
+      "enum": [
+        "unknown",
+        "integratedGpu",
+        "dedicatedGpu"
+      ]
+    },
+    "runtime": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "accelerators": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/accelerator"
+          }
+        }
+      },
+      "required": [
+        "key",
+        "name",
+        "accelerators"
+      ],
+      "additionalProperties": false
+    },
+    "kvConfigSchematicsDeserializationError": {
+      "type": "object",
+      "properties": {
+        "fullKey": {
+          "type": "string"
+        },
+        "error": {
+          "$ref": "#/definitions/functionToolCallRequest/properties/arguments/additionalProperties"
+        }
+      },
+      "required": [
+        "fullKey",
+        "error"
+      ],
+      "additionalProperties": false
+    },
+    "serializedKVConfigSchematicsField": {
+      "type": "object",
+      "properties": {
+        "shortKey": {
+          "type": "string"
+        },
+        "fullKey": {
+          "type": "string"
+        },
+        "typeKey": {
+          "type": "string"
+        },
+        "typeParams": {
+          "$ref": "#/definitions/functionToolCallRequest/properties/arguments/additionalProperties"
+        },
+        "defaultValue": {
+          "$ref": "#/definitions/functionToolCallRequest/properties/arguments/additionalProperties"
+        }
+      },
+      "required": [
+        "shortKey",
+        "fullKey",
+        "typeKey",
+        "typeParams",
+        "defaultValue"
+      ],
+      "additionalProperties": false
+    },
+    "serializedKVConfigSchematics": {
+      "type": "object",
+      "properties": {
+        "fields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/serializedKVConfigSchematicsField"
+          }
+        }
+      },
+      "required": [
+        "fields"
+      ],
+      "additionalProperties": false
+    },
+    "virtualModelManifest": {
+      "type": "object",
+      "properties": {
+        "model": {
+          "type": "string",
+          "pattern": "^[^/]+\\/[^/]+$"
+        },
+        "base": {
+          "type": "string"
+        },
+        "config": {
+          "type": "object",
+          "properties": {
+            "load": {
+              "$ref": "#/definitions/kvConfig"
+            },
+            "operation": {
+              "$ref": "#/definitions/kvConfig"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "model",
+        "base"
+      ],
+      "additionalProperties": false
+    },
+    "zodSchema": {},
+    "diagnostics/channel/streamLogs/toClientPacket": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/diagnostics/channel/streamLogs/toClientPacketLog"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "log": "#/definitions/diagnostics/channel/streamLogs/toClientPacketLog"
+        },
+        "propertyName": "type"
+      }
+    },
+    "diagnostics/channel/streamLogs/toServerPacket": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/diagnostics/channel/streamLogs/toServerPacketStop"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "stop": "#/definitions/diagnostics/channel/streamLogs/toServerPacketStop"
+        },
+        "propertyName": "type"
+      }
+    },
+    "pseudo/diagnostics/channel/streamLogs": {
+      "type": "object",
+      "properties": {
+        "toClientPacket": {
+          "$ref": "#/definitions/diagnostics/channel/streamLogs/toClientPacket"
+        },
+        "toServerPacket": {
+          "$ref": "#/definitions/diagnostics/channel/streamLogs/toServerPacket"
+        }
+      },
+      "required": [
+        "toClientPacket",
+        "toServerPacket"
+      ],
+      "additionalProperties": false
+    },
+    "pseudo/diagnostics": {
+      "type": "object",
+      "properties": {
+        "channelStreamLogs": {
+          "$ref": "#/definitions/pseudo/diagnostics/channel/streamLogs"
+        }
+      },
+      "required": [
+        "channelStreamLogs"
+      ],
+      "additionalProperties": false
+    },
+    "embedding/rpc/unloadModel/parameter": {
+      "type": "object",
+      "properties": {
+        "identifier": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "identifier"
+      ],
+      "additionalProperties": false
+    },
+    "embedding/rpc/unloadModel/returns": {},
+    "pseudo/embedding/rpc/unloadModel": {
+      "type": "object",
+      "properties": {
+        "parameter": {
+          "$ref": "#/definitions/embedding/rpc/unloadModel/parameter"
+        }
+      },
+      "required": [
+        "parameter"
+      ],
+      "additionalProperties": false
+    },
+    "embedding/rpc/listLoaded/parameter": {
+      "not": {}
+    },
+    "embedding/rpc/listLoaded/returns": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/embeddingModelInstanceInfo"
+      }
+    },
+    "pseudo/embedding/rpc/listLoaded": {
+      "type": "object",
+      "properties": {
+        "parameter": {
+          "$ref": "#/definitions/embedding/rpc/listLoaded/parameter"
+        },
+        "returns": {
+          "$ref": "#/definitions/embedding/rpc/listLoaded/returns"
+        }
+      },
+      "required": [
+        "returns"
+      ],
+      "additionalProperties": false
+    },
+    "embedding/rpc/getModelInfo/parameter": {
+      "type": "object",
+      "properties": {
+        "specifier": {
+          "$ref": "#/definitions/modelSpecifier"
+        },
+        "throwIfNotFound": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "specifier",
+        "throwIfNotFound"
+      ],
+      "additionalProperties": false
+    },
+    "embedding/rpc/getModelInfo/returns": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/embedding/rpc/getModelInfoReturnValue"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "pseudo/embedding/rpc/getModelInfo": {
+      "type": "object",
+      "properties": {
+        "parameter": {
+          "$ref": "#/definitions/embedding/rpc/getModelInfo/parameter"
+        },
+        "returns": {
+          "$ref": "#/definitions/embedding/rpc/getModelInfo/returns"
+        }
+      },
+      "required": [
+        "parameter"
+      ],
+      "additionalProperties": false
+    },
+    "embedding/rpc/getLoadConfig/parameter": {
+      "type": "object",
+      "properties": {
+        "specifier": {
+          "$ref": "#/definitions/modelSpecifier"
+        }
+      },
+      "required": [
+        "specifier"
+      ],
+      "additionalProperties": false
+    },
+    "embedding/rpc/getLoadConfig/returns": {
+      "type": "object",
+      "properties": {
+        "fields": {
+          "$ref": "#/definitions/kvConfig/properties/fields"
+        }
+      },
+      "required": [
+        "fields"
+      ],
+      "additionalProperties": false
+    },
+    "pseudo/embedding/rpc/getLoadConfig": {
+      "type": "object",
+      "properties": {
+        "parameter": {
+          "$ref": "#/definitions/embedding/rpc/getLoadConfig/parameter"
+        },
+        "returns": {
+          "$ref": "#/definitions/embedding/rpc/getLoadConfig/returns"
+        }
+      },
+      "required": [
+        "parameter",
+        "returns"
+      ],
+      "additionalProperties": false
+    },
+    "embedding/rpc/embedString/parameter": {
+      "type": "object",
+      "properties": {
+        "modelSpecifier": {
+          "$ref": "#/definitions/modelSpecifier"
+        },
+        "inputString": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "modelSpecifier",
+        "inputString"
+      ],
+      "additionalProperties": false
+    },
+    "embedding/rpc/embedString/returns": {
+      "type": "object",
+      "properties": {
+        "embedding": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        }
+      },
+      "required": [
+        "embedding"
+      ],
+      "additionalProperties": false
+    },
+    "pseudo/embedding/rpc/embedString": {
+      "type": "object",
+      "properties": {
+        "parameter": {
+          "$ref": "#/definitions/embedding/rpc/embedString/parameter"
+        },
+        "returns": {
+          "$ref": "#/definitions/embedding/rpc/embedString/returns"
+        }
+      },
+      "required": [
+        "parameter",
+        "returns"
+      ],
+      "additionalProperties": false
+    },
+    "embedding/rpc/tokenize/parameter": {
+      "type": "object",
+      "properties": {
+        "specifier": {
+          "$ref": "#/definitions/modelSpecifier"
+        },
+        "inputString": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "specifier",
+        "inputString"
+      ],
+      "additionalProperties": false
+    },
+    "embedding/rpc/tokenize/returns": {
+      "type": "object",
+      "properties": {
+        "tokens": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        }
+      },
+      "required": [
+        "tokens"
+      ],
+      "additionalProperties": false
+    },
+    "pseudo/embedding/rpc/tokenize": {
+      "type": "object",
+      "properties": {
+        "parameter": {
+          "$ref": "#/definitions/embedding/rpc/tokenize/parameter"
+        },
+        "returns": {
+          "$ref": "#/definitions/embedding/rpc/tokenize/returns"
+        }
+      },
+      "required": [
+        "parameter",
+        "returns"
+      ],
+      "additionalProperties": false
+    },
+    "embedding/channel/loadModel/creationParameter": {
+      "type": "object",
+      "properties": {
+        "modelKey": {
+          "type": "string"
+        },
+        "identifier": {
+          "type": "string"
+        },
+        "ttlMs": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "loadConfigStack": {
+          "$ref": "#/definitions/kvConfigStack"
+        }
+      },
+      "required": [
+        "modelKey",
+        "loadConfigStack"
+      ],
+      "additionalProperties": false
+    },
+    "embedding/channel/loadModel/toClientPacket": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/embedding/channel/loadModel/toClientPacketResolved"
+        },
+        {
+          "$ref": "#/definitions/embedding/channel/loadModel/toClientPacketProgress"
+        },
+        {
+          "$ref": "#/definitions/embedding/channel/loadModel/toClientPacketSuccess"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "resolved": "#/definitions/embedding/channel/loadModel/toClientPacketResolved",
+          "progress": "#/definitions/embedding/channel/loadModel/toClientPacketProgress",
+          "success": "#/definitions/embedding/channel/loadModel/toClientPacketSuccess"
+        },
+        "propertyName": "type"
+      }
+    },
+    "embedding/channel/loadModel/toServerPacket": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/embedding/channel/loadModel/toServerPacketCancel"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "cancel": "#/definitions/embedding/channel/loadModel/toServerPacketCancel"
+        },
+        "propertyName": "type"
+      }
+    },
+    "pseudo/embedding/channel/loadModel": {
+      "type": "object",
+      "properties": {
+        "creationParameter": {
+          "$ref": "#/definitions/embedding/channel/loadModel/creationParameter"
+        },
+        "toClientPacket": {
+          "$ref": "#/definitions/embedding/channel/loadModel/toClientPacket"
+        },
+        "toServerPacket": {
+          "$ref": "#/definitions/embedding/channel/loadModel/toServerPacket"
+        }
+      },
+      "required": [
+        "creationParameter",
+        "toClientPacket",
+        "toServerPacket"
+      ],
+      "additionalProperties": false
+    },
+    "embedding/channel/getOrLoad/creationParameter": {
+      "type": "object",
+      "properties": {
+        "identifier": {
+          "type": "string"
+        },
+        "loadTtlMs": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "loadConfigStack": {
+          "$ref": "#/definitions/kvConfigStack"
+        }
+      },
+      "required": [
+        "identifier",
+        "loadConfigStack"
+      ],
+      "additionalProperties": false
+    },
+    "embedding/channel/getOrLoad/toClientPacket": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/embedding/channel/getOrLoad/toClientPacketAlreadyLoaded"
+        },
+        {
+          "$ref": "#/definitions/embedding/channel/getOrLoad/toClientPacketStartLoading"
+        },
+        {
+          "$ref": "#/definitions/embedding/channel/getOrLoad/toClientPacketUnloadingOtherJITModel"
+        },
+        {
+          "$ref": "#/definitions/embedding/channel/getOrLoad/toClientPacketLoadProgress"
+        },
+        {
+          "$ref": "#/definitions/embedding/channel/getOrLoad/toClientPacketLoadSuccess"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "alreadyLoaded": "#/definitions/embedding/channel/getOrLoad/toClientPacketAlreadyLoaded",
+          "startLoading": "#/definitions/embedding/channel/getOrLoad/toClientPacketStartLoading",
+          "unloadingOtherJITModel": "#/definitions/embedding/channel/getOrLoad/toClientPacketUnloadingOtherJITModel",
+          "loadProgress": "#/definitions/embedding/channel/getOrLoad/toClientPacketLoadProgress",
+          "loadSuccess": "#/definitions/embedding/channel/getOrLoad/toClientPacketLoadSuccess"
+        },
+        "propertyName": "type"
+      }
+    },
+    "embedding/channel/getOrLoad/toServerPacket": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/embedding/channel/getOrLoad/toServerPacketCancel"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "cancel": "#/definitions/embedding/channel/getOrLoad/toServerPacketCancel"
+        },
+        "propertyName": "type"
+      }
+    },
+    "pseudo/embedding/channel/getOrLoad": {
+      "type": "object",
+      "properties": {
+        "creationParameter": {
+          "$ref": "#/definitions/embedding/channel/getOrLoad/creationParameter"
+        },
+        "toClientPacket": {
+          "$ref": "#/definitions/embedding/channel/getOrLoad/toClientPacket"
+        },
+        "toServerPacket": {
+          "$ref": "#/definitions/embedding/channel/getOrLoad/toServerPacket"
+        }
+      },
+      "required": [
+        "creationParameter",
+        "toClientPacket",
+        "toServerPacket"
+      ],
+      "additionalProperties": false
+    },
+    "pseudo/embedding": {
+      "type": "object",
+      "properties": {
+        "rpcUnloadModel": {
+          "$ref": "#/definitions/pseudo/embedding/rpc/unloadModel"
+        },
+        "rpcListLoaded": {
+          "$ref": "#/definitions/pseudo/embedding/rpc/listLoaded"
+        },
+        "rpcGetModelInfo": {
+          "$ref": "#/definitions/pseudo/embedding/rpc/getModelInfo"
+        },
+        "rpcGetLoadConfig": {
+          "$ref": "#/definitions/pseudo/embedding/rpc/getLoadConfig"
+        },
+        "rpcEmbedString": {
+          "$ref": "#/definitions/pseudo/embedding/rpc/embedString"
+        },
+        "rpcTokenize": {
+          "$ref": "#/definitions/pseudo/embedding/rpc/tokenize"
+        },
+        "channelLoadModel": {
+          "$ref": "#/definitions/pseudo/embedding/channel/loadModel"
+        },
+        "channelGetOrLoad": {
+          "$ref": "#/definitions/pseudo/embedding/channel/getOrLoad"
+        }
+      },
+      "required": [
+        "rpcUnloadModel",
+        "rpcListLoaded",
+        "rpcGetModelInfo",
+        "rpcGetLoadConfig",
+        "rpcEmbedString",
+        "rpcTokenize",
+        "channelLoadModel",
+        "channelGetOrLoad"
+      ],
+      "additionalProperties": false
+    },
+    "files/rpc/getLocalFileAbsolutePath/parameter": {
+      "type": "object",
+      "properties": {
+        "fileName": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "fileName"
+      ],
+      "additionalProperties": false
+    },
+    "files/rpc/getLocalFileAbsolutePath/returns": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "additionalProperties": false
+    },
+    "pseudo/files/rpc/getLocalFileAbsolutePath": {
+      "type": "object",
+      "properties": {
+        "parameter": {
+          "$ref": "#/definitions/files/rpc/getLocalFileAbsolutePath/parameter"
+        },
+        "returns": {
+          "$ref": "#/definitions/files/rpc/getLocalFileAbsolutePath/returns"
+        }
+      },
+      "required": [
+        "parameter",
+        "returns"
+      ],
+      "additionalProperties": false
+    },
+    "files/rpc/uploadFileBase64/parameter": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "contentBase64": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "contentBase64"
+      ],
+      "additionalProperties": false
+    },
+    "files/rpc/uploadFileBase64/returns": {
+      "type": "object",
+      "properties": {
+        "identifier": {
+          "type": "string"
+        },
+        "fileType": {
+          "$ref": "#/definitions/fileType"
+        },
+        "sizeBytes": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "identifier",
+        "fileType",
+        "sizeBytes"
+      ],
+      "additionalProperties": false
+    },
+    "pseudo/files/rpc/uploadFileBase64": {
+      "type": "object",
+      "properties": {
+        "parameter": {
+          "$ref": "#/definitions/files/rpc/uploadFileBase64/parameter"
+        },
+        "returns": {
+          "$ref": "#/definitions/files/rpc/uploadFileBase64/returns"
+        }
+      },
+      "required": [
+        "parameter",
+        "returns"
+      ],
+      "additionalProperties": false
+    },
+    "files/channel/retrieve/creationParameter": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string"
+        },
+        "fileIdentifiers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "config": {
+          "$ref": "#/definitions/embedding/rpc/getLoadConfig/returns"
+        }
+      },
+      "required": [
+        "query",
+        "fileIdentifiers",
+        "config"
+      ],
+      "additionalProperties": false
+    },
+    "files/channel/retrieve/toClientPacket": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/files/channel/retrieve/toClientPacketOnFileProcessList"
+        },
+        {
+          "$ref": "#/definitions/files/channel/retrieve/toClientPacketOnFileProcessingStart"
+        },
+        {
+          "$ref": "#/definitions/files/channel/retrieve/toClientPacketOnFileProcessingEnd"
+        },
+        {
+          "$ref": "#/definitions/files/channel/retrieve/toClientPacketOnFileProcessingStepStart"
+        },
+        {
+          "$ref": "#/definitions/files/channel/retrieve/toClientPacketOnFileProcessingStepProgress"
+        },
+        {
+          "$ref": "#/definitions/files/channel/retrieve/toClientPacketOnFileProcessingStepEnd"
+        },
+        {
+          "$ref": "#/definitions/files/channel/retrieve/toClientPacketOnSearchingStart"
+        },
+        {
+          "$ref": "#/definitions/files/channel/retrieve/toClientPacketOnSearchingEnd"
+        },
+        {
+          "$ref": "#/definitions/files/channel/retrieve/toClientPacketResult"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "onFileProcessList": "#/definitions/files/channel/retrieve/toClientPacketOnFileProcessList",
+          "onFileProcessingStart": "#/definitions/files/channel/retrieve/toClientPacketOnFileProcessingStart",
+          "onFileProcessingEnd": "#/definitions/files/channel/retrieve/toClientPacketOnFileProcessingEnd",
+          "onFileProcessingStepStart": "#/definitions/files/channel/retrieve/toClientPacketOnFileProcessingStepStart",
+          "onFileProcessingStepProgress": "#/definitions/files/channel/retrieve/toClientPacketOnFileProcessingStepProgress",
+          "onFileProcessingStepEnd": "#/definitions/files/channel/retrieve/toClientPacketOnFileProcessingStepEnd",
+          "onSearchingStart": "#/definitions/files/channel/retrieve/toClientPacketOnSearchingStart",
+          "onSearchingEnd": "#/definitions/files/channel/retrieve/toClientPacketOnSearchingEnd",
+          "result": "#/definitions/files/channel/retrieve/toClientPacketResult"
+        },
+        "propertyName": "type"
+      }
+    },
+    "files/channel/retrieve/toServerPacket": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/files/channel/retrieve/toServerPacketStop"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "stop": "#/definitions/files/channel/retrieve/toServerPacketStop"
+        },
+        "propertyName": "type"
+      }
+    },
+    "pseudo/files/channel/retrieve": {
+      "type": "object",
+      "properties": {
+        "creationParameter": {
+          "$ref": "#/definitions/files/channel/retrieve/creationParameter"
+        },
+        "toClientPacket": {
+          "$ref": "#/definitions/files/channel/retrieve/toClientPacket"
+        },
+        "toServerPacket": {
+          "$ref": "#/definitions/files/channel/retrieve/toServerPacket"
+        }
+      },
+      "required": [
+        "creationParameter",
+        "toClientPacket",
+        "toServerPacket"
+      ],
+      "additionalProperties": false
+    },
+    "pseudo/files": {
+      "type": "object",
+      "properties": {
+        "rpcGetLocalFileAbsolutePath": {
+          "$ref": "#/definitions/pseudo/files/rpc/getLocalFileAbsolutePath"
+        },
+        "rpcUploadFileBase64": {
+          "$ref": "#/definitions/pseudo/files/rpc/uploadFileBase64"
+        },
+        "channelRetrieve": {
+          "$ref": "#/definitions/pseudo/files/channel/retrieve"
+        }
+      },
+      "required": [
+        "rpcGetLocalFileAbsolutePath",
+        "rpcUploadFileBase64",
+        "channelRetrieve"
+      ],
+      "additionalProperties": false
+    },
+    "llm/rpc/unloadModel/parameter": {
+      "type": "object",
+      "properties": {
+        "identifier": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "identifier"
+      ],
+      "additionalProperties": false
+    },
+    "llm/rpc/unloadModel/returns": {},
+    "pseudo/llm/rpc/unloadModel": {
+      "type": "object",
+      "properties": {
+        "parameter": {
+          "$ref": "#/definitions/llm/rpc/unloadModel/parameter"
+        }
+      },
+      "required": [
+        "parameter"
+      ],
+      "additionalProperties": false
+    },
+    "llm/rpc/listLoaded/parameter": {
+      "not": {}
+    },
+    "llm/rpc/listLoaded/returns": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/llmInstanceInfo"
+      }
+    },
+    "pseudo/llm/rpc/listLoaded": {
+      "type": "object",
+      "properties": {
+        "parameter": {
+          "$ref": "#/definitions/llm/rpc/listLoaded/parameter"
+        },
+        "returns": {
+          "$ref": "#/definitions/llm/rpc/listLoaded/returns"
+        }
+      },
+      "required": [
+        "returns"
+      ],
+      "additionalProperties": false
+    },
+    "llm/rpc/getModelInfo/parameter": {
+      "type": "object",
+      "properties": {
+        "specifier": {
+          "$ref": "#/definitions/modelSpecifier"
+        },
+        "throwIfNotFound": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "specifier",
+        "throwIfNotFound"
+      ],
+      "additionalProperties": false
+    },
+    "llm/rpc/getModelInfo/returns": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/llm/rpc/getModelInfoReturnValue"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "pseudo/llm/rpc/getModelInfo": {
+      "type": "object",
+      "properties": {
+        "parameter": {
+          "$ref": "#/definitions/llm/rpc/getModelInfo/parameter"
+        },
+        "returns": {
+          "$ref": "#/definitions/llm/rpc/getModelInfo/returns"
+        }
+      },
+      "required": [
+        "parameter"
+      ],
+      "additionalProperties": false
+    },
+    "llm/rpc/getLoadConfig/parameter": {
+      "type": "object",
+      "properties": {
+        "specifier": {
+          "$ref": "#/definitions/modelSpecifier"
+        }
+      },
+      "required": [
+        "specifier"
+      ],
+      "additionalProperties": false
+    },
+    "llm/rpc/getLoadConfig/returns": {
+      "type": "object",
+      "properties": {
+        "fields": {
+          "$ref": "#/definitions/kvConfig/properties/fields"
+        }
+      },
+      "required": [
+        "fields"
+      ],
+      "additionalProperties": false
+    },
+    "pseudo/llm/rpc/getLoadConfig": {
+      "type": "object",
+      "properties": {
+        "parameter": {
+          "$ref": "#/definitions/llm/rpc/getLoadConfig/parameter"
+        },
+        "returns": {
+          "$ref": "#/definitions/llm/rpc/getLoadConfig/returns"
+        }
+      },
+      "required": [
+        "parameter",
+        "returns"
+      ],
+      "additionalProperties": false
+    },
+    "llm/rpc/applyPromptTemplate/parameter": {
+      "type": "object",
+      "properties": {
+        "specifier": {
+          "$ref": "#/definitions/modelSpecifier"
+        },
+        "history": {
+          "$ref": "#/definitions/chatHistoryData"
+        },
+        "predictionConfigStack": {
+          "$ref": "#/definitions/kvConfigStack"
+        },
+        "opts": {
+          "$ref": "#/definitions/llmApplyPromptTemplateOpts"
+        }
+      },
+      "required": [
+        "specifier",
+        "history",
+        "predictionConfigStack",
+        "opts"
+      ],
+      "additionalProperties": false
+    },
+    "llm/rpc/applyPromptTemplate/returns": {
+      "type": "object",
+      "properties": {
+        "formatted": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "formatted"
+      ],
+      "additionalProperties": false
+    },
+    "pseudo/llm/rpc/applyPromptTemplate": {
+      "type": "object",
+      "properties": {
+        "parameter": {
+          "$ref": "#/definitions/llm/rpc/applyPromptTemplate/parameter"
+        },
+        "returns": {
+          "$ref": "#/definitions/llm/rpc/applyPromptTemplate/returns"
+        }
+      },
+      "required": [
+        "parameter",
+        "returns"
+      ],
+      "additionalProperties": false
+    },
+    "llm/rpc/tokenize/parameter": {
+      "type": "object",
+      "properties": {
+        "specifier": {
+          "$ref": "#/definitions/modelSpecifier"
+        },
+        "inputString": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "specifier",
+        "inputString"
+      ],
+      "additionalProperties": false
+    },
+    "llm/rpc/tokenize/returns": {
+      "type": "object",
+      "properties": {
+        "tokens": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        }
+      },
+      "required": [
+        "tokens"
+      ],
+      "additionalProperties": false
+    },
+    "pseudo/llm/rpc/tokenize": {
+      "type": "object",
+      "properties": {
+        "parameter": {
+          "$ref": "#/definitions/llm/rpc/tokenize/parameter"
+        },
+        "returns": {
+          "$ref": "#/definitions/llm/rpc/tokenize/returns"
+        }
+      },
+      "required": [
+        "parameter",
+        "returns"
+      ],
+      "additionalProperties": false
+    },
+    "llm/rpc/countTokens/parameter": {
+      "type": "object",
+      "properties": {
+        "specifier": {
+          "$ref": "#/definitions/modelSpecifier"
+        },
+        "inputString": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "specifier",
+        "inputString"
+      ],
+      "additionalProperties": false
+    },
+    "llm/rpc/countTokens/returns": {
+      "type": "object",
+      "properties": {
+        "tokenCount": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "tokenCount"
+      ],
+      "additionalProperties": false
+    },
+    "pseudo/llm/rpc/countTokens": {
+      "type": "object",
+      "properties": {
+        "parameter": {
+          "$ref": "#/definitions/llm/rpc/countTokens/parameter"
+        },
+        "returns": {
+          "$ref": "#/definitions/llm/rpc/countTokens/returns"
+        }
+      },
+      "required": [
+        "parameter",
+        "returns"
+      ],
+      "additionalProperties": false
+    },
+    "llm/rpc/preloadDraftModel/parameter": {
+      "type": "object",
+      "properties": {
+        "specifier": {
+          "$ref": "#/definitions/modelSpecifier"
+        },
+        "draftModelKey": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "specifier",
+        "draftModelKey"
+      ],
+      "additionalProperties": false
+    },
+    "llm/rpc/preloadDraftModel/returns": {},
+    "pseudo/llm/rpc/preloadDraftModel": {
+      "type": "object",
+      "properties": {
+        "parameter": {
+          "$ref": "#/definitions/llm/rpc/preloadDraftModel/parameter"
+        }
+      },
+      "required": [
+        "parameter"
+      ],
+      "additionalProperties": false
+    },
+    "llm/channel/loadModel/creationParameter": {
+      "type": "object",
+      "properties": {
+        "modelKey": {
+          "type": "string"
+        },
+        "identifier": {
+          "type": "string"
+        },
+        "ttlMs": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "loadConfigStack": {
+          "$ref": "#/definitions/kvConfigStack"
+        }
+      },
+      "required": [
+        "modelKey",
+        "loadConfigStack"
+      ],
+      "additionalProperties": false
+    },
+    "llm/channel/loadModel/toClientPacket": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/llm/channel/loadModel/toClientPacketResolved"
+        },
+        {
+          "$ref": "#/definitions/llm/channel/loadModel/toClientPacketProgress"
+        },
+        {
+          "$ref": "#/definitions/llm/channel/loadModel/toClientPacketSuccess"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "resolved": "#/definitions/llm/channel/loadModel/toClientPacketResolved",
+          "progress": "#/definitions/llm/channel/loadModel/toClientPacketProgress",
+          "success": "#/definitions/llm/channel/loadModel/toClientPacketSuccess"
+        },
+        "propertyName": "type"
+      }
+    },
+    "llm/channel/loadModel/toServerPacket": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/llm/channel/loadModel/toServerPacketCancel"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "cancel": "#/definitions/llm/channel/loadModel/toServerPacketCancel"
+        },
+        "propertyName": "type"
+      }
+    },
+    "pseudo/llm/channel/loadModel": {
+      "type": "object",
+      "properties": {
+        "creationParameter": {
+          "$ref": "#/definitions/llm/channel/loadModel/creationParameter"
+        },
+        "toClientPacket": {
+          "$ref": "#/definitions/llm/channel/loadModel/toClientPacket"
+        },
+        "toServerPacket": {
+          "$ref": "#/definitions/llm/channel/loadModel/toServerPacket"
+        }
+      },
+      "required": [
+        "creationParameter",
+        "toClientPacket",
+        "toServerPacket"
+      ],
+      "additionalProperties": false
+    },
+    "llm/channel/getOrLoad/creationParameter": {
+      "type": "object",
+      "properties": {
+        "identifier": {
+          "type": "string"
+        },
+        "loadTtlMs": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "loadConfigStack": {
+          "$ref": "#/definitions/kvConfigStack"
+        }
+      },
+      "required": [
+        "identifier",
+        "loadConfigStack"
+      ],
+      "additionalProperties": false
+    },
+    "llm/channel/getOrLoad/toClientPacket": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/llm/channel/getOrLoad/toClientPacketAlreadyLoaded"
+        },
+        {
+          "$ref": "#/definitions/llm/channel/getOrLoad/toClientPacketStartLoading"
+        },
+        {
+          "$ref": "#/definitions/llm/channel/getOrLoad/toClientPacketUnloadingOtherJITModel"
+        },
+        {
+          "$ref": "#/definitions/llm/channel/getOrLoad/toClientPacketLoadProgress"
+        },
+        {
+          "$ref": "#/definitions/llm/channel/getOrLoad/toClientPacketLoadSuccess"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "alreadyLoaded": "#/definitions/llm/channel/getOrLoad/toClientPacketAlreadyLoaded",
+          "startLoading": "#/definitions/llm/channel/getOrLoad/toClientPacketStartLoading",
+          "unloadingOtherJITModel": "#/definitions/llm/channel/getOrLoad/toClientPacketUnloadingOtherJITModel",
+          "loadProgress": "#/definitions/llm/channel/getOrLoad/toClientPacketLoadProgress",
+          "loadSuccess": "#/definitions/llm/channel/getOrLoad/toClientPacketLoadSuccess"
+        },
+        "propertyName": "type"
+      }
+    },
+    "llm/channel/getOrLoad/toServerPacket": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/llm/channel/getOrLoad/toServerPacketCancel"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "cancel": "#/definitions/llm/channel/getOrLoad/toServerPacketCancel"
+        },
+        "propertyName": "type"
+      }
+    },
+    "pseudo/llm/channel/getOrLoad": {
+      "type": "object",
+      "properties": {
+        "creationParameter": {
+          "$ref": "#/definitions/llm/channel/getOrLoad/creationParameter"
+        },
+        "toClientPacket": {
+          "$ref": "#/definitions/llm/channel/getOrLoad/toClientPacket"
+        },
+        "toServerPacket": {
+          "$ref": "#/definitions/llm/channel/getOrLoad/toServerPacket"
+        }
+      },
+      "required": [
+        "creationParameter",
+        "toClientPacket",
+        "toServerPacket"
+      ],
+      "additionalProperties": false
+    },
+    "llm/channel/predict/creationParameter": {
+      "type": "object",
+      "properties": {
+        "modelSpecifier": {
+          "$ref": "#/definitions/modelSpecifier"
+        },
+        "history": {
+          "$ref": "#/definitions/chatHistoryData"
+        },
+        "predictionConfigStack": {
+          "$ref": "#/definitions/kvConfigStack"
+        },
+        "ignoreServerSessionConfig": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "modelSpecifier",
+        "history",
+        "predictionConfigStack"
+      ],
+      "additionalProperties": false
+    },
+    "llm/channel/predict/toClientPacket": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/llm/channel/predict/toClientPacketFragment"
+        },
+        {
+          "$ref": "#/definitions/llm/channel/predict/toClientPacketPromptProcessingProgress"
+        },
+        {
+          "$ref": "#/definitions/llm/channel/predict/toClientPacketToolCallGenerationStart"
+        },
+        {
+          "$ref": "#/definitions/llm/channel/predict/toClientPacketToolCallGenerationEnd"
+        },
+        {
+          "$ref": "#/definitions/llm/channel/predict/toClientPacketToolCallGenerationFailed"
+        },
+        {
+          "$ref": "#/definitions/llm/channel/predict/toClientPacketSuccess"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "fragment": "#/definitions/llm/channel/predict/toClientPacketFragment",
+          "promptProcessingProgress": "#/definitions/llm/channel/predict/toClientPacketPromptProcessingProgress",
+          "toolCallGenerationStart": "#/definitions/llm/channel/predict/toClientPacketToolCallGenerationStart",
+          "toolCallGenerationEnd": "#/definitions/llm/channel/predict/toClientPacketToolCallGenerationEnd",
+          "toolCallGenerationFailed": "#/definitions/llm/channel/predict/toClientPacketToolCallGenerationFailed",
+          "success": "#/definitions/llm/channel/predict/toClientPacketSuccess"
+        },
+        "propertyName": "type"
+      }
+    },
+    "llm/channel/predict/toServerPacket": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/llm/channel/predict/toServerPacketCancel"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "cancel": "#/definitions/llm/channel/predict/toServerPacketCancel"
+        },
+        "propertyName": "type"
+      }
+    },
+    "pseudo/llm/channel/predict": {
+      "type": "object",
+      "properties": {
+        "creationParameter": {
+          "$ref": "#/definitions/llm/channel/predict/creationParameter"
+        },
+        "toClientPacket": {
+          "$ref": "#/definitions/llm/channel/predict/toClientPacket"
+        },
+        "toServerPacket": {
+          "$ref": "#/definitions/llm/channel/predict/toServerPacket"
+        }
+      },
+      "required": [
+        "creationParameter",
+        "toClientPacket",
+        "toServerPacket"
+      ],
+      "additionalProperties": false
+    },
+    "pseudo/llm": {
+      "type": "object",
+      "properties": {
+        "rpcUnloadModel": {
+          "$ref": "#/definitions/pseudo/llm/rpc/unloadModel"
+        },
+        "rpcListLoaded": {
+          "$ref": "#/definitions/pseudo/llm/rpc/listLoaded"
+        },
+        "rpcGetModelInfo": {
+          "$ref": "#/definitions/pseudo/llm/rpc/getModelInfo"
+        },
+        "rpcGetLoadConfig": {
+          "$ref": "#/definitions/pseudo/llm/rpc/getLoadConfig"
+        },
+        "rpcApplyPromptTemplate": {
+          "$ref": "#/definitions/pseudo/llm/rpc/applyPromptTemplate"
+        },
+        "rpcTokenize": {
+          "$ref": "#/definitions/pseudo/llm/rpc/tokenize"
+        },
+        "rpcCountTokens": {
+          "$ref": "#/definitions/pseudo/llm/rpc/countTokens"
+        },
+        "rpcPreloadDraftModel": {
+          "$ref": "#/definitions/pseudo/llm/rpc/preloadDraftModel"
+        },
+        "channelLoadModel": {
+          "$ref": "#/definitions/pseudo/llm/channel/loadModel"
+        },
+        "channelGetOrLoad": {
+          "$ref": "#/definitions/pseudo/llm/channel/getOrLoad"
+        },
+        "channelPredict": {
+          "$ref": "#/definitions/pseudo/llm/channel/predict"
+        }
+      },
+      "required": [
+        "rpcUnloadModel",
+        "rpcListLoaded",
+        "rpcGetModelInfo",
+        "rpcGetLoadConfig",
+        "rpcApplyPromptTemplate",
+        "rpcTokenize",
+        "rpcCountTokens",
+        "rpcPreloadDraftModel",
+        "channelLoadModel",
+        "channelGetOrLoad",
+        "channelPredict"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/rpc/reindexPlugins/returns": {},
+    "pseudo/plugins/rpc/reindexPlugins": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "plugins/rpc/processingHandleUpdate/parameter": {
+      "type": "object",
+      "properties": {
+        "pci": {
+          "type": "string"
+        },
+        "token": {
+          "type": "string"
+        },
+        "update": {
+          "$ref": "#/definitions/processingUpdate"
+        }
+      },
+      "required": [
+        "pci",
+        "token",
+        "update"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/rpc/processingHandleUpdate/returns": {},
+    "pseudo/plugins/rpc/processingHandleUpdate": {
+      "type": "object",
+      "properties": {
+        "parameter": {
+          "$ref": "#/definitions/plugins/rpc/processingHandleUpdate/parameter"
+        }
+      },
+      "required": [
+        "parameter"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/rpc/processingPullHistory/parameter": {
+      "type": "object",
+      "properties": {
+        "pci": {
+          "type": "string"
+        },
+        "token": {
+          "type": "string"
+        },
+        "includeCurrent": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "pci",
+        "token",
+        "includeCurrent"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/rpc/processingPullHistory/returns": {
+      "type": "object",
+      "properties": {
+        "messages": {
+          "$ref": "#/definitions/chatHistoryData/properties/messages"
+        }
+      },
+      "required": [
+        "messages"
+      ],
+      "additionalProperties": false
+    },
+    "pseudo/plugins/rpc/processingPullHistory": {
+      "type": "object",
+      "properties": {
+        "parameter": {
+          "$ref": "#/definitions/plugins/rpc/processingPullHistory/parameter"
+        },
+        "returns": {
+          "$ref": "#/definitions/plugins/rpc/processingPullHistory/returns"
+        }
+      },
+      "required": [
+        "parameter",
+        "returns"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/rpc/processingGetOrLoadModel/parameter": {
+      "type": "object",
+      "properties": {
+        "pci": {
+          "type": "string"
+        },
+        "token": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "pci",
+        "token"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/rpc/processingGetOrLoadModel/returns": {
+      "type": "object",
+      "properties": {
+        "identifier": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "identifier"
+      ],
+      "additionalProperties": false
+    },
+    "pseudo/plugins/rpc/processingGetOrLoadModel": {
+      "type": "object",
+      "properties": {
+        "parameter": {
+          "$ref": "#/definitions/plugins/rpc/processingGetOrLoadModel/parameter"
+        },
+        "returns": {
+          "$ref": "#/definitions/plugins/rpc/processingGetOrLoadModel/returns"
+        }
+      },
+      "required": [
+        "parameter",
+        "returns"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/rpc/processingHasStatus/parameter": {
+      "type": "object",
+      "properties": {
+        "pci": {
+          "type": "string"
+        },
+        "token": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "pci",
+        "token"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/rpc/processingHasStatus/returns": {
+      "type": "boolean"
+    },
+    "pseudo/plugins/rpc/processingHasStatus": {
+      "type": "object",
+      "properties": {
+        "parameter": {
+          "$ref": "#/definitions/plugins/rpc/processingHasStatus/parameter"
+        },
+        "returns": {
+          "$ref": "#/definitions/plugins/rpc/processingHasStatus/returns"
+        }
+      },
+      "required": [
+        "parameter",
+        "returns"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/rpc/processingNeedsNaming/parameter": {
+      "type": "object",
+      "properties": {
+        "pci": {
+          "type": "string"
+        },
+        "token": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "pci",
+        "token"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/rpc/processingNeedsNaming/returns": {
+      "type": "boolean"
+    },
+    "pseudo/plugins/rpc/processingNeedsNaming": {
+      "type": "object",
+      "properties": {
+        "parameter": {
+          "$ref": "#/definitions/plugins/rpc/processingNeedsNaming/parameter"
+        },
+        "returns": {
+          "$ref": "#/definitions/plugins/rpc/processingNeedsNaming/returns"
+        }
+      },
+      "required": [
+        "parameter",
+        "returns"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/rpc/processingSuggestName/parameter": {
+      "type": "object",
+      "properties": {
+        "pci": {
+          "type": "string"
+        },
+        "token": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "pci",
+        "token",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/rpc/processingSuggestName/returns": {},
+    "pseudo/plugins/rpc/processingSuggestName": {
+      "type": "object",
+      "properties": {
+        "parameter": {
+          "$ref": "#/definitions/plugins/rpc/processingSuggestName/parameter"
+        }
+      },
+      "required": [
+        "parameter"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/rpc/processingSetSenderName/parameter": {
+      "type": "object",
+      "properties": {
+        "pci": {
+          "type": "string"
+        },
+        "token": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "pci",
+        "token",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/rpc/processingSetSenderName/returns": {},
+    "pseudo/plugins/rpc/processingSetSenderName": {
+      "type": "object",
+      "properties": {
+        "parameter": {
+          "$ref": "#/definitions/plugins/rpc/processingSetSenderName/parameter"
+        }
+      },
+      "required": [
+        "parameter"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/rpc/setConfigSchematics/parameter": {
+      "type": "object",
+      "properties": {
+        "schematics": {
+          "$ref": "#/definitions/serializedKVConfigSchematics"
+        }
+      },
+      "required": [
+        "schematics"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/rpc/setConfigSchematics/returns": {},
+    "pseudo/plugins/rpc/setConfigSchematics": {
+      "type": "object",
+      "properties": {
+        "parameter": {
+          "$ref": "#/definitions/plugins/rpc/setConfigSchematics/parameter"
+        }
+      },
+      "required": [
+        "parameter"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/rpc/pluginInitCompleted/returns": {},
+    "pseudo/plugins/rpc/pluginInitCompleted": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "plugins/channel/registerDevelopmentPlugin/creationParameter": {
+      "type": "object",
+      "properties": {
+        "manifest": {
+          "$ref": "#/definitions/pluginManifest"
+        }
+      },
+      "required": [
+        "manifest"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/channel/registerDevelopmentPlugin/toClientPacket": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/plugins/channel/registerDevelopmentPlugin/toClientPacketReady"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "ready": "#/definitions/plugins/channel/registerDevelopmentPlugin/toClientPacketReady"
+        },
+        "propertyName": "type"
+      }
+    },
+    "plugins/channel/registerDevelopmentPlugin/toServerPacket": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/plugins/channel/registerDevelopmentPlugin/toServerPacketEnd"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "end": "#/definitions/plugins/channel/registerDevelopmentPlugin/toServerPacketEnd"
+        },
+        "propertyName": "type"
+      }
+    },
+    "pseudo/plugins/channel/registerDevelopmentPlugin": {
+      "type": "object",
+      "properties": {
+        "creationParameter": {
+          "$ref": "#/definitions/plugins/channel/registerDevelopmentPlugin/creationParameter"
+        },
+        "toClientPacket": {
+          "$ref": "#/definitions/plugins/channel/registerDevelopmentPlugin/toClientPacket"
+        },
+        "toServerPacket": {
+          "$ref": "#/definitions/plugins/channel/registerDevelopmentPlugin/toServerPacket"
+        }
+      },
+      "required": [
+        "creationParameter",
+        "toClientPacket",
+        "toServerPacket"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/channel/setPreprocessor/toClientPacket": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/plugins/channel/setPreprocessor/toClientPacketPreprocess"
+        },
+        {
+          "$ref": "#/definitions/plugins/channel/setPreprocessor/toClientPacketAbort"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "preprocess": "#/definitions/plugins/channel/setPreprocessor/toClientPacketPreprocess",
+          "abort": "#/definitions/plugins/channel/setPreprocessor/toClientPacketAbort"
+        },
+        "propertyName": "type"
+      }
+    },
+    "plugins/channel/setPreprocessor/toServerPacket": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/plugins/channel/setPreprocessor/toServerPacketComplete"
+        },
+        {
+          "$ref": "#/definitions/plugins/channel/setPreprocessor/toServerPacketAborted"
+        },
+        {
+          "$ref": "#/definitions/plugins/channel/setPreprocessor/toServerPacketError"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "complete": "#/definitions/plugins/channel/setPreprocessor/toServerPacketComplete",
+          "aborted": "#/definitions/plugins/channel/setPreprocessor/toServerPacketAborted",
+          "error": "#/definitions/plugins/channel/setPreprocessor/toServerPacketError"
+        },
+        "propertyName": "type"
+      }
+    },
+    "pseudo/plugins/channel/setPreprocessor": {
+      "type": "object",
+      "properties": {
+        "toClientPacket": {
+          "$ref": "#/definitions/plugins/channel/setPreprocessor/toClientPacket"
+        },
+        "toServerPacket": {
+          "$ref": "#/definitions/plugins/channel/setPreprocessor/toServerPacket"
+        }
+      },
+      "required": [
+        "toClientPacket",
+        "toServerPacket"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/channel/setGenerator/toClientPacket": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/plugins/channel/setGenerator/toClientPacketGenerate"
+        },
+        {
+          "$ref": "#/definitions/plugins/channel/setGenerator/toClientPacketAbort"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "generate": "#/definitions/plugins/channel/setGenerator/toClientPacketGenerate",
+          "abort": "#/definitions/plugins/channel/setGenerator/toClientPacketAbort"
+        },
+        "propertyName": "type"
+      }
+    },
+    "plugins/channel/setGenerator/toServerPacket": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/plugins/channel/setGenerator/toServerPacketComplete"
+        },
+        {
+          "$ref": "#/definitions/plugins/channel/setGenerator/toServerPacketAborted"
+        },
+        {
+          "$ref": "#/definitions/plugins/channel/setGenerator/toServerPacketError"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "complete": "#/definitions/plugins/channel/setGenerator/toServerPacketComplete",
+          "aborted": "#/definitions/plugins/channel/setGenerator/toServerPacketAborted",
+          "error": "#/definitions/plugins/channel/setGenerator/toServerPacketError"
+        },
+        "propertyName": "type"
+      }
+    },
+    "pseudo/plugins/channel/setGenerator": {
+      "type": "object",
+      "properties": {
+        "toClientPacket": {
+          "$ref": "#/definitions/plugins/channel/setGenerator/toClientPacket"
+        },
+        "toServerPacket": {
+          "$ref": "#/definitions/plugins/channel/setGenerator/toServerPacket"
+        }
+      },
+      "required": [
+        "toClientPacket",
+        "toServerPacket"
+      ],
+      "additionalProperties": false
+    },
+    "pseudo/plugins": {
+      "type": "object",
+      "properties": {
+        "rpcReindexPlugins": {
+          "$ref": "#/definitions/pseudo/plugins/rpc/reindexPlugins"
+        },
+        "rpcProcessingHandleUpdate": {
+          "$ref": "#/definitions/pseudo/plugins/rpc/processingHandleUpdate"
+        },
+        "rpcProcessingPullHistory": {
+          "$ref": "#/definitions/pseudo/plugins/rpc/processingPullHistory"
+        },
+        "rpcProcessingGetOrLoadModel": {
+          "$ref": "#/definitions/pseudo/plugins/rpc/processingGetOrLoadModel"
+        },
+        "rpcProcessingHasStatus": {
+          "$ref": "#/definitions/pseudo/plugins/rpc/processingHasStatus"
+        },
+        "rpcProcessingNeedsNaming": {
+          "$ref": "#/definitions/pseudo/plugins/rpc/processingNeedsNaming"
+        },
+        "rpcProcessingSuggestName": {
+          "$ref": "#/definitions/pseudo/plugins/rpc/processingSuggestName"
+        },
+        "rpcProcessingSetSenderName": {
+          "$ref": "#/definitions/pseudo/plugins/rpc/processingSetSenderName"
+        },
+        "rpcSetConfigSchematics": {
+          "$ref": "#/definitions/pseudo/plugins/rpc/setConfigSchematics"
+        },
+        "rpcPluginInitCompleted": {
+          "$ref": "#/definitions/pseudo/plugins/rpc/pluginInitCompleted"
+        },
+        "channelRegisterDevelopmentPlugin": {
+          "$ref": "#/definitions/pseudo/plugins/channel/registerDevelopmentPlugin"
+        },
+        "channelSetPreprocessor": {
+          "$ref": "#/definitions/pseudo/plugins/channel/setPreprocessor"
+        },
+        "channelSetGenerator": {
+          "$ref": "#/definitions/pseudo/plugins/channel/setGenerator"
+        }
+      },
+      "required": [
+        "rpcReindexPlugins",
+        "rpcProcessingHandleUpdate",
+        "rpcProcessingPullHistory",
+        "rpcProcessingGetOrLoadModel",
+        "rpcProcessingHasStatus",
+        "rpcProcessingNeedsNaming",
+        "rpcProcessingSuggestName",
+        "rpcProcessingSetSenderName",
+        "rpcSetConfigSchematics",
+        "rpcPluginInitCompleted",
+        "channelRegisterDevelopmentPlugin",
+        "channelSetPreprocessor",
+        "channelSetGenerator"
+      ],
+      "additionalProperties": false
+    },
+    "repository/rpc/searchModels/parameter": {
+      "type": "object",
+      "properties": {
+        "opts": {
+          "$ref": "#/definitions/modelSearchOpts"
+        }
+      },
+      "required": [
+        "opts"
+      ],
+      "additionalProperties": false
+    },
+    "repository/rpc/searchModels/returns": {
+      "type": "object",
+      "properties": {
+        "results": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/modelSearchResultEntryData"
+          }
+        }
+      },
+      "required": [
+        "results"
+      ],
+      "additionalProperties": false
+    },
+    "pseudo/repository/rpc/searchModels": {
+      "type": "object",
+      "properties": {
+        "parameter": {
+          "$ref": "#/definitions/repository/rpc/searchModels/parameter"
+        },
+        "returns": {
+          "$ref": "#/definitions/repository/rpc/searchModels/returns"
+        }
+      },
+      "required": [
+        "parameter",
+        "returns"
+      ],
+      "additionalProperties": false
+    },
+    "repository/rpc/getModelDownloadOptions/parameter": {
+      "type": "object",
+      "properties": {
+        "modelSearchResultIdentifier": {
+          "$ref": "#/definitions/modelSearchResultIdentifier"
+        }
+      },
+      "required": [
+        "modelSearchResultIdentifier"
+      ],
+      "additionalProperties": false
+    },
+    "repository/rpc/getModelDownloadOptions/returns": {
+      "type": "object",
+      "properties": {
+        "results": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/modelSearchResultDownloadOptionData"
+          }
+        }
+      },
+      "required": [
+        "results"
+      ],
+      "additionalProperties": false
+    },
+    "pseudo/repository/rpc/getModelDownloadOptions": {
+      "type": "object",
+      "properties": {
+        "parameter": {
+          "$ref": "#/definitions/repository/rpc/getModelDownloadOptions/parameter"
+        },
+        "returns": {
+          "$ref": "#/definitions/repository/rpc/getModelDownloadOptions/returns"
+        }
+      },
+      "required": [
+        "parameter",
+        "returns"
+      ],
+      "additionalProperties": false
+    },
+    "repository/rpc/installPluginDependencies/parameter": {
+      "type": "object",
+      "properties": {
+        "pluginFolder": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "pluginFolder"
+      ],
+      "additionalProperties": false
+    },
+    "repository/rpc/installPluginDependencies/returns": {},
+    "pseudo/repository/rpc/installPluginDependencies": {
+      "type": "object",
+      "properties": {
+        "parameter": {
+          "$ref": "#/definitions/repository/rpc/installPluginDependencies/parameter"
+        }
+      },
+      "required": [
+        "parameter"
+      ],
+      "additionalProperties": false
+    },
+    "repository/channel/downloadModel/creationParameter": {
+      "type": "object",
+      "properties": {
+        "downloadIdentifier": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "downloadIdentifier"
+      ],
+      "additionalProperties": false
+    },
+    "repository/channel/downloadModel/toClientPacket": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/repository/channel/downloadModel/toClientPacketDownloadProgress"
+        },
+        {
+          "$ref": "#/definitions/repository/channel/downloadModel/toClientPacketStartFinalizing"
+        },
+        {
+          "$ref": "#/definitions/repository/channel/downloadModel/toClientPacketSuccess"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "downloadProgress": "#/definitions/repository/channel/downloadModel/toClientPacketDownloadProgress",
+          "startFinalizing": "#/definitions/repository/channel/downloadModel/toClientPacketStartFinalizing",
+          "success": "#/definitions/repository/channel/downloadModel/toClientPacketSuccess"
+        },
+        "propertyName": "type"
+      }
+    },
+    "repository/channel/downloadModel/toServerPacket": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/repository/channel/downloadModel/toServerPacketCancel"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "cancel": "#/definitions/repository/channel/downloadModel/toServerPacketCancel"
+        },
+        "propertyName": "type"
+      }
+    },
+    "pseudo/repository/channel/downloadModel": {
+      "type": "object",
+      "properties": {
+        "creationParameter": {
+          "$ref": "#/definitions/repository/channel/downloadModel/creationParameter"
+        },
+        "toClientPacket": {
+          "$ref": "#/definitions/repository/channel/downloadModel/toClientPacket"
+        },
+        "toServerPacket": {
+          "$ref": "#/definitions/repository/channel/downloadModel/toServerPacket"
+        }
+      },
+      "required": [
+        "creationParameter",
+        "toClientPacket",
+        "toServerPacket"
+      ],
+      "additionalProperties": false
+    },
+    "repository/channel/downloadArtifact/creationParameter": {
+      "type": "object",
+      "properties": {
+        "artifactOwner": {
+          "$ref": "#/definitions/kebabCase"
+        },
+        "artifactName": {
+          "$ref": "#/definitions/kebabCase"
+        },
+        "revisionNumber": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "artifactOwner",
+        "artifactName",
+        "revisionNumber",
+        "path"
+      ],
+      "additionalProperties": false
+    },
+    "repository/channel/downloadArtifact/toClientPacket": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/repository/channel/downloadArtifact/toClientPacketDownloadProgress"
+        },
+        {
+          "$ref": "#/definitions/repository/channel/downloadArtifact/toClientPacketStartFinalizing"
+        },
+        {
+          "$ref": "#/definitions/repository/channel/downloadArtifact/toClientPacketSuccess"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "downloadProgress": "#/definitions/repository/channel/downloadArtifact/toClientPacketDownloadProgress",
+          "startFinalizing": "#/definitions/repository/channel/downloadArtifact/toClientPacketStartFinalizing",
+          "success": "#/definitions/repository/channel/downloadArtifact/toClientPacketSuccess"
+        },
+        "propertyName": "type"
+      }
+    },
+    "repository/channel/downloadArtifact/toServerPacket": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/repository/channel/downloadArtifact/toServerPacketCancel"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "cancel": "#/definitions/repository/channel/downloadArtifact/toServerPacketCancel"
+        },
+        "propertyName": "type"
+      }
+    },
+    "pseudo/repository/channel/downloadArtifact": {
+      "type": "object",
+      "properties": {
+        "creationParameter": {
+          "$ref": "#/definitions/repository/channel/downloadArtifact/creationParameter"
+        },
+        "toClientPacket": {
+          "$ref": "#/definitions/repository/channel/downloadArtifact/toClientPacket"
+        },
+        "toServerPacket": {
+          "$ref": "#/definitions/repository/channel/downloadArtifact/toServerPacket"
+        }
+      },
+      "required": [
+        "creationParameter",
+        "toClientPacket",
+        "toServerPacket"
+      ],
+      "additionalProperties": false
+    },
+    "repository/channel/pushArtifact/creationParameter": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "additionalProperties": false
+    },
+    "repository/channel/pushArtifact/toClientPacket": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/repository/channel/pushArtifact/toClientPacketMessage"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "message": "#/definitions/repository/channel/pushArtifact/toClientPacketMessage"
+        },
+        "propertyName": "type"
+      }
+    },
+    "pseudo/repository/channel/pushArtifact": {
+      "type": "object",
+      "properties": {
+        "creationParameter": {
+          "$ref": "#/definitions/repository/channel/pushArtifact/creationParameter"
+        },
+        "toClientPacket": {
+          "$ref": "#/definitions/repository/channel/pushArtifact/toClientPacket"
+        }
+      },
+      "required": [
+        "creationParameter",
+        "toClientPacket"
+      ],
+      "additionalProperties": false
+    },
+    "repository/channel/ensureAuthenticated/toClientPacket": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/repository/channel/ensureAuthenticated/toClientPacketAuthenticationUrl"
+        },
+        {
+          "$ref": "#/definitions/repository/channel/ensureAuthenticated/toClientPacketAuthenticated"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "authenticationUrl": "#/definitions/repository/channel/ensureAuthenticated/toClientPacketAuthenticationUrl",
+          "authenticated": "#/definitions/repository/channel/ensureAuthenticated/toClientPacketAuthenticated"
+        },
+        "propertyName": "type"
+      }
+    },
+    "pseudo/repository/channel/ensureAuthenticated": {
+      "type": "object",
+      "properties": {
+        "toClientPacket": {
+          "$ref": "#/definitions/repository/channel/ensureAuthenticated/toClientPacket"
+        }
+      },
+      "required": [
+        "toClientPacket"
+      ],
+      "additionalProperties": false
+    },
+    "pseudo/repository": {
+      "type": "object",
+      "properties": {
+        "rpcSearchModels": {
+          "$ref": "#/definitions/pseudo/repository/rpc/searchModels"
+        },
+        "rpcGetModelDownloadOptions": {
+          "$ref": "#/definitions/pseudo/repository/rpc/getModelDownloadOptions"
+        },
+        "rpcInstallPluginDependencies": {
+          "$ref": "#/definitions/pseudo/repository/rpc/installPluginDependencies"
+        },
+        "channelDownloadModel": {
+          "$ref": "#/definitions/pseudo/repository/channel/downloadModel"
+        },
+        "channelDownloadArtifact": {
+          "$ref": "#/definitions/pseudo/repository/channel/downloadArtifact"
+        },
+        "channelPushArtifact": {
+          "$ref": "#/definitions/pseudo/repository/channel/pushArtifact"
+        },
+        "channelEnsureAuthenticated": {
+          "$ref": "#/definitions/pseudo/repository/channel/ensureAuthenticated"
+        }
+      },
+      "required": [
+        "rpcSearchModels",
+        "rpcGetModelDownloadOptions",
+        "rpcInstallPluginDependencies",
+        "channelDownloadModel",
+        "channelDownloadArtifact",
+        "channelPushArtifact",
+        "channelEnsureAuthenticated"
+      ],
+      "additionalProperties": false
+    },
+    "system/rpc/listDownloadedModels/returns": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/modelInfo"
+      }
+    },
+    "pseudo/system/rpc/listDownloadedModels": {
+      "type": "object",
+      "properties": {
+        "returns": {
+          "$ref": "#/definitions/system/rpc/listDownloadedModels/returns"
+        }
+      },
+      "required": [
+        "returns"
+      ],
+      "additionalProperties": false
+    },
+    "system/rpc/notify/parameter": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "$ref": "#/definitions/backendNotification/properties/title"
+        },
+        "description": {
+          "$ref": "#/definitions/backendNotification/properties/description"
+        },
+        "noAutoDismiss": {
+          "$ref": "#/definitions/backendNotification/properties/noAutoDismiss"
+        }
+      },
+      "required": [
+        "title"
+      ],
+      "additionalProperties": false
+    },
+    "system/rpc/notify/returns": {},
+    "pseudo/system/rpc/notify": {
+      "type": "object",
+      "properties": {
+        "parameter": {
+          "$ref": "#/definitions/system/rpc/notify/parameter"
+        }
+      },
+      "required": [
+        "parameter"
+      ],
+      "additionalProperties": false
+    },
+    "system/rpc/version/returns": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string"
+        },
+        "build": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "version",
+        "build"
+      ],
+      "additionalProperties": false
+    },
+    "pseudo/system/rpc/version": {
+      "type": "object",
+      "properties": {
+        "returns": {
+          "$ref": "#/definitions/system/rpc/version/returns"
+        }
+      },
+      "required": [
+        "returns"
+      ],
+      "additionalProperties": false
+    },
+    "pseudo/system/channel/alive": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "pseudo/system": {
+      "type": "object",
+      "properties": {
+        "rpcListDownloadedModels": {
+          "$ref": "#/definitions/pseudo/system/rpc/listDownloadedModels"
+        },
+        "rpcNotify": {
+          "$ref": "#/definitions/pseudo/system/rpc/notify"
+        },
+        "rpcVersion": {
+          "$ref": "#/definitions/pseudo/system/rpc/version"
+        },
+        "channelAlive": {
+          "$ref": "#/definitions/pseudo/system/channel/alive"
+        }
+      },
+      "required": [
+        "rpcListDownloadedModels",
+        "rpcNotify",
+        "rpcVersion",
+        "channelAlive"
+      ],
+      "additionalProperties": false
+    },
+    "chatMessageDataAssistant": {
+      "type": "object",
+      "properties": {
+        "role": {
+          "type": "string",
+          "const": "assistant",
+          "default": "assistant",
+          "title": "Role"
+        },
+        "content": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/chatMessagePartTextData"
+              },
+              {
+                "$ref": "#/definitions/chatMessagePartFileData"
+              },
+              {
+                "$ref": "#/definitions/chatMessagePartToolCallRequestData"
+              }
+            ]
+          }
+        }
+      },
+      "required": [
+        "role",
+        "content"
+      ],
+      "additionalProperties": false
+    },
+    "chatMessageDataUser": {
+      "type": "object",
+      "properties": {
+        "role": {
+          "type": "string",
+          "const": "user",
+          "default": "user",
+          "title": "Role"
+        },
+        "content": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/chatMessagePartTextData"
+              },
+              {
+                "$ref": "#/definitions/chatMessagePartFileData"
+              }
+            ]
+          }
+        }
+      },
+      "required": [
+        "role",
+        "content"
+      ],
+      "additionalProperties": false
+    },
+    "chatMessageDataSystem": {
+      "type": "object",
+      "properties": {
+        "role": {
+          "type": "string",
+          "const": "system",
+          "default": "system",
+          "title": "Role"
+        },
+        "content": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/chatMessagePartTextData"
+              },
+              {
+                "$ref": "#/definitions/chatMessagePartFileData"
+              }
+            ]
+          }
+        }
+      },
+      "required": [
+        "role",
+        "content"
+      ],
+      "additionalProperties": false
+    },
+    "chatMessageDataTool": {
+      "type": "object",
+      "properties": {
+        "role": {
+          "type": "string",
+          "const": "tool",
+          "default": "tool",
+          "title": "Role"
+        },
+        "content": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/chatMessagePartToolCallResultData"
+          }
+        }
+      },
+      "required": [
+        "role",
+        "content"
+      ],
+      "additionalProperties": false
+    },
+    "diagnosticsLogEventDataLlmPredictionInput": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "llm.prediction.input",
+          "default": "llm.prediction.input",
+          "title": "Type"
+        },
+        "modelPath": {
+          "type": "string"
+        },
+        "modelIdentifier": {
+          "type": "string"
+        },
+        "input": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "modelPath",
+        "modelIdentifier",
+        "input"
+      ],
+      "additionalProperties": false
+    },
+    "errorDisplayDataGenericSpecificModelUnloaded": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "const": "generic.specificModelUnloaded",
+          "default": "generic.specificModelUnloaded",
+          "title": "Code"
+        }
+      },
+      "required": [
+        "code"
+      ],
+      "additionalProperties": false
+    },
+    "errorDisplayDataGenericNoModelMatchingQuery": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "const": "generic.noModelMatchingQuery",
+          "default": "generic.noModelMatchingQuery",
+          "title": "Code"
+        },
+        "query": {
+          "$ref": "#/definitions/modelQuery"
+        },
+        "loadedModelsSample": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "totalLoadedModels": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "code",
+        "query",
+        "loadedModelsSample",
+        "totalLoadedModels"
+      ],
+      "additionalProperties": false
+    },
+    "errorDisplayDataGenericPathNotFound": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "const": "generic.pathNotFound",
+          "default": "generic.pathNotFound",
+          "title": "Code"
+        },
+        "path": {
+          "type": "string"
+        },
+        "availablePathsSample": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "totalModels": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "code",
+        "path",
+        "availablePathsSample",
+        "totalModels"
+      ],
+      "additionalProperties": false
+    },
+    "errorDisplayDataGenericIdentifierNotFound": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "const": "generic.identifierNotFound",
+          "default": "generic.identifierNotFound",
+          "title": "Code"
+        },
+        "identifier": {
+          "type": "string"
+        },
+        "loadedModelsSample": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "totalLoadedModels": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "code",
+        "identifier",
+        "loadedModelsSample",
+        "totalLoadedModels"
+      ],
+      "additionalProperties": false
+    },
+    "errorDisplayDataGenericDomainMismatch": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "const": "generic.domainMismatch",
+          "default": "generic.domainMismatch",
+          "title": "Code"
+        },
+        "path": {
+          "type": "string"
+        },
+        "actualDomain": {
+          "$ref": "#/definitions/modelDomainType"
+        },
+        "expectedDomain": {
+          "$ref": "#/definitions/modelDomainType"
+        }
+      },
+      "required": [
+        "code",
+        "path",
+        "actualDomain",
+        "expectedDomain"
+      ],
+      "additionalProperties": false
+    },
+    "errorDisplayDataGenericEngineDoesNotSupportFeature": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "const": "generic.engineDoesNotSupportFeature",
+          "default": "generic.engineDoesNotSupportFeature",
+          "title": "Code"
+        },
+        "feature": {
+          "type": "string"
+        },
+        "engineName": {
+          "type": "string"
+        },
+        "engineType": {
+          "type": "string"
+        },
+        "installedVersion": {
+          "type": "string"
+        },
+        "supportedVersion": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "code",
+        "feature",
+        "engineName",
+        "engineType",
+        "installedVersion",
+        "supportedVersion"
+      ],
+      "additionalProperties": false
+    },
+    "parsedFileIdentifierLocal": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "local",
+          "default": "local",
+          "title": "Type"
+        },
+        "fileName": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "fileName"
+      ],
+      "additionalProperties": false
+    },
+    "parsedFileIdentifierBase64": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "base64",
+          "default": "base64",
+          "title": "Type"
+        },
+        "base64Data": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "base64Data"
+      ],
+      "additionalProperties": false
+    },
+    "kvConfigFieldDependencyCondition": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/kvConfigFieldDependencyConditionEquals"
+        },
+        {
+          "$ref": "#/definitions/kvConfigFieldDependencyConditionNotEquals"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "equals": "#/definitions/kvConfigFieldDependencyConditionEquals",
+          "notEquals": "#/definitions/kvConfigFieldDependencyConditionNotEquals"
+        },
+        "propertyName": "type"
+      }
+    },
+    "kvConfigFieldDependencyConditionEquals": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "equals",
+          "default": "equals",
+          "title": "Type"
+        },
+        "value": {}
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "kvConfigFieldDependencyConditionNotEquals": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "notEquals",
+          "default": "notEquals",
+          "title": "Type"
+        },
+        "value": {}
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "contentBlockStyleDefault": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "default",
+          "default": "default",
+          "title": "Type"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "contentBlockStyleCustomLabel": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "customLabel",
+          "default": "customLabel",
+          "title": "Type"
+        },
+        "label": {
+          "type": "string"
+        },
+        "color": {
+          "$ref": "#/definitions/colorPalette"
+        }
+      },
+      "required": [
+        "type",
+        "label"
+      ],
+      "additionalProperties": false
+    },
+    "contentBlockStyleThinking": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "thinking",
+          "default": "thinking",
+          "title": "Type"
+        },
+        "ended": {
+          "type": "boolean"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "llmContextReferenceJsonFile": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "jsonFile",
+          "default": "jsonFile",
+          "title": "Type"
+        },
+        "absPath": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "absPath"
+      ],
+      "additionalProperties": false
+    },
+    "llmContextReferenceYamlFile": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "yamlFile",
+          "default": "yamlFile",
+          "title": "Type"
+        },
+        "absPath": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "absPath"
+      ],
+      "additionalProperties": false
+    },
+    "llmJinjaInputMessagesContentConfigString": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "string",
+          "default": "string",
+          "title": "Type"
+        },
+        "imagesConfig": {
+          "$ref": "#/definitions/llmJinjaInputMessagesContentImagesConfig"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "llmJinjaInputMessagesContentConfigArray": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "array",
+          "default": "array",
+          "title": "Type"
+        },
+        "textFieldName": {
+          "$ref": "#/definitions/llmJinjaInputMessagesContentConfigTextFieldName"
+        },
+        "imagesConfig": {
+          "$ref": "#/definitions/llmJinjaInputMessagesContentImagesConfig"
+        }
+      },
+      "required": [
+        "type",
+        "textFieldName"
+      ],
+      "additionalProperties": false
+    },
+    "llmJinjaInputMessagesContentImagesConfigSimple": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "simple",
+          "default": "simple",
+          "title": "Type"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    "llmJinjaInputMessagesContentImagesConfigNumbered": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "numbered",
+          "default": "numbered",
+          "title": "Type"
+        },
+        "prefix": {
+          "type": "string"
+        },
+        "suffix": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "prefix",
+        "suffix"
+      ],
+      "additionalProperties": false
+    },
+    "llmJinjaInputMessagesContentImagesConfigObject": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "object",
+          "default": "object",
+          "title": "Type"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "llmToolParametersObject": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "object",
+          "default": "object",
+          "title": "Type"
+        },
+        "properties": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/functionToolCallRequest/properties/arguments/additionalProperties"
+          }
+        },
+        "required": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "type",
+        "properties"
+      ],
+      "additionalProperties": false
+    },
+    "llmToolFunction": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "function",
+          "default": "function",
+          "title": "Type"
+        },
+        "function": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string"
+            },
+            "parameters": {
+              "$ref": "#/definitions/llmToolParameters"
+            }
+          },
+          "required": [
+            "name"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "type",
+        "function"
+      ],
+      "additionalProperties": false
+    },
+    "llmToolUseSettingNone": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "none",
+          "default": "none",
+          "title": "Type"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "llmToolUseSettingToolArray": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "toolArray",
+          "default": "toolArray",
+          "title": "Type"
+        },
+        "tools": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/llmTool"
+          }
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "blockLocationBeforeId": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "beforeId",
+          "default": "beforeId",
+          "title": "Type"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "id"
+      ],
+      "additionalProperties": false
+    },
+    "blockLocationAfterId": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "afterId",
+          "default": "afterId",
+          "title": "Type"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "id"
+      ],
+      "additionalProperties": false
+    },
+    "modelSpecifierQuery": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "query",
+          "default": "query",
+          "title": "Type"
+        },
+        "query": {
+          "$ref": "#/definitions/modelQuery"
+        }
+      },
+      "required": [
+        "type",
+        "query"
+      ],
+      "additionalProperties": false
+    },
+    "modelSpecifierInstanceReference": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "instanceReference",
+          "default": "instanceReference",
+          "title": "Type"
+        },
+        "instanceReference": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "instanceReference"
+      ],
+      "additionalProperties": false
+    },
+    "modelSearchResultIdentifierCatalog": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "catalog",
+          "default": "catalog",
+          "title": "Type"
+        },
+        "identifier": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "identifier"
+      ],
+      "additionalProperties": false
+    },
+    "modelSearchResultIdentifierHf": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "hf",
+          "default": "hf",
+          "title": "Type"
+        },
+        "identifier": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "identifier"
+      ],
+      "additionalProperties": false
+    },
+    "retrievalChunkingMethodRecursive-v1": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "recursive-v1",
+          "default": "recursive-v1",
+          "title": "Type"
+        },
+        "chunkSize": {
+          "type": "integer"
+        },
+        "chunkOverlap": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "type",
+        "chunkSize",
+        "chunkOverlap"
+      ],
+      "additionalProperties": false
+    },
+    "diagnostics/channel/streamLogs/toClientPacketLog": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "log",
+          "default": "log",
+          "title": "Type"
+        },
+        "log": {
+          "$ref": "#/definitions/diagnosticsLogEvent"
+        }
+      },
+      "required": [
+        "type",
+        "log"
+      ],
+      "additionalProperties": false
+    },
+    "diagnostics/channel/streamLogs/toServerPacketStop": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "stop",
+          "default": "stop",
+          "title": "Type"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "embedding/rpc/getModelInfoReturnValue": {
+      "$ref": "#/definitions/embeddingModelInstanceInfo"
+    },
+    "embedding/channel/loadModel/toClientPacketResolved": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "resolved",
+          "default": "resolved",
+          "title": "Type"
+        },
+        "info": {
+          "$ref": "#/definitions/embeddingModelInfo"
+        },
+        "ambiguous": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "type",
+        "info"
+      ],
+      "additionalProperties": false
+    },
+    "embedding/channel/loadModel/toClientPacketProgress": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "progress",
+          "default": "progress",
+          "title": "Type"
+        },
+        "progress": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "type",
+        "progress"
+      ],
+      "additionalProperties": false
+    },
+    "embedding/channel/loadModel/toClientPacketSuccess": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "success",
+          "default": "success",
+          "title": "Type"
+        },
+        "info": {
+          "$ref": "#/definitions/embeddingModelInstanceInfo"
+        }
+      },
+      "required": [
+        "type",
+        "info"
+      ],
+      "additionalProperties": false
+    },
+    "embedding/channel/loadModel/toServerPacketCancel": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "cancel",
+          "default": "cancel",
+          "title": "Type"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "embedding/channel/getOrLoad/toClientPacketAlreadyLoaded": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "alreadyLoaded",
+          "default": "alreadyLoaded",
+          "title": "Type"
+        },
+        "info": {
+          "$ref": "#/definitions/embeddingModelInstanceInfo"
+        }
+      },
+      "required": [
+        "type",
+        "info"
+      ],
+      "additionalProperties": false
+    },
+    "embedding/channel/getOrLoad/toClientPacketStartLoading": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "startLoading",
+          "default": "startLoading",
+          "title": "Type"
+        },
+        "identifier": {
+          "type": "string"
+        },
+        "info": {
+          "$ref": "#/definitions/embeddingModelInfo"
+        }
+      },
+      "required": [
+        "type",
+        "identifier",
+        "info"
+      ],
+      "additionalProperties": false
+    },
+    "embedding/channel/getOrLoad/toClientPacketUnloadingOtherJITModel": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "unloadingOtherJITModel",
+          "default": "unloadingOtherJITModel",
+          "title": "Type"
+        },
+        "info": {
+          "$ref": "#/definitions/embeddingModelInstanceInfo"
+        }
+      },
+      "required": [
+        "type",
+        "info"
+      ],
+      "additionalProperties": false
+    },
+    "embedding/channel/getOrLoad/toClientPacketLoadProgress": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "loadProgress",
+          "default": "loadProgress",
+          "title": "Type"
+        },
+        "progress": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "type",
+        "progress"
+      ],
+      "additionalProperties": false
+    },
+    "embedding/channel/getOrLoad/toClientPacketLoadSuccess": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "loadSuccess",
+          "default": "loadSuccess",
+          "title": "Type"
+        },
+        "info": {
+          "$ref": "#/definitions/embeddingModelInstanceInfo"
+        }
+      },
+      "required": [
+        "type",
+        "info"
+      ],
+      "additionalProperties": false
+    },
+    "embedding/channel/getOrLoad/toServerPacketCancel": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "cancel",
+          "default": "cancel",
+          "title": "Type"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "files/channel/retrieve/toClientPacketOnFileProcessList": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "onFileProcessList",
+          "default": "onFileProcessList",
+          "title": "Type"
+        },
+        "indices": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        }
+      },
+      "required": [
+        "type",
+        "indices"
+      ],
+      "additionalProperties": false
+    },
+    "files/channel/retrieve/toClientPacketOnFileProcessingStart": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "onFileProcessingStart",
+          "default": "onFileProcessingStart",
+          "title": "Type"
+        },
+        "index": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "type",
+        "index"
+      ],
+      "additionalProperties": false
+    },
+    "files/channel/retrieve/toClientPacketOnFileProcessingEnd": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "onFileProcessingEnd",
+          "default": "onFileProcessingEnd",
+          "title": "Type"
+        },
+        "index": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "type",
+        "index"
+      ],
+      "additionalProperties": false
+    },
+    "files/channel/retrieve/toClientPacketOnFileProcessingStepStart": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "onFileProcessingStepStart",
+          "default": "onFileProcessingStepStart",
+          "title": "Type"
+        },
+        "index": {
+          "type": "integer"
+        },
+        "step": {
+          "$ref": "#/definitions/retrievalFileProcessingStep"
+        }
+      },
+      "required": [
+        "type",
+        "index",
+        "step"
+      ],
+      "additionalProperties": false
+    },
+    "files/channel/retrieve/toClientPacketOnFileProcessingStepProgress": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "onFileProcessingStepProgress",
+          "default": "onFileProcessingStepProgress",
+          "title": "Type"
+        },
+        "index": {
+          "type": "integer"
+        },
+        "step": {
+          "$ref": "#/definitions/retrievalFileProcessingStep"
+        },
+        "progress": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "type",
+        "index",
+        "step",
+        "progress"
+      ],
+      "additionalProperties": false
+    },
+    "files/channel/retrieve/toClientPacketOnFileProcessingStepEnd": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "onFileProcessingStepEnd",
+          "default": "onFileProcessingStepEnd",
+          "title": "Type"
+        },
+        "index": {
+          "type": "integer"
+        },
+        "step": {
+          "$ref": "#/definitions/retrievalFileProcessingStep"
+        }
+      },
+      "required": [
+        "type",
+        "index",
+        "step"
+      ],
+      "additionalProperties": false
+    },
+    "files/channel/retrieve/toClientPacketOnSearchingStart": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "onSearchingStart",
+          "default": "onSearchingStart",
+          "title": "Type"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "files/channel/retrieve/toClientPacketOnSearchingEnd": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "onSearchingEnd",
+          "default": "onSearchingEnd",
+          "title": "Type"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "files/channel/retrieve/toClientPacketResult": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "result",
+          "default": "result",
+          "title": "Type"
+        },
+        "result": {
+          "$ref": "#/definitions/internalRetrievalResult"
+        }
+      },
+      "required": [
+        "type",
+        "result"
+      ],
+      "additionalProperties": false
+    },
+    "files/channel/retrieve/toServerPacketStop": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "stop",
+          "default": "stop",
+          "title": "Type"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "llm/rpc/getModelInfoReturnValue": {
+      "$ref": "#/definitions/llmInstanceInfo"
+    },
+    "llm/channel/loadModel/toClientPacketResolved": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "resolved",
+          "default": "resolved",
+          "title": "Type"
+        },
+        "info": {
+          "$ref": "#/definitions/llmInfo"
+        },
+        "ambiguous": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "type",
+        "info"
+      ],
+      "additionalProperties": false
+    },
+    "llm/channel/loadModel/toClientPacketProgress": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "progress",
+          "default": "progress",
+          "title": "Type"
+        },
+        "progress": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "type",
+        "progress"
+      ],
+      "additionalProperties": false
+    },
+    "llm/channel/loadModel/toClientPacketSuccess": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "success",
+          "default": "success",
+          "title": "Type"
+        },
+        "info": {
+          "$ref": "#/definitions/llmInstanceInfo"
+        }
+      },
+      "required": [
+        "type",
+        "info"
+      ],
+      "additionalProperties": false
+    },
+    "llm/channel/loadModel/toServerPacketCancel": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "cancel",
+          "default": "cancel",
+          "title": "Type"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "llm/channel/getOrLoad/toClientPacketAlreadyLoaded": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "alreadyLoaded",
+          "default": "alreadyLoaded",
+          "title": "Type"
+        },
+        "info": {
+          "$ref": "#/definitions/llmInstanceInfo"
+        }
+      },
+      "required": [
+        "type",
+        "info"
+      ],
+      "additionalProperties": false
+    },
+    "llm/channel/getOrLoad/toClientPacketStartLoading": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "startLoading",
+          "default": "startLoading",
+          "title": "Type"
+        },
+        "identifier": {
+          "type": "string"
+        },
+        "info": {
+          "$ref": "#/definitions/llmInfo"
+        }
+      },
+      "required": [
+        "type",
+        "identifier",
+        "info"
+      ],
+      "additionalProperties": false
+    },
+    "llm/channel/getOrLoad/toClientPacketUnloadingOtherJITModel": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "unloadingOtherJITModel",
+          "default": "unloadingOtherJITModel",
+          "title": "Type"
+        },
+        "info": {
+          "$ref": "#/definitions/llmInstanceInfo"
+        }
+      },
+      "required": [
+        "type",
+        "info"
+      ],
+      "additionalProperties": false
+    },
+    "llm/channel/getOrLoad/toClientPacketLoadProgress": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "loadProgress",
+          "default": "loadProgress",
+          "title": "Type"
+        },
+        "progress": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "type",
+        "progress"
+      ],
+      "additionalProperties": false
+    },
+    "llm/channel/getOrLoad/toClientPacketLoadSuccess": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "loadSuccess",
+          "default": "loadSuccess",
+          "title": "Type"
+        },
+        "info": {
+          "$ref": "#/definitions/llmInstanceInfo"
+        }
+      },
+      "required": [
+        "type",
+        "info"
+      ],
+      "additionalProperties": false
+    },
+    "llm/channel/getOrLoad/toServerPacketCancel": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "cancel",
+          "default": "cancel",
+          "title": "Type"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "llm/channel/predict/toClientPacketFragment": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "fragment",
+          "default": "fragment",
+          "title": "Type"
+        },
+        "fragment": {
+          "$ref": "#/definitions/llmPredictionFragment"
+        },
+        "logprobs": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string"
+                },
+                "logprob": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "text",
+                "logprob"
+              ],
+              "additionalProperties": false
+            }
+          }
+        }
+      },
+      "required": [
+        "type",
+        "fragment"
+      ],
+      "additionalProperties": false
+    },
+    "llm/channel/predict/toClientPacketPromptProcessingProgress": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "promptProcessingProgress",
+          "default": "promptProcessingProgress",
+          "title": "Type"
+        },
+        "progress": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "type",
+        "progress"
+      ],
+      "additionalProperties": false
+    },
+    "llm/channel/predict/toClientPacketToolCallGenerationStart": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "toolCallGenerationStart",
+          "default": "toolCallGenerationStart",
+          "title": "Type"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "llm/channel/predict/toClientPacketToolCallGenerationEnd": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "toolCallGenerationEnd",
+          "default": "toolCallGenerationEnd",
+          "title": "Type"
+        },
+        "toolCallRequest": {
+          "$ref": "#/definitions/toolCallRequest"
+        }
+      },
+      "required": [
+        "type",
+        "toolCallRequest"
+      ],
+      "additionalProperties": false
+    },
+    "llm/channel/predict/toClientPacketToolCallGenerationFailed": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "toolCallGenerationFailed",
+          "default": "toolCallGenerationFailed",
+          "title": "Type"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "llm/channel/predict/toClientPacketSuccess": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "success",
+          "default": "success",
+          "title": "Type"
+        },
+        "stats": {
+          "$ref": "#/definitions/llmPredictionStats"
+        },
+        "modelInfo": {
+          "$ref": "#/definitions/llmInstanceInfo"
+        },
+        "loadModelConfig": {
+          "$ref": "#/definitions/llm/rpc/getLoadConfig/returns"
+        },
+        "predictionConfig": {
+          "$ref": "#/definitions/llm/rpc/getLoadConfig/returns"
+        }
+      },
+      "required": [
+        "type",
+        "stats",
+        "modelInfo",
+        "loadModelConfig",
+        "predictionConfig"
+      ],
+      "additionalProperties": false
+    },
+    "llm/channel/predict/toServerPacketCancel": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "cancel",
+          "default": "cancel",
+          "title": "Type"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/channel/registerDevelopmentPlugin/toClientPacketReady": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "ready",
+          "default": "ready",
+          "title": "Type"
+        },
+        "clientIdentifier": {
+          "type": "string"
+        },
+        "clientPasskey": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "clientIdentifier",
+        "clientPasskey"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/channel/registerDevelopmentPlugin/toServerPacketEnd": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "end",
+          "default": "end",
+          "title": "Type"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/channel/setPreprocessor/toClientPacketPreprocess": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "preprocess",
+          "default": "preprocess",
+          "title": "Type"
+        },
+        "taskId": {
+          "type": "string"
+        },
+        "input": {
+          "$ref": "#/definitions/chatMessageData"
+        },
+        "config": {
+          "$ref": "#/definitions/llm/rpc/getLoadConfig/returns"
+        },
+        "pluginConfig": {
+          "$ref": "#/definitions/llm/rpc/getLoadConfig/returns"
+        },
+        "pci": {
+          "type": "string"
+        },
+        "token": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "taskId",
+        "input",
+        "config",
+        "pluginConfig",
+        "pci",
+        "token"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/channel/setPreprocessor/toClientPacketAbort": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "abort",
+          "default": "abort",
+          "title": "Type"
+        },
+        "taskId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "taskId"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/channel/setPreprocessor/toServerPacketComplete": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "complete",
+          "default": "complete",
+          "title": "Type"
+        },
+        "taskId": {
+          "type": "string"
+        },
+        "processed": {
+          "$ref": "#/definitions/chatMessageData"
+        }
+      },
+      "required": [
+        "type",
+        "taskId",
+        "processed"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/channel/setPreprocessor/toServerPacketAborted": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "aborted",
+          "default": "aborted",
+          "title": "Type"
+        },
+        "taskId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "taskId"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/channel/setPreprocessor/toServerPacketError": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "error",
+          "default": "error",
+          "title": "Type"
+        },
+        "taskId": {
+          "type": "string"
+        },
+        "error": {
+          "$ref": "#/definitions/serializedLMSExtendedError"
+        }
+      },
+      "required": [
+        "type",
+        "taskId",
+        "error"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/channel/setGenerator/toClientPacketGenerate": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "generate",
+          "default": "generate",
+          "title": "Type"
+        },
+        "taskId": {
+          "type": "string"
+        },
+        "config": {
+          "$ref": "#/definitions/llm/rpc/getLoadConfig/returns"
+        },
+        "pluginConfig": {
+          "$ref": "#/definitions/llm/rpc/getLoadConfig/returns"
+        },
+        "pci": {
+          "type": "string"
+        },
+        "token": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "taskId",
+        "config",
+        "pluginConfig",
+        "pci",
+        "token"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/channel/setGenerator/toClientPacketAbort": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "abort",
+          "default": "abort",
+          "title": "Type"
+        },
+        "taskId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "taskId"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/channel/setGenerator/toServerPacketComplete": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "complete",
+          "default": "complete",
+          "title": "Type"
+        },
+        "taskId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "taskId"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/channel/setGenerator/toServerPacketAborted": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "aborted",
+          "default": "aborted",
+          "title": "Type"
+        },
+        "taskId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "taskId"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/channel/setGenerator/toServerPacketError": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "error",
+          "default": "error",
+          "title": "Type"
+        },
+        "taskId": {
+          "type": "string"
+        },
+        "error": {
+          "$ref": "#/definitions/serializedLMSExtendedError"
+        }
+      },
+      "required": [
+        "type",
+        "taskId",
+        "error"
+      ],
+      "additionalProperties": false
+    },
+    "repository/channel/downloadModel/toClientPacketDownloadProgress": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "downloadProgress",
+          "default": "downloadProgress",
+          "title": "Type"
+        },
+        "update": {
+          "$ref": "#/definitions/downloadProgressUpdate"
+        }
+      },
+      "required": [
+        "type",
+        "update"
+      ],
+      "additionalProperties": false
+    },
+    "repository/channel/downloadModel/toClientPacketStartFinalizing": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "startFinalizing",
+          "default": "startFinalizing",
+          "title": "Type"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "repository/channel/downloadModel/toClientPacketSuccess": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "success",
+          "default": "success",
+          "title": "Type"
+        },
+        "defaultIdentifier": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "defaultIdentifier"
+      ],
+      "additionalProperties": false
+    },
+    "repository/channel/downloadModel/toServerPacketCancel": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "cancel",
+          "default": "cancel",
+          "title": "Type"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "repository/channel/downloadArtifact/toClientPacketDownloadProgress": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "downloadProgress",
+          "default": "downloadProgress",
+          "title": "Type"
+        },
+        "update": {
+          "$ref": "#/definitions/downloadProgressUpdate"
+        }
+      },
+      "required": [
+        "type",
+        "update"
+      ],
+      "additionalProperties": false
+    },
+    "repository/channel/downloadArtifact/toClientPacketStartFinalizing": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "startFinalizing",
+          "default": "startFinalizing",
+          "title": "Type"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "repository/channel/downloadArtifact/toClientPacketSuccess": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "success",
+          "default": "success",
+          "title": "Type"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "repository/channel/downloadArtifact/toServerPacketCancel": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "cancel",
+          "default": "cancel",
+          "title": "Type"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "repository/channel/pushArtifact/toClientPacketMessage": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "message",
+          "default": "message",
+          "title": "Type"
+        },
+        "message": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "message"
+      ],
+      "additionalProperties": false
+    },
+    "repository/channel/ensureAuthenticated/toClientPacketAuthenticationUrl": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "authenticationUrl",
+          "default": "authenticationUrl",
+          "title": "Type"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "url"
+      ],
+      "additionalProperties": false
+    },
+    "repository/channel/ensureAuthenticated/toClientPacketAuthenticated": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "authenticated",
+          "default": "authenticated",
+          "title": "Type"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

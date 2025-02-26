@@ -1,0 +1,33 @@
+{
+  "typescript.tsserver.experimental.enableProjectDiagnostics": true,
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": "always",
+    "source.fixAll.eslint": "always"
+  },
+  "editor.rulers": [100],
+  "cSpell.words": [
+    "concatenator",
+    "Deserializers",
+    "Fcfs",
+    "GGUF",
+    "immer",
+    "inferencing",
+    "lmstudio",
+    "Logit",
+    "Mirostat",
+    "Mmap",
+    "Onnx",
+    "outfile",
+    "Probs",
+    "proxying",
+    "reindex",
+    "Rpcs",
+    "Streamable",
+    "superjson",
+    "uncategorized",
+    "unsubscriber"
+  ],
+  "rewrap.wrappingColumn": 100,
+  "jest.runMode": "on-demand",
+  "typescript.tsdk": "node_modules\\typescript\\lib"
+}

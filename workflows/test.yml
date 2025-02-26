@@ -1,0 +1,154 @@
+name: Test
+
+on:
+  pull_request:
+    branches:
+      - "**"
+    paths:
+      # Run for changes to *this* workflow file, but not for other workflows
+      - ".github/workflows/test.yml"
+      # Trigger off all top level files by default
+      - "*"
+      # Trigger off source, test, and ci changes
+      # (API schema changes only matter when the generated data model code changes)
+      - "src/**"
+      - "tests/**"
+      - "ci/**"
+      # Python scripts under misc still need linting & typechecks
+      - "misc/**.py"
+      # Skip running the source code checks when only documentation has been updated
+      - "!**.md"
+      - "!**.rst"
+      - "!**.txt"  # Any requirements file changes will also involve changing other files
+  push:
+    branches:
+      - main
+
+defaults:
+  run:
+    # Use the Git for Windows bash shell, rather than supporting Powershell
+    # This also implies `set -eo pipefail` (rather than just `set -e`)
+    shell: bash
+
+jobs:
+  tests:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false  # Always report results for all targets
+      max-parallel: 6
+      matrix:
+        python-version: [3.11, 3.12, 3.13]
+        # There's no platform specific SDK code, but explicitly check Windows anyway
+        os: [ubuntu-20.04, windows-2019]
+
+    # Check https://github.com/actions/action-versions/tree/main/config/actions
+    # for latest versions if the standard actions start emitting warnings
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Get pip cache dir
+      id: pip-cache
+      run: |
+        echo "dir=$(python -m pip cache dir)" >> $GITHUB_OUTPUT
+
+    - name: Cache bootstrapping dependencies
+      uses: actions/cache@v4
+      with:
+        path: ${{ steps.pip-cache.outputs.dir }}
+        key:
+          pip-${{ matrix.os }}-${{ matrix.python-version }}-v1-${{ hashFiles('pdm.lock') }}
+        restore-keys: |
+          pip-${{ matrix.os }}-${{ matrix.python-version }}-v1-
+
+    - name: Install PDM
+      run: |
+        # Ensure `pdm` uses the same version as specified in `pdm.lock`
+        # while avoiding the error raised by https://github.com/pypa/pip/issues/12889
+        python -m pip install --upgrade -r ci-bootstrap-requirements.txt
+
+    - name: Create development virtual environment
+      run: |
+        python -m pdm sync --no-self --dev
+        # Handle Windows vs non-Windows differences in .venv layout
+        VIRTUAL_ENV_BIN_DIR="$PWD/.venv/bin"
+        test -e "$VIRTUAL_ENV_BIN_DIR" || VIRTUAL_ENV_BIN_DIR="$PWD/.venv/Scripts"
+        echo "VIRTUAL_ENV_BIN_DIR=$VIRTUAL_ENV_BIN_DIR" >> "$GITHUB_ENV"
+
+    - name: Static checks
+      run: |
+        source "$VIRTUAL_ENV_BIN_DIR/activate"
+        python -m tox -v -m static
+
+    - name: CI-compatible tests
+      run: |
+        source "$VIRTUAL_ENV_BIN_DIR/activate"
+        python -m tox -v -- -m 'not lmstudio'
+
+    - name: Upload coverage data
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-data-${{ matrix.os }}-py${{ matrix.python-version }}
+        path: .coverage.*
+        include-hidden-files: true
+        if-no-files-found: ignore
+
+
+  # Coverage check based on https://hynek.me/articles/ditch-codecov-python/
+  coverage:
+    name: Combine & check coverage
+    if: always()
+    needs: tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          # Use latest Python, so it understands all syntax.
+          python-version: "3.13"
+
+      - uses: hynek/setup-cached-uv@v2
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: coverage-data-*
+          merge-multiple: true
+
+      - name: Combine coverage & fail if it goes down
+        run: |
+          uv tool install 'coverage[toml]'
+
+          coverage combine
+          coverage html --skip-covered --skip-empty
+
+          # Report and write to summary.
+          coverage report --format=markdown >> $GITHUB_STEP_SUMMARY
+
+          # Report again and fail if under 50%.
+          # Highest historical coverage: 65%
+          # Last noted local test coverage level: 94%
+          # CI coverage percentage is low because many of the tests
+          # aren't CI compatible (they need a local LM Studio instance).
+          # It's only as high as it is because the generated data model
+          # classes make up such a large portion of the total SDK code.
+          # Accept anything over 50% until CI is set up to run LM Studio
+          # in headless mode, and hence is able to run end-to-end tests.
+          coverage report --fail-under=50
+
+      - name: Upload HTML report if check failed
+        uses: actions/upload-artifact@v4
+        with:
+          name: html-report
+          path: htmlcov
+        if: ${{ failure() }}

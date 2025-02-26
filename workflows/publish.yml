@@ -1,0 +1,26 @@
+name: Publish release
+
+on:
+  release:
+    types: [published]
+
+
+jobs:
+  pypi-publish:
+    name: Upload release to PyPI
+    runs-on: ubuntu-latest
+    permissions:
+      # Allow use of GitHub OIDC for PyPI authentication
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: pdm-project/setup-pdm@v4
+        with:
+          python-version: 3.12
+          cache: true
+
+      - name: Publish distribution package to PyPI
+        run: pdm publish
