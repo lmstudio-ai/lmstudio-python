@@ -909,7 +909,7 @@ class AsyncPredictionStream(PredictionStreamBase[TPrediction]):
             self._set_error(exc_val)
         await self.aclose()
 
-    async def __aiter__(self) -> AsyncIterator[str]:
+    async def __aiter__(self) -> AsyncIterator[LlmPredictionFragment]:
         endpoint = self._endpoint
         async with self:
             assert self._channel is not None
@@ -917,7 +917,7 @@ class AsyncPredictionStream(PredictionStreamBase[TPrediction]):
                 for event in endpoint.iter_message_events(contents):
                     endpoint.handle_rx_event(event)
                     if isinstance(event, PredictionFragmentEvent):
-                        yield event.arg.content
+                        yield event.arg
                 if endpoint.is_finished:
                     break
             self._mark_finished()
@@ -1008,8 +1008,8 @@ class AsyncSessionLlm(
             on_prompt_processing_progress,
         )
         channel_cm = self._create_channel(endpoint)
-        prediction = AsyncPredictionStream(channel_cm, endpoint)
-        return prediction
+        prediction_stream = AsyncPredictionStream(channel_cm, endpoint)
+        return prediction_stream
 
     @overload
     async def _respond_stream(
@@ -1064,8 +1064,8 @@ class AsyncSessionLlm(
             on_prompt_processing_progress,
         )
         channel_cm = self._create_channel(endpoint)
-        prediction = AsyncPredictionStream(channel_cm, endpoint)
-        return prediction
+        prediction_stream = AsyncPredictionStream(channel_cm, endpoint)
+        return prediction_stream
 
     async def _apply_prompt_template(
         self,
@@ -1264,7 +1264,7 @@ class AsyncLLM(AsyncModelHandle[AsyncSessionLlm]):
         on_prompt_processing_progress: Callable[[float], None] | None = None,
     ) -> PredictionResult[str] | PredictionResult[DictObject]:
         """Request a one-off prediction without any context."""
-        prediction = await self._session._complete_stream(
+        prediction_stream = await self._session._complete_stream(
             self.identifier,
             prompt,
             response_format=response_format,
@@ -1274,11 +1274,11 @@ class AsyncLLM(AsyncModelHandle[AsyncSessionLlm]):
             on_prediction_fragment=on_prediction_fragment,
             on_prompt_processing_progress=on_prompt_processing_progress,
         )
-        async for _ in prediction:
+        async for _ in prediction_stream:
             # No yield in body means iterator reliably provides
             # prompt resource cleanup on coroutine cancellation
             pass
-        return prediction.result()
+        return prediction_stream.result()
 
     @overload
     async def respond_stream(
@@ -1365,7 +1365,7 @@ class AsyncLLM(AsyncModelHandle[AsyncSessionLlm]):
         on_prompt_processing_progress: Callable[[float], None] | None = None,
     ) -> PredictionResult[str] | PredictionResult[DictObject]:
         """Request a response in an ongoing assistant chat session."""
-        prediction = await self._session._respond_stream(
+        prediction_stream = await self._session._respond_stream(
             self.identifier,
             history,
             response_format=response_format,
@@ -1375,11 +1375,11 @@ class AsyncLLM(AsyncModelHandle[AsyncSessionLlm]):
             on_prediction_fragment=on_prediction_fragment,
             on_prompt_processing_progress=on_prompt_processing_progress,
         )
-        async for _ in prediction:
+        async for _ in prediction_stream:
             # No yield in body means iterator reliably provides
             # prompt resource cleanup on coroutine cancellation
             pass
-        return prediction.result()
+        return prediction_stream.result()
 
     @sdk_public_api_async()
     async def apply_prompt_template(
@@ -1411,7 +1411,7 @@ class AsyncEmbeddingModel(AsyncModelHandle[AsyncSessionEmbedding]):
 TAsyncSession = TypeVar("TAsyncSession", bound=AsyncSession)
 
 _ASYNC_API_STABILITY_WARNING = """\
-Note: the async API is not yet stable and is expected to change in future releases
+Note the async API is not yet stable and is expected to change in future releases
 """
 
 

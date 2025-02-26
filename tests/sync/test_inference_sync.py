@@ -76,17 +76,17 @@ def test_complete_stream_sync(caplog: LogCap) -> None:
     model_id = EXPECTED_LLM_ID
     with Client() as client:
         session = client.llm
-        prediction = session._complete_stream(
+        prediction_stream = session._complete_stream(
             model_id, prompt, config=SHORT_PREDICTION_CONFIG
         )
-        assert isinstance(prediction, PredictionStream)
+        assert isinstance(prediction_stream, PredictionStream)
         # Also exercise the explicit context management interface
-        with prediction:
-            for token in prediction:
-                logging.info(f"Token: {token}")
-                assert token
-                assert isinstance(token, str)
-            response = prediction.result()
+        with prediction_stream:
+            for fragment in prediction_stream:
+                logging.info(f"Fragment: {fragment}")
+                assert fragment.content
+                assert isinstance(fragment.content, str)
+            response = prediction_stream.result()
     # The continuation from the LLM will change, but it won't be an empty string
     logging.info(f"LLM response: {response!r}")
     assert isinstance(response, PredictionResult)
@@ -153,7 +153,7 @@ def test_callbacks_text_completion_sync(caplog: LogCap) -> None:
         # This test case also covers the explicit context management interface
         iteration_content: list[str] = []
         with prediction_stream:
-            iteration_content = [text for text in prediction_stream]
+            iteration_content = [fragment.content for fragment in prediction_stream]
     assert len(messages) == 1
     message = messages[0]
     assert message.role == "assistant"
@@ -207,7 +207,7 @@ def test_callbacks_chat_response_sync(caplog: LogCap) -> None:
         # This test case also covers the explicit context management interface
         iteration_content: list[str] = []
         with prediction_stream:
-            iteration_content = [text for text in prediction_stream]
+            iteration_content = [fragment.content for fragment in prediction_stream]
     assert len(messages) == 1
     message = messages[0]
     assert message.role == "assistant"
@@ -265,10 +265,10 @@ def test_invalid_model_request_stream_sync(caplog: LogCap) -> None:
         # This should error rather than timing out,
         # but avoid any risk of the client hanging...
         with nullcontext():
-            prediction = model.complete_stream("Some text")
-            with prediction:
+            prediction_stream = model.complete_stream("Some text")
+            with prediction_stream:
                 with pytest.raises(LMStudioModelNotFoundError) as exc_info:
-                    prediction.wait_for_result()
+                    prediction_stream.wait_for_result()
                 check_sdk_error(exc_info, __file__)
 
 
@@ -280,11 +280,11 @@ def test_cancel_prediction_sync(caplog: LogCap) -> None:
     caplog.set_level(logging.DEBUG)
     with Client() as client:
         session = client.llm
-        response = session._complete_stream(model_id, prompt=prompt)
-        for _ in response:
-            response.cancel()
+        stream = session._complete_stream(model_id, prompt=prompt)
+        for _ in stream:
+            stream.cancel()
             num_times += 1
-        assert response.stats
-        assert response.stats.stop_reason == "userStopped"
+        assert stream.stats
+        assert stream.stats.stop_reason == "userStopped"
         # ensure __aiter__ closes correctly
         assert num_times == 1

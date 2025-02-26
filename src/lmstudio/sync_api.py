@@ -1062,10 +1062,10 @@ class PredictionStream(PredictionStreamBase[TPrediction]):
             self._set_error(exc_val)
         self.close()
 
-    def __iter__(self) -> Iterator[str]:
+    def __iter__(self) -> Iterator[LlmPredictionFragment]:
         for event in self._iter_events():
             if isinstance(event, PredictionFragmentEvent):
-                yield event.arg.content
+                yield event.arg
 
     def _iter_events(self) -> Iterator[PredictionRxEvent]:
         endpoint = self._endpoint
@@ -1165,8 +1165,8 @@ class SyncSessionLlm(
             on_prompt_processing_progress,
         )
         channel_cm = self._create_channel(endpoint)
-        prediction = PredictionStream(channel_cm, endpoint)
-        return prediction
+        prediction_stream = PredictionStream(channel_cm, endpoint)
+        return prediction_stream
 
     @overload
     def _respond_stream(
@@ -1221,8 +1221,8 @@ class SyncSessionLlm(
             on_prompt_processing_progress,
         )
         channel_cm = self._create_channel(endpoint)
-        prediction = PredictionStream(channel_cm, endpoint)
-        return prediction
+        prediction_stream = PredictionStream(channel_cm, endpoint)
+        return prediction_stream
 
     def _apply_prompt_template(
         self,
@@ -1419,7 +1419,7 @@ class LLM(SyncModelHandle[SyncSessionLlm]):
         on_prompt_processing_progress: Callable[[float], None] | None = None,
     ) -> PredictionResult[str] | PredictionResult[DictObject]:
         """Request a one-off prediction without any context."""
-        prediction = self._session._complete_stream(
+        prediction_stream = self._session._complete_stream(
             self.identifier,
             prompt,
             response_format=response_format,
@@ -1429,11 +1429,11 @@ class LLM(SyncModelHandle[SyncSessionLlm]):
             on_prediction_fragment=on_prediction_fragment,
             on_prompt_processing_progress=on_prompt_processing_progress,
         )
-        for _ in prediction:
+        for _ in prediction_stream:
             # No yield in body means iterator reliably provides
             # prompt resource cleanup on coroutine cancellation
             pass
-        return prediction.result()
+        return prediction_stream.result()
 
     @overload
     def respond_stream(
@@ -1520,7 +1520,7 @@ class LLM(SyncModelHandle[SyncSessionLlm]):
         on_prompt_processing_progress: Callable[[float], None] | None = None,
     ) -> PredictionResult[str] | PredictionResult[DictObject]:
         """Request a response in an ongoing assistant chat session."""
-        prediction = self._session._respond_stream(
+        prediction_stream = self._session._respond_stream(
             self.identifier,
             history,
             response_format=response_format,
@@ -1530,11 +1530,11 @@ class LLM(SyncModelHandle[SyncSessionLlm]):
             on_prediction_fragment=on_prediction_fragment,
             on_prompt_processing_progress=on_prompt_processing_progress,
         )
-        for _ in prediction:
+        for _ in prediction_stream:
             # No yield in body means iterator reliably provides
             # prompt resource cleanup on coroutine cancellation
             pass
-        return prediction.result()
+        return prediction_stream.result()
 
     # Multi-round predictions are currently a sync-only handle-only feature
     # TODO: Refactor to allow for more code sharing with the async API
