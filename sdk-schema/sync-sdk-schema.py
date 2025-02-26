@@ -9,7 +9,7 @@ Pass `--regen-schema` to request a full export from Typescript.
 # Uses `npm run zod-to-json-schema` to populate `./_json_schema`
 # Uses https://github.com/koxudaxi/datamodel-code-generator/
 # to emit Python data model classes for the defined JSON schemas
-# to `../src/lmstudio/_lmsjs_models`
+# to `../src/lmstudio/_sdk_models`
 
 
 # * invokes `npm run build` and `npm run make-schemas` in the
@@ -48,7 +48,7 @@ _SCHEMA_PATH = _SCHEMA_DIR / "lms.json"
 _CACHED_SCHEMA_PATH = _THIS_DIR / _SCHEMA_PATH.name
 _INFERRED_SCHEMA_PATH = _THIS_DIR / "lms-with-inferred-unions.json"
 _TEMPLATE_DIR = _THIS_DIR / "_templates"
-_MODEL_DIR = _THIS_DIR.parent / "src/lmstudio/_lmsjs_models"
+_MODEL_DIR = _THIS_DIR.parent / "src/lmstudio/_sdk_models"
 _MODEL_PATH = _MODEL_DIR / "__init__.py"
 
 # The following schemas are not actually used anywhere,

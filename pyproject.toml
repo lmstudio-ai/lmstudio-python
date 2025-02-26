@@ -23,7 +23,7 @@ dependencies = [
     "typing-extensions>=4.12.2",
 ]
 
-# Keep this in sync with the target Python version in sync-lmsjs-schema.py
+# Keep this in sync with the target Python version in sync-sdk-schema.py
 requires-python = ">=3.11"
 
 readme = "README.md"
@@ -71,7 +71,7 @@ dev = [
 bootstrap = [
     "pdm>=2.16.1",
 ]
-sync-lmsjs-schema = [
+sync-sdk-schema = [
     # Needs https://github.com/koxudaxi/datamodel-code-generator/issues/2211 fix
     "datamodel-code-generator[http]>=0.26.4",
 ]

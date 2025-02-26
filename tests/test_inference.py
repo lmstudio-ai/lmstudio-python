@@ -23,7 +23,7 @@ from lmstudio import (
     ToolFunctionDefDict,
 )
 from lmstudio.json_api import ChatResponseEndpoint
-from lmstudio._lmsjs_models import LlmToolParameters
+from lmstudio._sdk_models import LlmToolParameters
 
 from .support import (
     EXPECTED_LLM_ID,

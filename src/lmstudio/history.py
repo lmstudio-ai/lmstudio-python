@@ -34,7 +34,7 @@ from .sdk_api import (
     sdk_public_api,
 )
 from .schemas import DictObject, LMStudioStruct, _format_json
-from ._lmsjs_models import (
+from ._sdk_models import (
     ChatHistoryData,
     ChatHistoryDataDict,
     ChatMessageData as AnyChatMessage,

@@ -83,7 +83,7 @@ from .json_api import (
     _model_spec_to_api_dict,
 )
 from ._kv_config import TLoadConfig, TLoadConfigDict, dict_from_fields_key
-from ._lmsjs_models import (
+from ._sdk_models import (
     DownloadProgressUpdate,
     EmbeddingRpcEmbedStringParameter,
     EmbeddingRpcTokenizeParameter,

@@ -12,7 +12,7 @@ from lmstudio.json_api import (
     ModelTypesEmbedding,
     ModelTypesLlm,
 )
-from lmstudio._lmsjs_models import (
+from lmstudio._sdk_models import (
     ModelSpecifierInstanceReference,
     ModelSpecifierInstanceReferenceDict,
     ModelSpecifierQuery,

@@ -2,10 +2,10 @@
 # It is not intended for manual editing.
 
 [metadata]
-groups = ["default", "bootstrap", "dev", "docs", "sync-lmsjs-schema"]
+groups = ["default", "bootstrap", "dev", "docs", "sync-sdk-schema"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.0"
-content_hash = "sha256:90e521184cf11ed09e729deba3faffdc6bb437a6451beb88d06de5e4caaf95c6"
+content_hash = "sha256:704c7dbfc5f920ae8bbcddfacb6a64b6aa03bb62afd79fd0c529210abf7851b4"
 
 [[metadata.targets]]
 requires_python = ">=3.11"
@@ -47,7 +47,7 @@ name = "annotated-types"
 version = "0.7.0"
 requires_python = ">=3.8"
 summary = "Reusable constraint types to use with typing.Annotated"
-groups = ["sync-lmsjs-schema"]
+groups = ["sync-sdk-schema"]
 dependencies = [
     "typing-extensions>=4.0.0; python_version < \"3.9\"",
 ]
@@ -61,7 +61,7 @@ name = "anyio"
 version = "4.8.0"
 requires_python = ">=3.9"
 summary = "High level compatibility layer for multiple asynchronous event loop implementations"
-groups = ["default", "bootstrap", "sync-lmsjs-schema"]
+groups = ["default", "bootstrap", "sync-sdk-schema"]
 dependencies = [
     "exceptiongroup>=1.0.2; python_version < \"3.11\"",
     "idna>=2.8",
@@ -78,7 +78,7 @@ name = "argcomplete"
 version = "3.5.3"
 requires_python = ">=3.8"
 summary = "Bash tab completion for argparse"
-groups = ["sync-lmsjs-schema"]
+groups = ["sync-sdk-schema"]
 files = [
     {file = "argcomplete-3.5.3-py3-none-any.whl", hash = "sha256:2ab2c4a215c59fd6caaff41a869480a23e8f6a5f910b266c1808037f4e375b61"},
     {file = "argcomplete-3.5.3.tar.gz", hash = "sha256:c12bf50eded8aebb298c7b7da7a5ff3ee24dffd9f5281867dfe1424b58c55392"},
@@ -129,7 +129,7 @@ name = "black"
 version = "25.1.0"
 requires_python = ">=3.9"
 summary = "The uncompromising code formatter."
-groups = ["sync-lmsjs-schema"]
+groups = ["sync-sdk-schema"]
 dependencies = [
     "click>=8.0.0",
     "mypy-extensions>=0.4.3",
@@ -183,7 +183,7 @@ name = "certifi"
 version = "2025.1.31"
 requires_python = ">=3.6"
 summary = "Python package for providing Mozilla's CA Bundle."
-groups = ["default", "bootstrap", "docs", "sync-lmsjs-schema"]
+groups = ["default", "bootstrap", "docs", "sync-sdk-schema"]
 files = [
     {file = "certifi-2025.1.31-py3-none-any.whl", hash = "sha256:ca78db4565a652026a4db2bcdf68f2fb589ea80d0be70e03929ed730746b84fe"},
     {file = "certifi-2025.1.31.tar.gz", hash = "sha256:3d5da6925056f6f18f119200434a4780a94263f10d1c21d032a6f6b2baa20651"},
@@ -225,7 +225,7 @@ name = "click"
 version = "8.1.8"
 requires_python = ">=3.7"
 summary = "Composable command line interface toolkit"
-groups = ["sync-lmsjs-schema"]
+groups = ["sync-sdk-schema"]
 dependencies = [
     "colorama; platform_system == \"Windows\"",
     "importlib-metadata; python_version < \"3.8\"",
@@ -240,7 +240,7 @@ name = "colorama"
 version = "0.4.6"
 requires_python = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,!=3.6.*,>=2.7"
 summary = "Cross-platform colored terminal text."
-groups = ["dev", "docs", "sync-lmsjs-schema"]
+groups = ["dev", "docs", "sync-sdk-schema"]
 files = [
     {file = "colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6"},
     {file = "colorama-0.4.6.tar.gz", hash = "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44"},
@@ -310,7 +310,7 @@ name = "datamodel-code-generator"
 version = "0.28.1"
 requires_python = ">=3.9"
 summary = "Datamodel Code Generator"
-groups = ["sync-lmsjs-schema"]
+groups = ["sync-sdk-schema"]
 dependencies = [
     "argcomplete<4,>=2.10.1",
     "black>=19.10b0",
@@ -334,7 +334,7 @@ version = "0.28.1"
 extras = ["http"]
 requires_python = ">=3.9"
 summary = "Datamodel Code Generator"
-groups = ["sync-lmsjs-schema"]
+groups = ["sync-sdk-schema"]
 dependencies = [
     "datamodel-code-generator==0.28.1",
     "httpx>=0.24.1",
@@ -425,7 +425,7 @@ files = [
 name = "genson"
 version = "1.3.0"
 summary = "GenSON is a powerful, user-friendly JSON Schema generator."
-groups = ["sync-lmsjs-schema"]
+groups = ["sync-sdk-schema"]
 files = [
     {file = "genson-1.3.0-py3-none-any.whl", hash = "sha256:468feccd00274cc7e4c09e84b08704270ba8d95232aa280f65b986139cec67f7"},
     {file = "genson-1.3.0.tar.gz", hash = "sha256:e02db9ac2e3fd29e65b5286f7135762e2cd8a986537c075b06fc5f1517308e37"},
@@ -436,7 +436,7 @@ name = "h11"
 version = "0.14.0"
 requires_python = ">=3.7"
 summary = "A pure-Python, bring-your-own-I/O implementation of HTTP/1.1"
-groups = ["default", "bootstrap", "sync-lmsjs-schema"]
+groups = ["default", "bootstrap", "sync-sdk-schema"]
 dependencies = [
     "typing-extensions; python_version < \"3.8\"",
 ]
@@ -464,7 +464,7 @@ name = "httpcore"
 version = "1.0.7"
 requires_python = ">=3.8"
 summary = "A minimal low-level HTTP client."
-groups = ["default", "bootstrap", "sync-lmsjs-schema"]
+groups = ["default", "bootstrap", "sync-sdk-schema"]
 dependencies = [
     "certifi",
     "h11<0.15,>=0.13",
@@ -479,7 +479,7 @@ name = "httpx"
 version = "0.28.1"
 requires_python = ">=3.8"
 summary = "The next generation HTTP client."
-groups = ["default", "bootstrap", "sync-lmsjs-schema"]
+groups = ["default", "bootstrap", "sync-sdk-schema"]
 dependencies = [
     "anyio",
     "certifi",
@@ -529,7 +529,7 @@ name = "idna"
 version = "3.10"
 requires_python = ">=3.6"
 summary = "Internationalized Domain Names in Applications (IDNA)"
-groups = ["default", "bootstrap", "docs", "sync-lmsjs-schema"]
+groups = ["default", "bootstrap", "docs", "sync-sdk-schema"]
 files = [
     {file = "idna-3.10-py3-none-any.whl", hash = "sha256:946d195a0d259cbba61165e88e65941f16e9b36ea6ddb97f00452bae8b1287d3"},
     {file = "idna-3.10.tar.gz", hash = "sha256:12f65c9b470abda6dc35cf8e63cc574b1c52b11df2c86030af0ac09b01b13ea9"},
@@ -551,7 +551,7 @@ name = "inflect"
 version = "5.6.2"
 requires_python = ">=3.7"
 summary = "Correctly generate plurals, singular nouns, ordinals, indefinite articles; convert numbers to words"
-groups = ["sync-lmsjs-schema"]
+groups = ["sync-sdk-schema"]
 files = [
     {file = "inflect-5.6.2-py3-none-any.whl", hash = "sha256:b45d91a4a28a4e617ff1821117439b06eaa86e2a4573154af0149e9be6687238"},
     {file = "inflect-5.6.2.tar.gz", hash = "sha256:aadc7ed73928f5e014129794bbac03058cca35d0a973a5fc4eb45c7fa26005f9"},
@@ -584,7 +584,7 @@ name = "isort"
 version = "6.0.0"
 requires_python = ">=3.9.0"
 summary = "A Python utility / library to sort Python imports."
-groups = ["sync-lmsjs-schema"]
+groups = ["sync-sdk-schema"]
 files = [
     {file = "isort-6.0.0-py3-none-any.whl", hash = "sha256:567954102bb47bb12e0fae62606570faacddd441e45683968c8d1734fb1af892"},
     {file = "isort-6.0.0.tar.gz", hash = "sha256:75d9d8a1438a9432a7d7b54f2d3b45cad9a4a0fdba43617d9873379704a8bdf1"},
@@ -595,7 +595,7 @@ name = "jinja2"
 version = "3.1.5"
 requires_python = ">=3.7"
 summary = "A very fast and expressive template engine."
-groups = ["docs", "sync-lmsjs-schema"]
+groups = ["docs", "sync-sdk-schema"]
 dependencies = [
     "MarkupSafe>=2.0",
 ]
@@ -623,7 +623,7 @@ name = "markupsafe"
 version = "3.0.2"
 requires_python = ">=3.9"
 summary = "Safely add untrusted strings to HTML/XML markup."
-groups = ["docs", "sync-lmsjs-schema"]
+groups = ["docs", "sync-sdk-schema"]
 files = [
     {file = "MarkupSafe-3.0.2-cp311-cp311-macosx_10_9_universal2.whl", hash = "sha256:9025b4018f3a1314059769c7bf15441064b2207cb3f065e6ea1e7359cb46db9d"},
     {file = "MarkupSafe-3.0.2-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:93335ca3812df2f366e80509ae119189886b0f3c2b81325d39efdb84a1e2ae93"},
@@ -735,7 +735,7 @@ name = "mypy-extensions"
 version = "1.0.0"
 requires_python = ">=3.5"
 summary = "Type system extensions for programs checked with the mypy type checker."
-groups = ["dev", "sync-lmsjs-schema"]
+groups = ["dev", "sync-sdk-schema"]
 files = [
     {file = "mypy_extensions-1.0.0-py3-none-any.whl", hash = "sha256:4392f6c0eb8a5668a69e23d168ffa70f0be9ccfd32b5cc2d26a34ae5b844552d"},
     {file = "mypy_extensions-1.0.0.tar.gz", hash = "sha256:75dbf8955dc00442a438fc4d0666508a9a97b6bd41aa2f0ffe9d2f2725af0782"},
@@ -746,7 +746,7 @@ name = "packaging"
 version = "24.2"
 requires_python = ">=3.8"
 summary = "Core utilities for Python packages"
-groups = ["bootstrap", "dev", "docs", "sync-lmsjs-schema"]
+groups = ["bootstrap", "dev", "docs", "sync-sdk-schema"]
 files = [
     {file = "packaging-24.2-py3-none-any.whl", hash = "sha256:09abb1bccd265c01f4a3aa3f7a7db064b36514d2cba19a2f694fe6150451a759"},
     {file = "packaging-24.2.tar.gz", hash = "sha256:c228a6dc5e932d346bc5739379109d49e8853dd8223571c7c5b55260edc0b97f"},
@@ -757,7 +757,7 @@ name = "pathspec"
 version = "0.12.1"
 requires_python = ">=3.8"
 summary = "Utility library for gitignore style pattern matching of file paths."
-groups = ["sync-lmsjs-schema"]
+groups = ["sync-sdk-schema"]
 files = [
     {file = "pathspec-0.12.1-py3-none-any.whl", hash = "sha256:a0d503e138a4c123b27490a4f7beda6a01c6f288df0e4a8b79c7eb0dc7b4cc08"},
     {file = "pathspec-0.12.1.tar.gz", hash = "sha256:a482d51503a1ab33b1c67a6c3813a26953dbdc71c31dacaef9a838c4e29f5712"},
@@ -816,7 +816,7 @@ name = "platformdirs"
 version = "4.3.6"
 requires_python = ">=3.8"
 summary = "A small Python package for determining appropriate platform-specific dirs, e.g. a `user data dir`."
-groups = ["bootstrap", "dev", "sync-lmsjs-schema"]
+groups = ["bootstrap", "dev", "sync-sdk-schema"]
 files = [
     {file = "platformdirs-4.3.6-py3-none-any.whl", hash = "sha256:73e575e1408ab8103900836b97580d5307456908a03e92031bab39e4554cc3fb"},
     {file = "platformdirs-4.3.6.tar.gz", hash = "sha256:357fb2acbc885b0419afd3ce3ed34564c13c9b95c89360cd9563f73aa5e2b907"},
@@ -838,7 +838,7 @@ name = "pydantic"
 version = "2.10.6"
 requires_python = ">=3.8"
 summary = "Data validation using Python type hints"
-groups = ["sync-lmsjs-schema"]
+groups = ["sync-sdk-schema"]
 dependencies = [
     "annotated-types>=0.6.0",
     "pydantic-core==2.27.2",
@@ -854,7 +854,7 @@ name = "pydantic-core"
 version = "2.27.2"
 requires_python = ">=3.8"
 summary = "Core functionality for Pydantic validation and serialization"
-groups = ["sync-lmsjs-schema"]
+groups = ["sync-sdk-schema"]
 dependencies = [
     "typing-extensions!=4.7.0,>=4.6.0",
 ]
@@ -981,7 +981,7 @@ name = "pyyaml"
 version = "6.0.2"
 requires_python = ">=3.8"
 summary = "YAML parser and emitter for Python"
-groups = ["sync-lmsjs-schema"]
+groups = ["sync-sdk-schema"]
 files = [
     {file = "PyYAML-6.0.2-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:cc1c1159b3d456576af7a3e4d1ba7e6924cb39de8f67111c735f6fc832082774"},
     {file = "PyYAML-6.0.2-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:1e2120ef853f59c7419231f3bf4e7021f1b936f6ebd222406c3b60212205d2ee"},
@@ -1087,7 +1087,7 @@ name = "sniffio"
 version = "1.3.1"
 requires_python = ">=3.7"
 summary = "Sniff out which async library your code is running under"
-groups = ["default", "bootstrap", "sync-lmsjs-schema"]
+groups = ["default", "bootstrap", "sync-sdk-schema"]
 files = [
     {file = "sniffio-1.3.1-py3-none-any.whl", hash = "sha256:2f6da418d1f1e0fddd844478f41680e794e6051915791a034ff65e5f100525a2"},
     {file = "sniffio-1.3.1.tar.gz", hash = "sha256:f4324edc670a0f49750a81b895f35c3adb843cca46f0530f79fc1babb23789dc"},
@@ -1254,7 +1254,7 @@ name = "tomli"
 version = "2.2.1"
 requires_python = ">=3.8"
 summary = "A lil' TOML parser"
-groups = ["sync-lmsjs-schema"]
+groups = ["sync-sdk-schema"]
 marker = "python_version <= \"3.11\""
 files = [
     {file = "tomli-2.2.1-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:678e4fa69e4575eb77d103de3df8a895e1591b48e740211bd1067378c69e8249"},
@@ -1353,7 +1353,7 @@ name = "typing-extensions"
 version = "4.12.2"
 requires_python = ">=3.8"
 summary = "Backported and Experimental Type Hints for Python 3.8+"
-groups = ["default", "bootstrap", "dev", "docs", "sync-lmsjs-schema"]
+groups = ["default", "bootstrap", "dev", "docs", "sync-sdk-schema"]
 files = [
     {file = "typing_extensions-4.12.2-py3-none-any.whl", hash = "sha256:04e5ca0351e0f3f85c6853954072df659d0d13fac324d0072316b67d7794700d"},
     {file = "typing_extensions-4.12.2.tar.gz", hash = "sha256:1a7ead55c7e559dd4dee8856e3a88b41225abfe1ce8df57b7c13915fe121ffb8"},
