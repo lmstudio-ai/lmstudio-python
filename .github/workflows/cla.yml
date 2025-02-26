@@ -30,7 +30,7 @@ jobs:
           remote-organization-name: lmstudio-ai
           remote-repository-name: cla-signatures
           branch: 'main'
-          allowlist: yagil,ryan-the-crayon,azisislm,mattjcly,neilmehta24
+          allowlist: yagil,ryan-the-crayon,azisislm,mattjcly,neilmehta24,ncoghlan
 
       - name: "Label PR as CLA Signed"
         if: success()
