@@ -95,9 +95,7 @@ from ._sdk_models import (
     LlmTool,
     LlmToolUseSettingToolArray,
     ModelInfo,
-    # TODO: Import this once the definition is fixed in lmstudio.js
-    #       https://github.com/lmstudio-ai/lmstudio.js/pull/222
-    # ModelInstanceInfo,
+    ModelInstanceInfo,
     ModelSearchOptsDict,
     ModelSpecifier,
     ModelSpecifierDict,
@@ -196,10 +194,6 @@ TokenizeRequest: TypeAlias = EmbeddingRpcTokenizeParameter | LlmRpcTokenizeParam
 UnloadModelRequest: TypeAlias = (
     EmbeddingRpcUnloadModelParameter | LlmRpcUnloadModelParameter
 )
-
-# TODO: Drop this workaround once the lmstudio.js schema export is fixed:
-#       https://github.com/lmstudio-ai/lmstudio.js/pull/222
-ModelInstanceInfo: TypeAlias = EmbeddingModelInstanceInfo | LlmInstanceInfo
 
 
 class ModelSessionTypes(Generic[TLoadConfig]):
@@ -516,8 +510,8 @@ class MultiplexingManager(Generic[TQueue]):
         self._last_channel_id = 0
         self._pending_calls: dict[int, TQueue] = {}
         self._last_call_id = 0
-        # TODO: add `_last_subscriber_id` when adding signal support
-        # TODO: add `_active_subscriptions` when adding signal support
+        # `_active_subscriptions` (if we add signal support)
+        # `_last_subscriber_id` (if we add signal support)
         self._logger = logger
 
     def all_queues(self) -> Iterator[TQueue]:
@@ -1288,6 +1282,7 @@ class PredictionEndpoint(
             )
             result = _ToolCallResultData(content=err_msg, tool_call_id=tool_call_id)
             return lambda: result
+        # Validate parameters against their specification
         params_struct, implementation = client_tool
         raw_kwds = request.arguments
         try:
@@ -1300,7 +1295,7 @@ class PredictionEndpoint(
             return lambda: result
         kwds = to_builtins(parsed_kwds)
 
-        # TODO: Validate parameters against their specification
+        # Allow caller to schedule the tool call request for background execution
         def _call_requested_tool() -> _ToolCallResultData:
             call_result = implementation(**kwds)
             return _ToolCallResultData(

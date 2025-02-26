@@ -51,10 +51,6 @@ def test_completion_llm_handle_sync(model_id: str, caplog: LogCap) -> None:
     assert response.content
 
 
-# TODO: also test `complete_stream`, `respond`, and `respond_stream`,
-#       as all the wrappers are implemented independently of each other
-
-
 @pytest.mark.lmstudio
 @pytest.mark.parametrize("model_id", (EXPECTED_EMBEDDING, EXPECTED_EMBEDDING_ID))
 def test_embedding_handle_sync(model_id: str, caplog: LogCap) -> None:
