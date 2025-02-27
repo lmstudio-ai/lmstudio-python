@@ -24,9 +24,9 @@ Using this convenience API, requesting text completion from an already
 loaded LLM is as straightforward as:
 
 ```python
-import lmstudio as lm
+import lmstudio as lms
 
-llm = lm.llm()
+llm = lms.llm()
 llm.complete("Once upon a time,")
 ```
 
@@ -35,15 +35,15 @@ setting up a `Chat` helper to manage the chat history and include
 it in response prediction requests:
 
 ```python
-import lmstudio as lm
+import lmstudio as lms
 
 EXAMPLE_MESSAGES = (
     "My hovercraft is full of eels!",
     "I will not buy this record, it is scratched."
 )
 
-llm = lm.llm()
-chat = lm.Chat("You are a helpful shopkeeper assisting a foreign traveller")
+llm = lms.llm()
+chat = lms.Chat("You are a helpful shopkeeper assisting a foreign traveller")
 for message in EXAMPLE_MESSAGES:
     chat.add_user_message(message)
     print(f"Customer: {message}")
