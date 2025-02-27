@@ -162,6 +162,7 @@ __all__ = [
     "PredictionRoundResult",
     "PromptProcessingCallback",
     "SerializedLMSExtendedError",
+    "ToolDefinition",
     "ToolFunctionDef",
     "ToolFunctionDefDict",
 ]
@@ -1361,6 +1362,9 @@ class CompletionEndpoint(PredictionEndpoint[TPrediction]):
         return {"for_text_completion": True}
 
 
+ToolDefinition: TypeAlias = ToolFunctionDef | ToolFunctionDefDict | Callable[..., Any]
+
+
 class ChatResponseEndpoint(PredictionEndpoint[TPrediction]):
     """API channel endpoint for requesting a chat response from a model."""
 
@@ -1371,7 +1375,7 @@ class ChatResponseEndpoint(PredictionEndpoint[TPrediction]):
     # TODO: Consider implementing this conversion in _kv_config.py
     @staticmethod
     def parse_tools(
-        tools: Iterable[ToolFunctionDef | ToolFunctionDefDict | Callable[..., Any]],
+        tools: Iterable[ToolDefinition],
     ) -> tuple[LlmToolUseSettingToolArray, ClientToolMap]:
         """Split tool function definitions into server and client details."""
         if not tools:
