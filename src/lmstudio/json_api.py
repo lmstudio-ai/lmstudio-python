@@ -123,6 +123,7 @@ from ._logging import get_logger, LogEventContext, StructuredLogger
 # explicitly via `lmstudio.json_api`, it isn't exported
 # implicitly as part of the top-level `lmstudio` API.
 __all__ = [
+    "ActResult",
     "AnyModelSpecifier",
     "EmbeddingModelInfo",
     "EmbeddingModelInstanceInfo",
@@ -151,7 +152,6 @@ __all__ = [
     "ModelSpecifierDict",
     "ModelQuery",
     "ModelQueryDict",
-    "OperationResult",
     "PredictionResult",
     "PredictionRoundResult",
     "SerializedLMSExtendedError",
@@ -455,9 +455,9 @@ class PredictionResult(Generic[TPrediction]):
 
 @dataclass(kw_only=True, frozen=True, slots=True)
 class PredictionRoundResult(PredictionResult[str]):
-    """The result of a prediction within a multi-round tool using operation."""
+    """The result of a prediction within a multi-round tool using action."""
 
-    round_index: int  # The round within the operation that produced this result
+    round_index: int  # The round within the action that produced this result
 
     @classmethod
     def from_result(cls, result: PredictionResult[str], round_index: int) -> Self:
@@ -471,10 +471,10 @@ class PredictionRoundResult(PredictionResult[str]):
 
 
 @dataclass(kw_only=True, frozen=True, slots=True)
-class OperationResult:
-    """Summary of a completed multi-round tool using operation."""
+class ActResult:
+    """Summary of a completed multi-round tool using action."""
 
-    # Actual operation output is reported via callbacks
+    # Detailed action results are reported via callbacks (for now)
 
     # fmt: off
     rounds: int
@@ -1073,7 +1073,7 @@ class PredictionEndpoint(
         on_first_token: Callable[[], None] | None = None,
         on_prediction_fragment: Callable[[LlmPredictionFragment], None] | None = None,
         on_prompt_processing_progress: Callable[[float], None] | None = None,
-        # The remaining options are only relevant for multi-round tool operations
+        # The remaining options are only relevant for multi-round tool actions
         handle_invalid_tool_request: Callable[
             [LMStudioPredictionError, _ToolCallRequest | None], str
         ]
@@ -1359,7 +1359,7 @@ class ChatResponseEndpoint(PredictionEndpoint[TPrediction]):
         """Split tool function definitions into server and client details."""
         if not tools:
             raise LMStudioValueError(
-                "Tool operation requires at least one tool to be defined."
+                "Tool using actions require at least one tool to be defined."
             )
         llm_tool_defs: list[LlmTool] = []
         client_tool_map: dict[str, ClientToolSpec] = {}

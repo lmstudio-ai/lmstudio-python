@@ -53,6 +53,7 @@ from .history import (
     _ToolCallRequest,
 )
 from .json_api import (
+    ActResult,
     AnyModelSpecifier,
     AvailableModelBase,
     ChannelEndpoint,
@@ -85,7 +86,6 @@ from .json_api import (
     ModelSessionTypes,
     ModelTypesEmbedding,
     ModelTypesLlm,
-    OperationResult,
     PredictionEndpoint,
     PredictionFragmentEvent,
     PredictionResult,
@@ -1539,7 +1539,7 @@ class LLM(SyncModelHandle[SyncSessionLlm]):
     # Multi-round predictions are currently a sync-only handle-only feature
     # TODO: Refactor to allow for more code sharing with the async API
     @sdk_public_api()
-    def operate(
+    def act(
         self,
         chat: Chat | ChatHistoryDataDict | str,
         tools: Iterable[ToolFunctionDef | ToolFunctionDefDict],
@@ -1559,14 +1559,14 @@ class LLM(SyncModelHandle[SyncSessionLlm]):
             [LMStudioPredictionError, _ToolCallRequest | None], str
         ]
         | None = None,
-    ) -> OperationResult:
-        """Request a response (with implicit tool use) in an ongoing assistant chat session."""
-        operation_start_time = time.perf_counter()
+    ) -> ActResult:
+        """Request a response (with implicit tool use) in an ongoing agent chat session."""
+        start_time = time.perf_counter()
         # It is not yet possible to combine tool calling with requests for structured responses
         response_format = None
         if isinstance(chat, Chat):
             chat._fetch_file_handles(self._session._fetch_file_handle)
-        op_chat: Chat = Chat.from_history(chat)
+        agent_chat: Chat = Chat.from_history(chat)
         del chat
         # Multiple rounds, until all tool calls are resolved or limit is reached
         round_counter: Iterable[int]
@@ -1622,9 +1622,11 @@ class LLM(SyncModelHandle[SyncSessionLlm]):
                 # Update the endpoint definition on each iteration in order to:
                 # * update the chat history with the previous round result
                 # * be able to disallow tool use when the rounds are limited
+                # TODO: Refactor endpoint API to avoid repeatedly performing the
+                #       LlmPredictionConfig -> KvConfigStack transformation
                 endpoint = ChatResponseEndpoint(
                     self.identifier,
-                    op_chat,
+                    agent_chat,
                     response_format,
                     config,
                     None,  # Multiple messages are generated per round
@@ -1658,23 +1660,29 @@ class LLM(SyncModelHandle[SyncSessionLlm]):
                     tool_results = [
                         fut.result() for fut in as_completed(pending_tool_calls)
                     ]
-                    requests_message = op_chat._add_assistant_tool_requests(
+                    requests_message = agent_chat._add_assistant_tool_requests(
                         prediction, tool_call_requests
                     )
-                    results_message = op_chat._add_tool_results(tool_results)
+                    results_message = agent_chat._add_tool_results(tool_results)
                     if on_message is not None:
                         on_message(requests_message)
                         on_message(results_message)
                 elif on_message is not None:
-                    on_message(op_chat.add_assistant_response(prediction))
+                    on_message(agent_chat.add_assistant_response(prediction))
                 if on_round_end is not None:
                     on_round_end(round_index)
                 if not tool_call_requests:
                     # No tool call requests -> we're done here
                     break
+                if round_index == final_round_index:
+                    # We somehow received at least one tool call request,
+                    # even though tools are omitted on the final round
+                    err_msg = "Model requested tool use on final prediction round."
+                    endpoint._handle_invalid_tool_request(err_msg)
+                    break
         num_rounds = round_index + 1
-        duration = time.perf_counter() - operation_start_time
-        return OperationResult(rounds=num_rounds, total_time_seconds=duration)
+        duration = time.perf_counter() - start_time
+        return ActResult(rounds=num_rounds, total_time_seconds=duration)
 
     @sdk_public_api()
     def apply_prompt_template(
