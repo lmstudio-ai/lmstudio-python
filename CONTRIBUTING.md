@@ -4,10 +4,10 @@ First off, thank you for considering contributing to our open source projects! ð
 
 `lmstudio-python` is the Python SDK for LM Studio. It is an open-source project under the MIT license. We welcome community contributions. 
 
-There are many ways to help, from writing tutorials or blog posts, submitting bug reports and feature requests or contributing code which can be incorporated into the SDK itself.
+There are many ways to help, from writing tutorials or blog posts, improving the documentation, submitting bug reports and feature requests or contributing code which can be incorporated into the SDK itself.
 
-Note: the SDK documentation is currently maintained in combination with the [`lmstudio-js`](https://github.com/lmstudio-ai/lmstudio-js) documentation in a private repository.
-
+Note: the SDK documentation is maintained in combination with [`lmstudio-js`](https://github.com/lmstudio-ai/lmstudio-js)
+in a dedicated [documentation repo](https://github.com/lmstudio-ai/docs).
 
 ## Communication
 
