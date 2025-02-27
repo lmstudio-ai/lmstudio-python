@@ -123,6 +123,7 @@ from ._logging import get_logger, LogEventContext, StructuredLogger
 # explicitly via `lmstudio.json_api`, it isn't exported
 # implicitly as part of the top-level `lmstudio` API.
 __all__ = [
+    "ActResult",
     "AnyModelSpecifier",
     "EmbeddingModelInfo",
     "EmbeddingModelInstanceInfo",
@@ -151,7 +152,6 @@ __all__ = [
     "ModelSpecifierDict",
     "ModelQuery",
     "ModelQueryDict",
-    "ActionResult",
     "PredictionResult",
     "PredictionRoundResult",
     "SerializedLMSExtendedError",
@@ -471,7 +471,7 @@ class PredictionRoundResult(PredictionResult[str]):
 
 
 @dataclass(kw_only=True, frozen=True, slots=True)
-class ActionResult:
+class ActResult:
     """Summary of a completed multi-round tool using action."""
 
     # Detailed action results are reported via callbacks (for now)

@@ -162,7 +162,7 @@ def test_duplicate_tool_names_rejected() -> None:
 
 
 @pytest.mark.lmstudio
-def test_tool_action(caplog: LogCap) -> None:
+def test_tool_using_agent(caplog: LogCap) -> None:
     # This is currently a sync-only API (it will be refactored after 1.0.0)
 
     caplog.set_level(logging.DEBUG)
@@ -177,9 +177,9 @@ def test_tool_action(caplog: LogCap) -> None:
         # Ensure ignoring the round index passes static type checks
         predictions: list[PredictionResult[str]] = []
 
-        action_result = llm.act(chat, tools, on_prediction_completed=predictions.append)
+        act_result = llm.act(chat, tools, on_prediction_completed=predictions.append)
         assert len(predictions) > 1
-        assert action_result.rounds == len(predictions)
+        assert act_result.rounds == len(predictions)
         assert "220" in predictions[-1].content
 
     for _logger_name, log_level, message in caplog.record_tuples:
@@ -194,7 +194,7 @@ def test_tool_action(caplog: LogCap) -> None:
 
 
 @pytest.mark.lmstudio
-def test_tool_action_callbacks(caplog: LogCap) -> None:
+def test_tool_using_agent_callbacks(caplog: LogCap) -> None:
     # This is currently a sync-only API (it will be refactored after 1.0.0)
 
     caplog.set_level(logging.DEBUG)
@@ -222,7 +222,7 @@ def test_tool_action_callbacks(caplog: LogCap) -> None:
 
         # TODO: Also check on_prompt_processing_progress and handling invalid messages
         # (although it isn't clear how to provoke calls to the latter without mocking)
-        action_result = llm.act(
+        act_result = llm.act(
             chat,
             tools,
             on_first_token=first_tokens.append,
@@ -232,7 +232,7 @@ def test_tool_action_callbacks(caplog: LogCap) -> None:
             on_round_end=round_ends.append,
             on_prediction_completed=predictions.append,
         )
-        num_rounds = action_result.rounds
+        num_rounds = act_result.rounds
         sequential_round_indices = list(range(num_rounds))
         assert num_rounds > 1
         assert [p.round_index for p in predictions] == sequential_round_indices
