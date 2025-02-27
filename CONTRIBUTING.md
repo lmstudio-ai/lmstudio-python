@@ -6,7 +6,7 @@ First off, thank you for considering contributing to our open source projects! ð
 
 There are many ways to help, from writing tutorials or blog posts, improving the documentation, submitting bug reports and feature requests or contributing code which can be incorporated into the SDK itself.
 
-Note: the SDK documentation is maintained in combination with the [`lmstudio.js`](https://github.com/lmstudio-ai/lmstudio.js)
+Note: the SDK documentation is maintained in combination with [`lmstudio-js`](https://github.com/lmstudio-ai/lmstudio-js)
 in a dedicated [documentation repo](https://github.com/lmstudio-ai/docs).
 
 ## Communication
@@ -75,11 +75,11 @@ on working with the `lmstudio-python` code and test suite.
 
   `lmstudio-python` communicates with LM Studio through its native dedicated websocket API, rather than via its Open AI compatibility layer.
 
-- **How does `lmstudio-python` relate to `lmstudio.js`?**
+- **How does `lmstudio-python` relate to `lmstudio-js`?**
 
-  `lmstudio-python` communicates with LM Studio based on JSON interface types defined in `lmstudio.js`.
-  The `lmstudio-python` repository includes `lmstudio.js` as a submodule in order to support generating
-  the Python API interface classes from the JSON schema definitions exported by `lmstudio.js`.
+  `lmstudio-python` communicates with LM Studio based on JSON interface types defined in `lmstudio-js`.
+  The `lmstudio-python` repository includes `lmstudio-js` as a submodule in order to support generating
+  the Python API interface classes from the JSON schema definitions exported by `lmstudio-js`.
 
 ## Questions
 

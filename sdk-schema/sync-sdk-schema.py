@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Generate Python data model classes from lmstudio.js zod schema.
+"""Generate Python data model classes from lmstudio-js zod schema.
 
 Recreates the Python data model classes from the exported JSON schema
 (generating the JSON schema only if necessary).
@@ -13,9 +13,9 @@ Pass `--regen-schema` to request a full export from Typescript.
 
 
 # * invokes `npm run build` and `npm run make-schemas` in the
-#   `lmstudio.js` submodule's `packages/lms-json-schema` project
+#   `lmstudio-js` submodule's `packages/lms-json-schema` project
 #   to create JSON schema files in
-#   `./lmstudio.js/packages/lms-json-schema/schemas/lms.json`
+#   `./lmstudio-js/packages/lms-json-schema/schemas/lms.json`
 # * uses `datamodel-code-generator` to produce Python data model
 #   classes from the exported JSON schema files
 
@@ -41,7 +41,7 @@ from datamodel_code_generator import (
 )
 
 _THIS_DIR = Path(__file__).parent
-_LMSJS_DIR = _THIS_DIR / "lmstudio.js"
+_LMSJS_DIR = _THIS_DIR / "lmstudio-js"
 _EXPORTER_DIR = _LMSJS_DIR / "packages/lms-json-schema"
 _SCHEMA_DIR = _EXPORTER_DIR / "schemas"
 _SCHEMA_PATH = _SCHEMA_DIR / "lms.json"
@@ -64,15 +64,15 @@ _EXCLUDE_EXPORTED_SCHEMAS = (
 
 # TODO:
 # * Figure out a way to avoid the full clean-and-build
-#   cycle when regenerating the lmstudio.js JSON schemas
+#   cycle when regenerating the lmstudio-js JSON schemas
 #
 # * Potentially include models for the websocket channel,
 #   rpc, and signal message formats:
-#   https://github.com/lmstudio-ai/lmstudio.js/blob/main/packages/lms-communication/src/Transport.ts
+#   https://github.com/lmstudio-ai/lmstudio-js/blob/main/packages/lms-communication/src/Transport.ts
 
 
 def _export_zod_schemas_to_json_schema() -> None:
-    """Run the lmstudio.js JSON schema export in the submodule."""
+    """Run the lmstudio-js JSON schema export in the submodule."""
     _SCHEMA_PATH.unlink(missing_ok=True)
     _CACHED_SCHEMA_PATH.unlink(missing_ok=True)
     with chdir(_LMSJS_DIR):
@@ -123,7 +123,7 @@ def _check_discriminator(tag_field: str, union_array: _SchemaList) -> bool:
             # Can only be a discriminated union on this tag if all variants have it
             return False
         if field_def["type"] != "string":
-            # Only string based unions are defined in lmstudio.js
+            # Only string based unions are defined in lmstudio-js
             return False
         tag_value = field_def.get("const", None)
         if tag_value is None:
@@ -251,7 +251,7 @@ class _SchemaProcessor:
     def _is_void_union(union_members: _SchemaList) -> _SchemaObject | None:
         if len(union_members) != 2:
             return None
-        # Note: the "void spec" definition is actually an error in the lmstudio.js
+        # Note: the "void spec" definition is actually an error in the lmstudio-js
         #       schema exporter, since it is defined as meaning "may be anything" in JSON
         #       schema, but the exporter is wanting to specify "may be omitted entirely".
         #       That "may be omitted" aspect would be specified by declaring the "result"
