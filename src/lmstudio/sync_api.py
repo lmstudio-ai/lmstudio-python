@@ -137,6 +137,7 @@ __all__ = [
     "LLM",
     "SyncModelHandle",
     "PredictionStream",
+    "get_default_client",
     "embedding_model",
     "list_downloaded_models",
     "list_loaded_models",
