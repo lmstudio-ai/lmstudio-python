@@ -3,10 +3,10 @@
 
 import readline # Enables input line editing
 
-import lmstudio as lm
+import lmstudio as lms
 
-model = lm.llm()
-chat = lm.Chat("You are a task focused AI assistant")
+model = lms.llm()
+chat = lms.Chat("You are a task focused AI assistant")
 
 while True:
     try:

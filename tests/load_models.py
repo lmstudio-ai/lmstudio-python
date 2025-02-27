@@ -4,7 +4,7 @@ import asyncio
 from contextlib import contextmanager
 from typing import Generator
 
-import lmstudio as lm
+import lmstudio as lms
 
 from .support import (
     EXPECTED_EMBEDDING_ID,
@@ -23,27 +23,27 @@ from .unload_models import unload_models
 def print_load_result(model_identifier: str) -> Generator[None, None, None]:
     try:
         yield
-    except lm.LMStudioModelNotFoundError:
+    except lms.LMStudioModelNotFoundError:
         print(f"Load error: {model_identifier!r} is not yet downloaded")
     else:
         print(f"Loaded: {model_identifier!r}")
 
 
-async def _load_llm(client: lm.AsyncClient, model_identifier: str) -> None:
+async def _load_llm(client: lms.AsyncClient, model_identifier: str) -> None:
     with print_load_result(model_identifier):
         await client.llm.load_new_instance(
             model_identifier, config=LLM_LOAD_CONFIG, ttl=None
         )
 
 
-async def _load_embedding_model(client: lm.AsyncClient, model_identifier: str) -> None:
+async def _load_embedding_model(client: lms.AsyncClient, model_identifier: str) -> None:
     with print_load_result(model_identifier):
         await client.embedding.load_new_instance(model_identifier, ttl=None)
 
 
 async def reload_models() -> None:
     await unload_models()
-    async with lm.AsyncClient() as client:
+    async with lms.AsyncClient() as client:
         await asyncio.gather(
             _load_llm(client, EXPECTED_LLM_ID),
             _load_llm(client, EXPECTED_VLM_ID),
