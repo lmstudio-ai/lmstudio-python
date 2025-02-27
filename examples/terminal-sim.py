@@ -3,9 +3,9 @@
 
 import readline # Enables input line editing
 
-import lmstudio as lm
+import lmstudio as lms
 
-model = lm.llm()
+model = lms.llm()
 console_history = []
 
 while True:

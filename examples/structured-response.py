@@ -3,15 +3,15 @@
 
 import json
 
-import lmstudio as lm
+import lmstudio as lms
 
-class BookSchema(lm.BaseModel):
+class BookSchema(lms.BaseModel):
     """Structured information about a published book."""
     title: str
     author: str
     year: int
 
-model = lm.llm()
+model = lms.llm()
 
 result = model.respond("Tell me about The Hobbit", response_format=BookSchema)
 book = result.parsed
