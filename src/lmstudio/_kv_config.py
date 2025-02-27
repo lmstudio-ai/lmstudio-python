@@ -1,7 +1,7 @@
 """Conversion between dicts/public config structs and server KVConfig(Stack)s."""
 
 # Known KV config settings are defined in
-# https://github.com/lmstudio-ai/lmstudio.js/blob/main/packages/lms-kv-config/src/schema.ts
+# https://github.com/lmstudio-ai/lmstudio-js/blob/main/packages/lms-kv-config/src/schema.ts
 from typing import Any, Sequence, Type, TypeVar
 
 from .sdk_api import LMStudioValueError
@@ -19,7 +19,7 @@ from ._sdk_models import (
     LlmPredictionConfigDict,
 )
 
-# TODO we can reasonably add unit tests for this module: compare against lmstudio.js?
+# TODO we can reasonably add unit tests for this module: compare against lmstudio-js?
 
 
 TLoadConfig = TypeVar("TLoadConfig", LlmLoadModelConfig, EmbeddingLoadModelConfig)
@@ -113,7 +113,7 @@ def _to_kv_config_stack_base(
     fields: list[KvConfigFieldDict] = []
     # TODO: Define a JSON or TOML data file for mapping prediction config
     #       fields to config stack entries (preferably JSON exported by
-    #       lmstudio.js rather than something maintained in the Python SDK)
+    #       lmstudio-js rather than something maintained in the Python SDK)
 
     for client_key in checkbox_keys:
         if client_key in config:
