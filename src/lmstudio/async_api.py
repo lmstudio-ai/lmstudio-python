@@ -32,7 +32,6 @@ from httpx_ws import aconnect_ws, AsyncWebSocketSession, HTTPXWSException
 from .sdk_api import LMStudioRuntimeError, sdk_public_api, sdk_public_api_async
 from .schemas import AnyLMStudioStruct, DictObject, DictSchema, ModelSchema
 from .history import (
-    AssistantResponse,
     Chat,
     ChatHistoryDataDict,
     _FileHandle,
@@ -50,6 +49,8 @@ from .json_api import (
     CompletionEndpoint,
     DEFAULT_TTL,
     DownloadedModelBase,
+    DownloadFinalizedCallback,
+    DownloadProgressCallback,
     EmbeddingLoadModelConfig,
     EmbeddingLoadModelConfigDict,
     EmbeddingModelInfo,
@@ -65,16 +66,21 @@ from .json_api import (
     LMStudioWebsocket,
     LMStudioWebsocketError,
     LoadModelEndpoint,
-    ModelInstanceInfo,
     ModelDownloadOptionBase,
     ModelHandleBase,
+    ModelInstanceInfo,
+    ModelLoadingCallback,
     ModelSessionTypes,
     ModelTypesEmbedding,
     ModelTypesLlm,
     PredictionStreamBase,
     PredictionEndpoint,
+    PredictionFirstTokenCallback,
+    PredictionFragmentCallback,
     PredictionFragmentEvent,
+    PredictionMessageCallback,
     PredictionResult,
+    PromptProcessingCallback,
     RemoteCallHandler,
     TModelInfo,
     TPrediction,
@@ -84,7 +90,6 @@ from .json_api import (
 )
 from ._kv_config import TLoadConfig, TLoadConfigDict, dict_from_fields_key
 from ._sdk_models import (
-    DownloadProgressUpdate,
     EmbeddingRpcEmbedStringParameter,
     EmbeddingRpcTokenizeParameter,
     LlmApplyPromptTemplateOpts,
@@ -481,7 +486,7 @@ class AsyncDownloadedModel(
         ttl: int | None = DEFAULT_TTL,
         instance_identifier: str | None = None,
         config: TLoadConfig | TLoadConfigDict | None = None,
-        on_load_progress: Callable[[float], None] | None = None,
+        on_load_progress: ModelLoadingCallback | None = None,
     ) -> TAsyncModelHandle:
         """Load this model with the given identifier and configuration."""
         handle: TAsyncModelHandle = await self._session._load_new_instance(
@@ -495,7 +500,7 @@ class AsyncDownloadedModel(
         *,
         ttl: int | None = DEFAULT_TTL,
         config: TLoadConfig | TLoadConfigDict | None = None,
-        on_load_progress: Callable[[float], None] | None = None,
+        on_load_progress: ModelLoadingCallback | None = None,
     ) -> TAsyncModelHandle:
         # Call _get_or_load directly, since we have a model identifier
         handle: TAsyncModelHandle = await self._session._get_or_load(
@@ -597,14 +602,11 @@ class _AsyncSessionFiles(AsyncSession):
 class AsyncModelDownloadOption(ModelDownloadOptionBase[AsyncSession]):
     """A single download option for a model search result."""
 
-    # We prefer using DownloadProgressUpdate as a parameter type because then
-    # if we update the schema down the line, no need to rewrite callback signatures.
-    # Plus, Callable[[int, int, float], None] is not very descriptive.
     @sdk_public_api_async()
     async def download(
         self,
-        on_progress: Callable[[DownloadProgressUpdate], None] | None = None,
-        on_finalize: Callable[[], None] | None = None,
+        on_progress: DownloadProgressCallback | None = None,
+        on_finalize: DownloadFinalizedCallback | None = None,
     ) -> str:
         """Download a model and get its path for loading."""
         endpoint = self._get_download_endpoint(on_progress, on_finalize)
@@ -747,7 +749,7 @@ class AsyncSessionModel(
         *,
         ttl: int | None = DEFAULT_TTL,
         config: TLoadConfig | TLoadConfigDict | None = None,
-        on_load_progress: Callable[[float], None] | None = None,
+        on_load_progress: ModelLoadingCallback | None = None,
     ) -> TAsyncModelHandle:
         """Get a handle to the specified model (loading it if necessary)."""
         if model_key is None:
@@ -777,7 +779,7 @@ class AsyncSessionModel(
         *,
         ttl: int | None = DEFAULT_TTL,
         config: TLoadConfig | TLoadConfigDict | None = None,
-        on_load_progress: Callable[[float], None] | None = None,
+        on_load_progress: ModelLoadingCallback | None = None,
     ) -> TAsyncModelHandle:
         """Load the specified model with the given identifier and configuration."""
         return await self._load_new_instance(
@@ -790,7 +792,7 @@ class AsyncSessionModel(
         instance_identifier: str | None,
         ttl: int | None,
         config: TLoadConfig | TLoadConfigDict | None,
-        on_load_progress: Callable[[float], None] | None,
+        on_load_progress: ModelLoadingCallback | None,
     ) -> TAsyncModelHandle:
         channel_type = self._API_TYPES.REQUEST_NEW_INSTANCE
         config_type = self._API_TYPES.MODEL_LOAD_CONFIG
@@ -812,7 +814,7 @@ class AsyncSessionModel(
         model_key: str,
         ttl: int | None,
         config: TLoadConfig | TLoadConfigDict | None,
-        on_load_progress: Callable[[float], None] | None,
+        on_load_progress: ModelLoadingCallback | None,
     ) -> TAsyncModelHandle:
         """Load the specified model with the given identifier and configuration."""
         channel_type = self._API_TYPES.REQUEST_GET_OR_LOAD
@@ -966,10 +968,10 @@ class AsyncSessionLlm(
         *,
         response_format: Literal[None] = ...,
         config: LlmPredictionConfig | LlmPredictionConfigDict | None = ...,
-        on_message: Callable[[AssistantResponse], None] | None = ...,
-        on_first_token: Callable[[], None] | None = ...,
-        on_prediction_fragment: Callable[[LlmPredictionFragment], None] | None = ...,
-        on_prompt_processing_progress: Callable[[float], None] | None = ...,
+        on_message: PredictionMessageCallback | None = ...,
+        on_first_token: PredictionFirstTokenCallback | None = ...,
+        on_prediction_fragment: PredictionFragmentCallback | None = ...,
+        on_prompt_processing_progress: PromptProcessingCallback | None = ...,
     ) -> AsyncPredictionStream[str]: ...
     @overload
     async def _complete_stream(
@@ -979,10 +981,10 @@ class AsyncSessionLlm(
         *,
         response_format: Type[ModelSchema] | DictSchema = ...,
         config: LlmPredictionConfig | LlmPredictionConfigDict | None = ...,
-        on_message: Callable[[AssistantResponse], None] | None = ...,
-        on_first_token: Callable[[], None] | None = ...,
-        on_prediction_fragment: Callable[[LlmPredictionFragment], None] | None = ...,
-        on_prompt_processing_progress: Callable[[float], None] | None = ...,
+        on_message: PredictionMessageCallback | None = ...,
+        on_first_token: PredictionFirstTokenCallback | None = ...,
+        on_prediction_fragment: PredictionFragmentCallback | None = ...,
+        on_prompt_processing_progress: PromptProcessingCallback | None = ...,
     ) -> AsyncPredictionStream[DictObject]: ...
     async def _complete_stream(
         self,
@@ -991,10 +993,10 @@ class AsyncSessionLlm(
         *,
         response_format: Type[ModelSchema] | DictSchema | None = None,
         config: LlmPredictionConfig | LlmPredictionConfigDict | None = None,
-        on_message: Callable[[AssistantResponse], None] | None = None,
-        on_first_token: Callable[[], None] | None = None,
-        on_prediction_fragment: Callable[[LlmPredictionFragment], None] | None = None,
-        on_prompt_processing_progress: Callable[[float], None] | None = None,
+        on_message: PredictionMessageCallback | None = None,
+        on_first_token: PredictionFirstTokenCallback | None = None,
+        on_prediction_fragment: PredictionFragmentCallback | None = None,
+        on_prompt_processing_progress: PromptProcessingCallback | None = None,
     ) -> AsyncPredictionStream[str] | AsyncPredictionStream[DictObject]:
         """Request a one-off prediction without any context and stream the generated tokens."""
         endpoint = CompletionEndpoint(
@@ -1019,10 +1021,10 @@ class AsyncSessionLlm(
         *,
         response_format: Literal[None] = ...,
         config: LlmPredictionConfig | LlmPredictionConfigDict | None = ...,
-        on_message: Callable[[AssistantResponse], None] | None = ...,
-        on_first_token: Callable[[], None] | None = ...,
-        on_prediction_fragment: Callable[[LlmPredictionFragment], None] | None = ...,
-        on_prompt_processing_progress: Callable[[float], None] | None = ...,
+        on_message: PredictionMessageCallback | None = ...,
+        on_first_token: PredictionFirstTokenCallback | None = ...,
+        on_prediction_fragment: PredictionFragmentCallback | None = ...,
+        on_prompt_processing_progress: PromptProcessingCallback | None = ...,
     ) -> AsyncPredictionStream[str]: ...
     @overload
     async def _respond_stream(
@@ -1032,10 +1034,10 @@ class AsyncSessionLlm(
         *,
         response_format: Type[ModelSchema] | DictSchema = ...,
         config: LlmPredictionConfig | LlmPredictionConfigDict | None = ...,
-        on_message: Callable[[AssistantResponse], None] | None = ...,
-        on_first_token: Callable[[], None] | None = ...,
-        on_prediction_fragment: Callable[[LlmPredictionFragment], None] | None = ...,
-        on_prompt_processing_progress: Callable[[float], None] | None = ...,
+        on_message: PredictionMessageCallback | None = ...,
+        on_first_token: PredictionFirstTokenCallback | None = ...,
+        on_prediction_fragment: PredictionFragmentCallback | None = ...,
+        on_prompt_processing_progress: PromptProcessingCallback | None = ...,
     ) -> AsyncPredictionStream[DictObject]: ...
     async def _respond_stream(
         self,
@@ -1043,11 +1045,11 @@ class AsyncSessionLlm(
         history: Chat | ChatHistoryDataDict | str,
         *,
         response_format: Type[ModelSchema] | DictSchema | None = None,
-        on_message: Callable[[AssistantResponse], None] | None = None,
+        on_message: PredictionMessageCallback | None = None,
         config: LlmPredictionConfig | LlmPredictionConfigDict | None = None,
-        on_first_token: Callable[[], None] | None = None,
-        on_prediction_fragment: Callable[[LlmPredictionFragment], None] | None = None,
-        on_prompt_processing_progress: Callable[[float], None] | None = None,
+        on_first_token: PredictionFirstTokenCallback | None = None,
+        on_prediction_fragment: PredictionFragmentCallback | None = None,
+        on_prompt_processing_progress: PromptProcessingCallback | None = None,
     ) -> AsyncPredictionStream[str] | AsyncPredictionStream[DictObject]:
         """Request a response in an ongoing assistant chat session and stream the generated tokens."""
         if not isinstance(history, Chat):
@@ -1186,10 +1188,10 @@ class AsyncLLM(AsyncModelHandle[AsyncSessionLlm]):
         *,
         response_format: Literal[None] = ...,
         config: LlmPredictionConfig | LlmPredictionConfigDict | None = ...,
-        on_message: Callable[[AssistantResponse], None] | None = ...,
-        on_first_token: Callable[[], None] | None = ...,
-        on_prediction_fragment: Callable[[LlmPredictionFragment], None] | None = ...,
-        on_prompt_processing_progress: Callable[[float], None] | None = ...,
+        on_message: PredictionMessageCallback | None = ...,
+        on_first_token: PredictionFirstTokenCallback | None = ...,
+        on_prediction_fragment: PredictionFragmentCallback | None = ...,
+        on_prompt_processing_progress: PromptProcessingCallback | None = ...,
     ) -> AsyncPredictionStream[str]: ...
     @overload
     async def complete_stream(
@@ -1198,10 +1200,10 @@ class AsyncLLM(AsyncModelHandle[AsyncSessionLlm]):
         *,
         response_format: Type[ModelSchema] | DictSchema = ...,
         config: LlmPredictionConfig | LlmPredictionConfigDict | None = ...,
-        on_message: Callable[[AssistantResponse], None] | None = ...,
-        on_first_token: Callable[[], None] | None = ...,
-        on_prediction_fragment: Callable[[LlmPredictionFragment], None] | None = ...,
-        on_prompt_processing_progress: Callable[[float], None] | None = ...,
+        on_message: PredictionMessageCallback | None = ...,
+        on_first_token: PredictionFirstTokenCallback | None = ...,
+        on_prediction_fragment: PredictionFragmentCallback | None = ...,
+        on_prompt_processing_progress: PromptProcessingCallback | None = ...,
     ) -> AsyncPredictionStream[DictObject]: ...
     @sdk_public_api_async()
     async def complete_stream(
@@ -1210,10 +1212,10 @@ class AsyncLLM(AsyncModelHandle[AsyncSessionLlm]):
         *,
         response_format: Type[ModelSchema] | DictSchema | None = None,
         config: LlmPredictionConfig | LlmPredictionConfigDict | None = None,
-        on_message: Callable[[AssistantResponse], None] | None = None,
-        on_first_token: Callable[[], None] | None = None,
-        on_prediction_fragment: Callable[[LlmPredictionFragment], None] | None = None,
-        on_prompt_processing_progress: Callable[[float], None] | None = None,
+        on_message: PredictionMessageCallback | None = None,
+        on_first_token: PredictionFirstTokenCallback | None = None,
+        on_prediction_fragment: PredictionFragmentCallback | None = None,
+        on_prompt_processing_progress: PromptProcessingCallback | None = None,
     ) -> AsyncPredictionStream[str] | AsyncPredictionStream[DictObject]:
         """Request a one-off prediction without any context and stream the generated tokens."""
         return await self._session._complete_stream(
@@ -1234,10 +1236,10 @@ class AsyncLLM(AsyncModelHandle[AsyncSessionLlm]):
         *,
         response_format: Literal[None] = ...,
         config: LlmPredictionConfig | LlmPredictionConfigDict | None = ...,
-        on_message: Callable[[AssistantResponse], None] | None = ...,
-        on_first_token: Callable[[], None] | None = ...,
-        on_prediction_fragment: Callable[[LlmPredictionFragment], None] | None = ...,
-        on_prompt_processing_progress: Callable[[float], None] | None = ...,
+        on_message: PredictionMessageCallback | None = ...,
+        on_first_token: PredictionFirstTokenCallback | None = ...,
+        on_prediction_fragment: PredictionFragmentCallback | None = ...,
+        on_prompt_processing_progress: PromptProcessingCallback | None = ...,
     ) -> PredictionResult[str]: ...
     @overload
     async def complete(
@@ -1246,10 +1248,10 @@ class AsyncLLM(AsyncModelHandle[AsyncSessionLlm]):
         *,
         response_format: Type[ModelSchema] | DictSchema = ...,
         config: LlmPredictionConfig | LlmPredictionConfigDict | None = ...,
-        on_message: Callable[[AssistantResponse], None] | None = ...,
-        on_first_token: Callable[[], None] | None = ...,
-        on_prediction_fragment: Callable[[LlmPredictionFragment], None] | None = ...,
-        on_prompt_processing_progress: Callable[[float], None] | None = ...,
+        on_message: PredictionMessageCallback | None = ...,
+        on_first_token: PredictionFirstTokenCallback | None = ...,
+        on_prediction_fragment: PredictionFragmentCallback | None = ...,
+        on_prompt_processing_progress: PromptProcessingCallback | None = ...,
     ) -> PredictionResult[DictObject]: ...
     @sdk_public_api_async()
     async def complete(
@@ -1258,10 +1260,10 @@ class AsyncLLM(AsyncModelHandle[AsyncSessionLlm]):
         *,
         response_format: Type[ModelSchema] | DictSchema | None = None,
         config: LlmPredictionConfig | LlmPredictionConfigDict | None = None,
-        on_message: Callable[[AssistantResponse], None] | None = None,
-        on_first_token: Callable[[], None] | None = None,
-        on_prediction_fragment: Callable[[LlmPredictionFragment], None] | None = None,
-        on_prompt_processing_progress: Callable[[float], None] | None = None,
+        on_message: PredictionMessageCallback | None = None,
+        on_first_token: PredictionFirstTokenCallback | None = None,
+        on_prediction_fragment: PredictionFragmentCallback | None = None,
+        on_prompt_processing_progress: PromptProcessingCallback | None = None,
     ) -> PredictionResult[str] | PredictionResult[DictObject]:
         """Request a one-off prediction without any context."""
         prediction_stream = await self._session._complete_stream(
@@ -1287,10 +1289,10 @@ class AsyncLLM(AsyncModelHandle[AsyncSessionLlm]):
         *,
         response_format: Literal[None] = ...,
         config: LlmPredictionConfig | LlmPredictionConfigDict | None = ...,
-        on_message: Callable[[AssistantResponse], None] | None = ...,
-        on_first_token: Callable[[], None] | None = ...,
-        on_prediction_fragment: Callable[[LlmPredictionFragment], None] | None = ...,
-        on_prompt_processing_progress: Callable[[float], None] | None = ...,
+        on_message: PredictionMessageCallback | None = ...,
+        on_first_token: PredictionFirstTokenCallback | None = ...,
+        on_prediction_fragment: PredictionFragmentCallback | None = ...,
+        on_prompt_processing_progress: PromptProcessingCallback | None = ...,
     ) -> AsyncPredictionStream[str]: ...
     @overload
     async def respond_stream(
@@ -1299,10 +1301,10 @@ class AsyncLLM(AsyncModelHandle[AsyncSessionLlm]):
         *,
         response_format: Type[ModelSchema] | DictSchema = ...,
         config: LlmPredictionConfig | LlmPredictionConfigDict | None = ...,
-        on_message: Callable[[AssistantResponse], None] | None = ...,
-        on_first_token: Callable[[], None] | None = ...,
-        on_prediction_fragment: Callable[[LlmPredictionFragment], None] | None = ...,
-        on_prompt_processing_progress: Callable[[float], None] | None = ...,
+        on_message: PredictionMessageCallback | None = ...,
+        on_first_token: PredictionFirstTokenCallback | None = ...,
+        on_prediction_fragment: PredictionFragmentCallback | None = ...,
+        on_prompt_processing_progress: PromptProcessingCallback | None = ...,
     ) -> AsyncPredictionStream[DictObject]: ...
     @sdk_public_api_async()
     async def respond_stream(
@@ -1311,10 +1313,10 @@ class AsyncLLM(AsyncModelHandle[AsyncSessionLlm]):
         *,
         response_format: Type[ModelSchema] | DictSchema | None = None,
         config: LlmPredictionConfig | LlmPredictionConfigDict | None = None,
-        on_message: Callable[[AssistantResponse], None] | None = None,
-        on_first_token: Callable[[], None] | None = None,
-        on_prediction_fragment: Callable[[LlmPredictionFragment], None] | None = None,
-        on_prompt_processing_progress: Callable[[float], None] | None = None,
+        on_message: PredictionMessageCallback | None = None,
+        on_first_token: PredictionFirstTokenCallback | None = None,
+        on_prediction_fragment: PredictionFragmentCallback | None = None,
+        on_prompt_processing_progress: PromptProcessingCallback | None = None,
     ) -> AsyncPredictionStream[str] | AsyncPredictionStream[DictObject]:
         """Request a response in an ongoing assistant chat session and stream the generated tokens."""
         return await self._session._respond_stream(
@@ -1335,10 +1337,10 @@ class AsyncLLM(AsyncModelHandle[AsyncSessionLlm]):
         *,
         response_format: Literal[None] = ...,
         config: LlmPredictionConfig | LlmPredictionConfigDict | None = ...,
-        on_message: Callable[[AssistantResponse], None] | None = ...,
-        on_first_token: Callable[[], None] | None = ...,
-        on_prediction_fragment: Callable[[LlmPredictionFragment], None] | None = ...,
-        on_prompt_processing_progress: Callable[[float], None] | None = ...,
+        on_message: PredictionMessageCallback | None = ...,
+        on_first_token: PredictionFirstTokenCallback | None = ...,
+        on_prediction_fragment: PredictionFragmentCallback | None = ...,
+        on_prompt_processing_progress: PromptProcessingCallback | None = ...,
     ) -> PredictionResult[str]: ...
     @overload
     async def respond(
@@ -1347,10 +1349,10 @@ class AsyncLLM(AsyncModelHandle[AsyncSessionLlm]):
         *,
         response_format: Type[ModelSchema] | DictSchema = ...,
         config: LlmPredictionConfig | LlmPredictionConfigDict | None = ...,
-        on_message: Callable[[AssistantResponse], None] | None = ...,
-        on_first_token: Callable[[], None] | None = ...,
-        on_prediction_fragment: Callable[[LlmPredictionFragment], None] | None = ...,
-        on_prompt_processing_progress: Callable[[float], None] | None = ...,
+        on_message: PredictionMessageCallback | None = ...,
+        on_first_token: PredictionFirstTokenCallback | None = ...,
+        on_prediction_fragment: PredictionFragmentCallback | None = ...,
+        on_prompt_processing_progress: PromptProcessingCallback | None = ...,
     ) -> PredictionResult[DictObject]: ...
     @sdk_public_api_async()
     async def respond(
@@ -1359,10 +1361,10 @@ class AsyncLLM(AsyncModelHandle[AsyncSessionLlm]):
         *,
         response_format: Type[ModelSchema] | DictSchema | None = None,
         config: LlmPredictionConfig | LlmPredictionConfigDict | None = None,
-        on_message: Callable[[AssistantResponse], None] | None = None,
-        on_first_token: Callable[[], None] | None = None,
-        on_prediction_fragment: Callable[[LlmPredictionFragment], None] | None = None,
-        on_prompt_processing_progress: Callable[[float], None] | None = None,
+        on_message: PredictionMessageCallback | None = None,
+        on_first_token: PredictionFirstTokenCallback | None = None,
+        on_prediction_fragment: PredictionFragmentCallback | None = None,
+        on_prompt_processing_progress: PromptProcessingCallback | None = None,
     ) -> PredictionResult[str] | PredictionResult[DictObject]:
         """Request a response in an ongoing assistant chat session."""
         prediction_stream = await self._session._respond_stream(

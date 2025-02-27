@@ -125,6 +125,9 @@ from ._logging import get_logger, LogEventContext, StructuredLogger
 __all__ = [
     "ActResult",
     "AnyModelSpecifier",
+    "DownloadFinalizedCallback",
+    "DownloadProgressCallback",
+    "DownloadProgressUpdate",
     "EmbeddingModelInfo",
     "EmbeddingModelInstanceInfo",
     "EmbeddingLoadModelConfig",
@@ -152,8 +155,12 @@ __all__ = [
     "ModelSpecifierDict",
     "ModelQuery",
     "ModelQueryDict",
+    "PredictionFirstTokenCallback",
+    "PredictionFragmentCallback",
+    "PredictionMessageCallback",
     "PredictionResult",
     "PredictionRoundResult",
+    "PromptProcessingCallback",
     "SerializedLMSExtendedError",
     "ToolFunctionDef",
     "ToolFunctionDefDict",
@@ -712,6 +719,9 @@ ModelDownloadRxEvent: TypeAlias = (
     ModelDownloadProgressEvent | ModelDownloadFinalizeEvent | ChannelCommonRxEvent
 )
 
+DownloadProgressCallback: TypeAlias = Callable[[DownloadProgressUpdate], Any]
+DownloadFinalizedCallback: TypeAlias = Callable[[], Any]
+
 
 class ModelDownloadEndpoint(
     ChannelEndpoint[str, ModelDownloadRxEvent, DownloadModelChannelRequestDict]
@@ -724,8 +734,8 @@ class ModelDownloadEndpoint(
     def __init__(
         self,
         download_identifier: str,
-        on_progress: Callable[[DownloadProgressUpdate], None] | None = None,
-        on_finalize: Callable[[], None] | None = None,
+        on_progress: DownloadProgressCallback | None = None,
+        on_finalize: DownloadFinalizedCallback | None = None,
     ) -> None:
         params = DownloadModelChannelRequest._from_api_dict(
             {"downloadIdentifier": download_identifier}
@@ -803,6 +813,8 @@ class ModelLoadingProgressEvent(ChannelRxEvent[float]):
 
 ModelLoadingRxEvent: TypeAlias = ModelLoadingProgressEvent | ChannelCommonRxEvent
 
+ModelLoadingCallback: TypeAlias = Callable[[float], Any]
+
 
 class _ModelLoadingEndpoint(
     ChannelEndpoint[ModelLoadResult, ModelLoadingRxEvent, TWireFormat]
@@ -811,7 +823,7 @@ class _ModelLoadingEndpoint(
         self,
         model_key: str,
         creation_params: LMStudioStruct[TWireFormat] | DictObject,
-        on_load_progress: Callable[[float], None] | None = None,
+        on_load_progress: ModelLoadingCallback | None = None,
     ) -> None:
         super().__init__(creation_params)
         self._logger.update_context(model_key=model_key)
@@ -902,7 +914,7 @@ class LoadModelEndpoint(
         creation_param_type: Type[LoadModelChannelRequest],
         config_type: Type[TLoadConfig],
         config: TLoadConfig | TLoadConfigDict | None,
-        on_load_progress: Callable[[float], None] | None,
+        on_load_progress: ModelLoadingCallback | None,
     ) -> None:
         """Load the specified model with the given identifier and configuration."""
         kv_config = load_config_to_kv_config_stack(config, config_type)
@@ -934,7 +946,7 @@ class GetOrLoadEndpoint(
         creation_param_type: Type[GetOrLoadChannelRequest],
         config_type: Type[TLoadConfig],
         config: TLoadConfig | TLoadConfigDict | None = None,
-        on_load_progress: Callable[[float], None] | None = None,
+        on_load_progress: ModelLoadingCallback | None = None,
     ) -> None:
         """Get the specified model, loading with given configuration if necessary."""
         kv_config = load_config_to_kv_config_stack(config, config_type)
@@ -1052,6 +1064,11 @@ PredictionRxEvent: TypeAlias = (
 ClientToolSpec: TypeAlias = tuple[type[Struct], Callable[..., Any]]
 ClientToolMap: TypeAlias = Mapping[str, ClientToolSpec]
 
+PredictionMessageCallback: TypeAlias = Callable[[AssistantResponse], Any]
+PredictionFirstTokenCallback: TypeAlias = Callable[[], Any]
+PredictionFragmentCallback: TypeAlias = Callable[[LlmPredictionFragment], Any]
+PromptProcessingCallback: TypeAlias = Callable[[float], Any]
+
 
 class PredictionEndpoint(
     Generic[TPrediction],
@@ -1069,10 +1086,10 @@ class PredictionEndpoint(
         history: Chat,
         response_format: Type[ModelSchema] | DictSchema | None = None,
         config: LlmPredictionConfig | LlmPredictionConfigDict | None = None,
-        on_message: Callable[[AssistantResponse], None] | None = None,
-        on_first_token: Callable[[], None] | None = None,
-        on_prediction_fragment: Callable[[LlmPredictionFragment], None] | None = None,
-        on_prompt_processing_progress: Callable[[float], None] | None = None,
+        on_message: PredictionMessageCallback | None = None,
+        on_first_token: PredictionFirstTokenCallback | None = None,
+        on_prediction_fragment: PredictionFragmentCallback | None = None,
+        on_prompt_processing_progress: PromptProcessingCallback | None = None,
         # The remaining options are only relevant for multi-round tool actions
         handle_invalid_tool_request: Callable[
             [LMStudioPredictionError, _ToolCallRequest | None], str
@@ -1320,10 +1337,10 @@ class CompletionEndpoint(PredictionEndpoint[TPrediction]):
         prompt: str,
         response_format: Type[ModelSchema] | DictSchema | None = None,
         config: LlmPredictionConfig | LlmPredictionConfigDict | None = None,
-        on_message: Callable[[AssistantResponse], None] | None = None,
-        on_first_token: Callable[[], None] | None = None,
-        on_prediction_fragment: Callable[[LlmPredictionFragment], None] | None = None,
-        on_prompt_processing_progress: Callable[[float], None] | None = None,
+        on_message: PredictionMessageCallback | None = None,
+        on_first_token: PredictionFirstTokenCallback | None = None,
+        on_prediction_fragment: PredictionFragmentCallback | None = None,
+        on_prompt_processing_progress: PromptProcessingCallback | None = None,
     ) -> None:
         """Load the specified model with the given identifier and configuration."""
         history = Chat()
@@ -1888,8 +1905,8 @@ class ModelDownloadOptionBase(
 
     def _get_download_endpoint(
         self,
-        on_progress: Callable[[DownloadProgressUpdate], None] | None = None,
-        on_finalize: Callable[[], None] | None = None,
+        on_progress: DownloadProgressCallback | None = None,
+        on_finalize: DownloadFinalizedCallback | None = None,
     ) -> ModelDownloadEndpoint:
         # Throw a more specific exception than the one thrown by remote_call
         data = self._data
