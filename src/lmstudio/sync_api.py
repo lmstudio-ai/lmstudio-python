@@ -103,8 +103,7 @@ from .json_api import (
     RemoteCallHandler,
     TModelInfo,
     TPrediction,
-    ToolFunctionDef,
-    ToolFunctionDefDict,
+    ToolDefinition,
     check_model_namespace,
     load_struct,
     _model_spec_to_api_dict,
@@ -1547,7 +1546,7 @@ class LLM(SyncModelHandle[SyncSessionLlm]):
     def act(
         self,
         chat: Chat | ChatHistoryDataDict | str,
-        tools: Iterable[ToolFunctionDef | ToolFunctionDefDict],
+        tools: Iterable[ToolDefinition],
         *,
         max_prediction_rounds: int | None = None,
         config: LlmPredictionConfig | LlmPredictionConfigDict | None = None,
