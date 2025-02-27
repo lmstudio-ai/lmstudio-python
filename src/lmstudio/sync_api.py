@@ -53,6 +53,7 @@ from .history import (
     _ToolCallRequest,
 )
 from .json_api import (
+    ActionResult,
     AnyModelSpecifier,
     AvailableModelBase,
     ChannelEndpoint,
@@ -85,7 +86,6 @@ from .json_api import (
     ModelSessionTypes,
     ModelTypesEmbedding,
     ModelTypesLlm,
-    OperationResult,
     PredictionEndpoint,
     PredictionFragmentEvent,
     PredictionResult,
@@ -1539,7 +1539,7 @@ class LLM(SyncModelHandle[SyncSessionLlm]):
     # Multi-round predictions are currently a sync-only handle-only feature
     # TODO: Refactor to allow for more code sharing with the async API
     @sdk_public_api()
-    def operate(
+    def act(
         self,
         chat: Chat | ChatHistoryDataDict | str,
         tools: Iterable[ToolFunctionDef | ToolFunctionDefDict],
@@ -1559,14 +1559,14 @@ class LLM(SyncModelHandle[SyncSessionLlm]):
             [LMStudioPredictionError, _ToolCallRequest | None], str
         ]
         | None = None,
-    ) -> OperationResult:
+    ) -> ActionResult:
         """Request a response (with implicit tool use) in an ongoing assistant chat session."""
-        operation_start_time = time.perf_counter()
+        action_start_time = time.perf_counter()
         # It is not yet possible to combine tool calling with requests for structured responses
         response_format = None
         if isinstance(chat, Chat):
             chat._fetch_file_handles(self._session._fetch_file_handle)
-        op_chat: Chat = Chat.from_history(chat)
+        action_chat: Chat = Chat.from_history(chat)
         del chat
         # Multiple rounds, until all tool calls are resolved or limit is reached
         round_counter: Iterable[int]
@@ -1624,7 +1624,7 @@ class LLM(SyncModelHandle[SyncSessionLlm]):
                 # * be able to disallow tool use when the rounds are limited
                 endpoint = ChatResponseEndpoint(
                     self.identifier,
-                    op_chat,
+                    action_chat,
                     response_format,
                     config,
                     None,  # Multiple messages are generated per round
@@ -1658,23 +1658,23 @@ class LLM(SyncModelHandle[SyncSessionLlm]):
                     tool_results = [
                         fut.result() for fut in as_completed(pending_tool_calls)
                     ]
-                    requests_message = op_chat._add_assistant_tool_requests(
+                    requests_message = action_chat._add_assistant_tool_requests(
                         prediction, tool_call_requests
                     )
-                    results_message = op_chat._add_tool_results(tool_results)
+                    results_message = action_chat._add_tool_results(tool_results)
                     if on_message is not None:
                         on_message(requests_message)
                         on_message(results_message)
                 elif on_message is not None:
-                    on_message(op_chat.add_assistant_response(prediction))
+                    on_message(action_chat.add_assistant_response(prediction))
                 if on_round_end is not None:
                     on_round_end(round_index)
                 if not tool_call_requests:
                     # No tool call requests -> we're done here
                     break
         num_rounds = round_index + 1
-        duration = time.perf_counter() - operation_start_time
-        return OperationResult(rounds=num_rounds, total_time_seconds=duration)
+        duration = time.perf_counter() - action_start_time
+        return ActionResult(rounds=num_rounds, total_time_seconds=duration)
 
     @sdk_public_api()
     def apply_prompt_template(
