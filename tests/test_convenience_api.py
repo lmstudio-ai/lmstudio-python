@@ -16,6 +16,12 @@ from .support import (
 
 
 @pytest.mark.lmstudio
+def test_get_default_client() -> None:
+    client = lm.get_default_client()
+    assert isinstance(client, lm.Client)
+
+
+@pytest.mark.lmstudio
 def test_llm_any() -> None:
     model = lm.llm()
     assert model.identifier in (EXPECTED_LLM_ID, EXPECTED_VLM_ID, TOOL_LLM_ID)
