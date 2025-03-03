@@ -1030,7 +1030,7 @@ class ToolFunctionDef:
         """Derive a tool function definition from the given callable."""
         if name is None:
             try:
-                name = f"{f.__module__}.{f.__qualname__}"
+                name = f.__name__
             except Exception as exc:
                 raise LMStudioValueError(
                     f"Could not extract tool name from {f!r}"

@@ -113,7 +113,7 @@ ADDITION_TOOL_SPEC: ToolFunctionDefDict = {
 def test_tool_def_from_callable() -> None:
     default_def = ToolFunctionDef.from_callable(log_adding_two_integers)
     assert default_def == ToolFunctionDef(
-        name=f"{__name__}.{log_adding_two_integers.__name__}",
+        name=log_adding_two_integers.__name__,
         description="Log adding two integers together.",
         parameters=ADDITION_TOOL_SPEC["parameters"],
         implementation=log_adding_two_integers,
@@ -132,7 +132,7 @@ def test_parse_tools() -> None:
     expected_implementations = {
         "add": log_adding_two_integers,
         "add_as_tool_def": log_adding_two_integers,
-        "tests.test_inference.log_adding_two_integers": log_adding_two_integers,
+        "log_adding_two_integers": log_adding_two_integers,
     }
     expected_names = list(expected_implementations.keys())
     expected_param_schemas = 3 * [
