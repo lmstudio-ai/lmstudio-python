@@ -40,7 +40,7 @@ from .sdk_api import (
     sdk_public_type,
     _truncate_traceback,
 )
-from .history import AssistantResponse, Chat, _ToolCallRequest, _ToolCallResultData
+from .history import AssistantResponse, Chat, ToolCallRequest, ToolCallResultData
 from .schemas import (
     AnyLMStudioStruct,
     DictObject,
@@ -1067,7 +1067,7 @@ class PredictionFragmentEvent(ChannelRxEvent[LlmPredictionFragment]):
     pass
 
 
-class PredictionToolCallEvent(ChannelRxEvent[_ToolCallRequest]):
+class PredictionToolCallEvent(ChannelRxEvent[ToolCallRequest]):
     pass
 
 
@@ -1114,7 +1114,7 @@ class PredictionEndpoint(
         on_prompt_processing_progress: PromptProcessingCallback | None = None,
         # The remaining options are only relevant for multi-round tool actions
         handle_invalid_tool_request: Callable[
-            [LMStudioPredictionError, _ToolCallRequest | None], str
+            [LMStudioPredictionError, ToolCallRequest | None], str
         ]
         | None = None,
         llm_tools: LlmToolUseSettingToolArray | None = None,
@@ -1224,7 +1224,7 @@ class PredictionEndpoint(
                 "toolCallRequest": tool_call_request,
             }:
                 yield PredictionToolCallEvent(
-                    _ToolCallRequest._from_api_dict(tool_call_request)
+                    ToolCallRequest._from_api_dict(tool_call_request)
                 )
             case {
                 "type": "toolCallGenerationFailed",
@@ -1267,10 +1267,17 @@ class PredictionEndpoint(
                 self._report_prompt_processing_progress(progress)
             case PredictionFragmentEvent(_fragment):
                 if self._on_first_token is not None:
-                    self._on_first_token()
+                    self._logger.debug("Invoking on_first_token callback")
+                    err_msg = f"First token callback failed for {self!r}"
+                    with sdk_callback_invocation(err_msg, self._logger):
+                        self._on_first_token()
                     self._on_first_token = None
                 if self._on_prediction_fragment is not None:
-                    self._on_prediction_fragment(_fragment)
+                    # TODO: Define an even-spammier-than-debug trace logging level for this
+                    # self._logger.trace("Invoking on_prediction_fragment callback")
+                    err_msg = f"Prediction fragment callback failed for {self!r}"
+                    with sdk_callback_invocation(err_msg, self._logger):
+                        self._on_prediction_fragment(_fragment)
                 pass
             case PredictionToolCallEvent(_tool_call_request):
                 # Handled externally when iterating over events
@@ -1294,15 +1301,17 @@ class PredictionEndpoint(
         assert self._on_prompt_processing_progress is not None
         err_msg = f"Prediction progress callback failed for {self!r}"
         with sdk_callback_invocation(err_msg, self._logger):
+            self._logger.debug("Invoking on_prompt_processing_progress callback")
             self._on_prompt_processing_progress(progress)
 
     def _handle_invalid_tool_request(
-        self, err_msg: str, request: _ToolCallRequest | None = None
+        self, err_msg: str, request: ToolCallRequest | None = None
     ) -> str:
         exc = LMStudioPredictionError(err_msg)
         _on_handle_invalid_tool_request = self._on_handle_invalid_tool_request
         if _on_handle_invalid_tool_request is not None:
             # Allow users to override the error message, or force an exception
+            self._logger.debug("Invoking on_handle_invalid_tool_request callback")
             err_msg = _on_handle_invalid_tool_request(exc, request)
         if request is not None:
             return err_msg
@@ -1310,8 +1319,8 @@ class PredictionEndpoint(
         raise LMStudioPredictionError(err_msg)
 
     def request_tool_call(
-        self, request: _ToolCallRequest
-    ) -> Callable[[], _ToolCallResultData]:
+        self, request: ToolCallRequest
+    ) -> Callable[[], ToolCallResultData]:
         tool_name = request.name
         tool_call_id = request.id
         client_tool = self._client_tools.get(tool_name, None)
@@ -1319,7 +1328,7 @@ class PredictionEndpoint(
             err_msg = self._handle_invalid_tool_request(
                 f"Cannot find tool with name {tool_name}.", request
             )
-            result = _ToolCallResultData(content=err_msg, tool_call_id=tool_call_id)
+            result = ToolCallResultData(content=err_msg, tool_call_id=tool_call_id)
             return lambda: result
         # Validate parameters against their specification
         params_struct, implementation = client_tool
@@ -1330,14 +1339,14 @@ class PredictionEndpoint(
             err_msg = self._handle_invalid_tool_request(
                 f"Failed to parse arguments for tool {tool_name}: {exc}", request
             )
-            result = _ToolCallResultData(content=err_msg, tool_call_id=tool_call_id)
+            result = ToolCallResultData(content=err_msg, tool_call_id=tool_call_id)
             return lambda: result
         kwds = to_builtins(parsed_kwds)
 
         # Allow caller to schedule the tool call request for background execution
-        def _call_requested_tool() -> _ToolCallResultData:
+        def _call_requested_tool() -> ToolCallResultData:
             call_result = implementation(**kwds)
-            return _ToolCallResultData(
+            return ToolCallResultData(
                 content=json.dumps(call_result), tool_call_id=tool_call_id
             )
 
@@ -1980,6 +1989,8 @@ class ModelHandleBase(Generic[TSession]):
         """Initialize the LM Studio model reference."""
         self.identifier = model_identifier
         self._session = session
+        self._logger = logger = get_logger(type(self).__name__)
+        logger.update_context(model_identifier=model_identifier)
 
     def __repr__(self) -> str:
         return f"{type(self).__name__}(identifier={self.identifier!r})"

@@ -40,7 +40,12 @@ from typing_extensions import TypeIs
 # Synchronous API still uses an async websocket (just in a background thread)
 from httpx_ws import aconnect_ws, AsyncWebSocketSession, HTTPXWSException
 
-from .sdk_api import LMStudioRuntimeError, LMStudioValueError, sdk_public_api
+from .sdk_api import (
+    LMStudioRuntimeError,
+    LMStudioValueError,
+    sdk_callback_invocation,
+    sdk_public_api,
+)
 from .schemas import AnyLMStudioStruct, DictObject, DictSchema, ModelSchema
 from .history import (
     AssistantResponse,
@@ -50,7 +55,7 @@ from .history import (
     _FileHandle,
     _FileInputType,
     _LocalFileData,
-    _ToolCallRequest,
+    ToolCallRequest,
 )
 from .json_api import (
     ActResult,
@@ -1560,7 +1565,7 @@ class LLM(SyncModelHandle[SyncSessionLlm]):
         on_prediction_completed: Callable[[PredictionRoundResult], Any] | None = None,
         on_prompt_processing_progress: Callable[[float, int], Any] | None = None,
         handle_invalid_tool_request: Callable[
-            [LMStudioPredictionError, _ToolCallRequest | None], str
+            [LMStudioPredictionError, ToolCallRequest | None], str
         ]
         | None = None,
     ) -> ActResult:
@@ -1619,8 +1624,13 @@ class LLM(SyncModelHandle[SyncSessionLlm]):
         # (or the maximum number of prediction rounds is reached)
         with ThreadPoolExecutor() as pool:
             for round_index in round_counter:
+                self._logger.debug(
+                    "Starting .act() prediction round", round_index=round_index
+                )
                 if on_round_start is not None:
-                    on_round_start(round_index)
+                    err_msg = f"Round start callback failed for {self!r}"
+                    with sdk_callback_invocation(err_msg, self._logger):
+                        on_round_start(round_index)
                 # Update the endpoint definition on each iteration in order to:
                 # * update the chat history with the previous round result
                 # * be able to disallow tool use when the rounds are limited
@@ -1644,7 +1654,7 @@ class LLM(SyncModelHandle[SyncSessionLlm]):
                 )
                 channel_cm = self._session._create_channel(endpoint)
                 prediction_stream = PredictionStream(channel_cm, endpoint)
-                tool_call_requests: list[_ToolCallRequest] = []
+                tool_call_requests: list[ToolCallRequest] = []
                 pending_tool_calls: list[SyncFuture[Any]] = []
                 for event in prediction_stream._iter_events():
                     if isinstance(event, PredictionToolCallEvent):
@@ -1653,26 +1663,39 @@ class LLM(SyncModelHandle[SyncSessionLlm]):
                         tool_call = endpoint.request_tool_call(tool_call_request)
                         pending_tool_calls.append(pool.submit(tool_call))
                 prediction = prediction_stream.result()
+                self._logger.debug(
+                    "Completed .act() prediction round", round_index=round_index
+                )
                 if on_prediction_completed:
                     round_result = PredictionRoundResult.from_result(
                         prediction, round_index
                     )
-                    on_prediction_completed(round_result)
+                    err_msg = f"Prediction completed callback failed for {self!r}"
+                    with sdk_callback_invocation(err_msg, self._logger):
+                        on_prediction_completed(round_result)
                 if pending_tool_calls:
                     tool_results = [
                         fut.result() for fut in as_completed(pending_tool_calls)
                     ]
-                    requests_message = agent_chat._add_assistant_tool_requests(
+                    requests_message = agent_chat.add_assistant_response(
                         prediction, tool_call_requests
                     )
-                    results_message = agent_chat._add_tool_results(tool_results)
+                    results_message = agent_chat.add_tool_results(tool_results)
                     if on_message is not None:
-                        on_message(requests_message)
-                        on_message(results_message)
+                        err_msg = f"Tool request message callback failed for {self!r}"
+                        with sdk_callback_invocation(err_msg, self._logger):
+                            on_message(requests_message)
+                        err_msg = f"Tool result message callback failed for {self!r}"
+                        with sdk_callback_invocation(err_msg, self._logger):
+                            on_message(results_message)
                 elif on_message is not None:
-                    on_message(agent_chat.add_assistant_response(prediction))
+                    err_msg = f"Final response message callback failed for {self!r}"
+                    with sdk_callback_invocation(err_msg, self._logger):
+                        on_message(agent_chat.add_assistant_response(prediction))
                 if on_round_end is not None:
-                    on_round_end(round_index)
+                    err_msg = f"Round end callback failed for {self!r}"
+                    with sdk_callback_invocation(err_msg, self._logger):
+                        on_round_end(round_index)
                 if not tool_call_requests:
                     # No tool call requests -> we're done here
                     break

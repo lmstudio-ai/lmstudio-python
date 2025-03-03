@@ -10,7 +10,6 @@ from pytest import LogCaptureFixture as LogCap
 from pytest_subtests import SubTests
 
 from lmstudio import (
-    AnyChatMessage,
     AsyncClient,
     Chat,
     Client,
@@ -170,9 +169,7 @@ def test_tool_using_agent(caplog: LogCap) -> None:
     with Client() as client:
         llm = client.llm.model(model_id)
         chat = Chat()
-        chat.add_user_message(
-            "What is the sum of 123 and the largest prime smaller than 100?"
-        )
+        chat.add_user_message("What is the sum of 123 and 3210?")
         tools = [ADDITION_TOOL_SPEC]
         # Ensure ignoring the round index passes static type checks
         predictions: list[PredictionResult[str]] = []
@@ -180,7 +177,7 @@ def test_tool_using_agent(caplog: LogCap) -> None:
         act_result = llm.act(chat, tools, on_prediction_completed=predictions.append)
         assert len(predictions) > 1
         assert act_result.rounds == len(predictions)
-        assert "220" in predictions[-1].content
+        assert "3333" in predictions[-1].content
 
     for _logger_name, log_level, message in caplog.record_tuples:
         if log_level != logging.INFO:
@@ -190,7 +187,7 @@ def test_tool_using_agent(caplog: LogCap) -> None:
     else:
         assert False, "Failed to find tool call logging entry"
     assert "123" in message
-    assert "97" in message
+    assert "3210" in message
 
 
 @pytest.mark.lmstudio
@@ -202,14 +199,11 @@ def test_tool_using_agent_callbacks(caplog: LogCap) -> None:
     with Client() as client:
         llm = client.llm.model(model_id)
         chat = Chat()
-        chat.add_user_message(
-            "What is the sum of 123 and the largest prime smaller than 100?"
-        )
+        chat.add_user_message("What is the sum of 123 and 3210?")
         tools = [ADDITION_TOOL_SPEC]
         round_starts: list[int] = []
         round_ends: list[int] = []
         first_tokens: list[int] = []
-        messages: list[AnyChatMessage] = []
         predictions: list[PredictionRoundResult] = []
         fragments: list[LlmPredictionFragment] = []
         last_fragment_round_index = 0
@@ -227,7 +221,7 @@ def test_tool_using_agent_callbacks(caplog: LogCap) -> None:
             tools,
             on_first_token=first_tokens.append,
             on_prediction_fragment=_append_fragment,
-            on_message=messages.append,
+            on_message=chat.append,
             on_round_start=round_starts.append,
             on_round_end=round_ends.append,
             on_prediction_completed=predictions.append,
@@ -236,8 +230,12 @@ def test_tool_using_agent_callbacks(caplog: LogCap) -> None:
         sequential_round_indices = list(range(num_rounds))
         assert num_rounds > 1
         assert [p.round_index for p in predictions] == sequential_round_indices
-        assert first_tokens == sequential_round_indices
         assert round_starts == sequential_round_indices
         assert round_ends == sequential_round_indices
-        assert len(messages) == 2 * num_rounds - 1  # No tool results in last round
+        expected_token_indices = [p.round_index for p in predictions if p.content]
+        assert first_tokens == expected_token_indices
         assert last_fragment_round_index == num_rounds - 1
+        assert len(chat._messages) == 2 * num_rounds  # No tool results in last round
+
+        cloned_chat = chat.copy()
+        assert cloned_chat._messages == chat._messages

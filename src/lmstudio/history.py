@@ -48,15 +48,15 @@ from ._sdk_models import (
     ChatMessagePartFileDataDict as _FileHandleDict,
     ChatMessagePartTextData as TextData,
     ChatMessagePartTextDataDict as TextDataDict,
-    ChatMessagePartToolCallRequestData as _ToolCallRequestData,
-    ChatMessagePartToolCallRequestDataDict as _ToolCallRequestDataDict,
-    ChatMessagePartToolCallResultData as _ToolCallResultData,
-    ChatMessagePartToolCallResultDataDict as _ToolCallResultDataDict,
+    ChatMessagePartToolCallRequestData as ToolCallRequestData,
+    ChatMessagePartToolCallRequestDataDict as ToolCallRequestDataDict,
+    ChatMessagePartToolCallResultData as ToolCallResultData,
+    ChatMessagePartToolCallResultDataDict as ToolCallResultDataDict,
     # Private until LM Studio file handle support stabilizes
     # FileType,
     FilesRpcUploadFileBase64Parameter,
-    # Private until user level tool call request management is defined
-    ToolCallRequest as _ToolCallRequest,
+    ToolCallRequest as ToolCallRequest,
+    FunctionToolCallRequestDict as ToolCallRequestDict,
 )
 
 __all__ = [
@@ -81,8 +81,8 @@ __all__ = [
     "TextData",
     "TextDataDict",
     # Private until user level tool call request management is defined
-    "_ToolCallRequest",  # Other modules need this to be exported
-    "_ToolCallResultData",  # Other modules need this to be exported
+    "ToolCallRequest",
+    "ToolCallResultData",
     # "ToolCallRequest",
     # "ToolCallResult",
     "UserMessageContent",
@@ -109,11 +109,11 @@ SystemPromptContent = TextData
 SystemPromptContentDict = TextDataDict
 UserMessageContent = TextData | _FileHandle
 UserMessageContentDict = TextDataDict | _FileHandleDict
-AssistantResponseContent = TextData | _FileHandle | _ToolCallRequestData
-AssistantResponseContentDict = TextDataDict | _FileHandleDict | _ToolCallRequestDataDict
-ChatMessageContent = TextData | _FileHandle | _ToolCallRequestData | _ToolCallResultData
+AssistantResponseContent = TextData | _FileHandle
+AssistantResponseContentDict = TextDataDict | _FileHandleDict
+ChatMessageContent = TextData | _FileHandle | ToolCallRequestData | ToolCallResultData
 ChatMessageContentDict = (
-    TextDataDict | _FileHandleDict | _ToolCallRequestData | _ToolCallResultDataDict
+    TextDataDict | _FileHandleDict | ToolCallRequestData | ToolCallResultDataDict
 )
 
 
@@ -132,7 +132,13 @@ UserMessageMultiPartInput = Iterable[UserMessageInput]
 AnyUserMessageInput = UserMessageInput | UserMessageMultiPartInput
 AssistantResponseInput = str | AssistantResponseContent | AssistantResponseContentDict
 AnyAssistantResponseInput = AssistantResponseInput | _ServerAssistantResponse
-_ToolCallResultInput = _ToolCallResultData | _ToolCallResultDataDict
+ToolCallRequestInput = (
+    ToolCallRequest
+    | ToolCallRequestDict
+    | ToolCallRequestData
+    | ToolCallRequestDataDict
+)
+ToolCallResultInput = ToolCallResultData | ToolCallResultDataDict
 ChatMessageInput = str | ChatMessageContent | ChatMessageContentDict
 ChatMessageMultiPartInput = UserMessageMultiPartInput
 AnyChatMessageInput = ChatMessageInput | ChatMessageMultiPartInput
@@ -355,6 +361,21 @@ class Chat:
         if role == "user":
             messages = cast(AnyUserMessageInput, content)
             return self.add_user_message(messages)
+        # Assistant responses consist of a text response with zero or more tool requests
+        if role == "assistant":
+            if _is_chat_message_input(content):
+                response = cast(AssistantResponseInput, content)
+                return self.add_assistant_response(response)
+            try:
+                (response_content, *tool_request_contents) = content
+            except ValueError:
+                raise LMStudioValueError(
+                    f"Unable to parse assistant response content: {content}"
+                ) from None
+            response = cast(AssistantResponseInput, response_content)
+            tool_requests = cast(Iterable[ToolCallRequest], tool_request_contents)
+            return self.add_assistant_response(response, tool_requests)
+
         # Other roles do not accept multi-part messages, so ensure there
         # is exactly one content item given. We still accept iterables because
         # that's how the wire format is defined and we want to accept that.
@@ -368,17 +389,13 @@ class Chat:
             except ValueError:
                 err_msg = f"{role!r} role does not support multi-part message content."
                 raise LMStudioValueError(err_msg) from None
-
         match role:
             case "system":
                 prompt = cast(SystemPromptInput, content_item)
                 result = self.add_system_prompt(prompt)
-            case "assistant":
-                response = cast(AssistantResponseInput, content_item)
-                result = self.add_assistant_response(response)
             case "tool":
-                tool_result = cast(_ToolCallResultInput, content_item)
-                result = self._add_tool_result(tool_result)
+                tool_result = cast(ToolCallResultInput, content_item)
+                result = self.add_tool_result(tool_result)
             case _:
                 raise LMStudioValueError(f"Unknown history role: {role}")
         return result
@@ -556,11 +573,14 @@ class Chat:
     @classmethod
     def _parse_assistant_response(
         cls, response: AnyAssistantResponseInput
-    ) -> AssistantResponseContent:
+    ) -> TextData | _FileHandle:
+        # Note: tool call requests are NOT accepted here, as they're expected
+        # to follow an initial text response
+        # It's not clear if file handles should be accepted as it's not obvious
+        # how client applications should process those (even though the API
+        # format nominally permits them here)
         match response:
-            # Sadly, we can't use the union type aliases for matching,
-            # since the compiler needs visibility into every match target
-            case TextData() | _FileHandle() | _ToolCallRequestData():
+            case TextData() | _FileHandle():
                 return response
             case str():
                 return TextData(text=response)
@@ -575,59 +595,67 @@ class Chat:
             }:
                 # We accept snake_case here for consistency, but don't really expect it
                 return _FileHandle._from_any_dict(response)
-            case {"toolCallRequest": [*_]} | {"tool_call_request": [*_]}:
-                # We accept snake_case here for consistency, but don't really expect it
-                return _ToolCallRequestData._from_any_dict(response)
             case _:
                 raise LMStudioValueError(
                     f"Unable to parse assistant response content: {response}"
                 )
 
+    @classmethod
+    def _parse_tool_call_request(
+        cls, request: ToolCallRequestInput
+    ) -> ToolCallRequestData:
+        match request:
+            case ToolCallRequestData():
+                return request
+            case ToolCallRequest():
+                return ToolCallRequestData(tool_call_request=request)
+            case {"type": "toolCallRequest"}:
+                return ToolCallRequestData._from_any_dict(request)
+            case {"toolCallRequest": [*_]} | {"tool_call_request": [*_]}:
+                request_details = ToolCallRequest._from_any_dict(request)
+                return ToolCallRequestData(tool_call_request=request_details)
+            case _:
+                raise LMStudioValueError(
+                    f"Unable to parse tool call request content: {request}"
+                )
+
     @sdk_public_api()
     def add_assistant_response(
-        self, response: AnyAssistantResponseInput
+        self,
+        response: AnyAssistantResponseInput,
+        tool_call_requests: Iterable[ToolCallRequestInput] = (),
     ) -> AssistantResponse:
         """Add a new 'assistant' response to the chat history."""
         self._raise_if_consecutive(AssistantResponse.role, "assistant responses")
-        message_data = self._parse_assistant_response(response)
-        message = AssistantResponse(content=[message_data])
-        self._messages.append(message)
-        return message
-
-    def _add_assistant_tool_requests(
-        self, response: _ServerAssistantResponse, requests: Iterable[_ToolCallRequest]
-    ) -> AssistantResponse:
-        self._raise_if_consecutive(AssistantResponse.role, "assistant responses")
         message_text = self._parse_assistant_response(response)
         request_parts = [
-            _ToolCallRequestData(tool_call_request=req) for req in requests
+            self._parse_tool_call_request(req) for req in tool_call_requests
         ]
         message = AssistantResponse(content=[message_text, *request_parts])
         self._messages.append(message)
         return message
 
     @classmethod
-    def _parse_tool_result(cls, result: _ToolCallResultInput) -> _ToolCallResultData:
+    def _parse_tool_result(cls, result: ToolCallResultInput) -> ToolCallResultData:
         match result:
-            # Sadly, we can't use the union type aliases for matching,
-            # since the compiler needs visibility into every match target
-            case _ToolCallResultData():
+            case ToolCallResultData():
                 return result
             case {"toolCallId": _, "content": _} | {"tool_call_id": _, "content": _}:
                 # We accept snake_case here for consistency, but don't really expect it
-                return _ToolCallResultData.from_dict(result)
+                return ToolCallResultData.from_dict(result)
             case _:
                 raise LMStudioValueError(f"Unable to parse tool result: {result}")
 
-    def _add_tool_results(
-        self, results: Iterable[_ToolCallResultInput]
+    def add_tool_results(
+        self, results: Iterable[ToolCallResultInput]
     ) -> ToolResultMessage:
+        """Add multiple tool results to the chat history as a single message."""
         message_content = [self._parse_tool_result(result) for result in results]
         message = ToolResultMessage(content=message_content)
         self._messages.append(message)
         return message
 
-    def _add_tool_result(self, result: _ToolCallResultInput) -> ToolResultMessage:
+    def add_tool_result(self, result: ToolCallResultInput) -> ToolResultMessage:
         """Add a new tool result to the chat history."""
         # Consecutive tool result messages are allowed,
         # so skip checking if the last message was a tool result
