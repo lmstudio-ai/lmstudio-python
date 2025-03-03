@@ -7,7 +7,7 @@ from pytest import LogCaptureFixture as LogCap
 
 from lmstudio import AsyncClient, LMStudioClientError
 
-from ..support import EXPECTED_DOWNLOAD_SEARCH_TERM
+from ..support import SMALL_LLM_SEARCH_TERM
 
 
 # N.B. We can maybe provide a reference list for what should be available
@@ -21,7 +21,7 @@ from ..support import EXPECTED_DOWNLOAD_SEARCH_TERM
 async def test_download_model_async(caplog: LogCap) -> None:
     caplog.set_level(logging.DEBUG)
     async with AsyncClient() as client:
-        models = await client.repository.search_models(EXPECTED_DOWNLOAD_SEARCH_TERM)
+        models = await client.repository.search_models(SMALL_LLM_SEARCH_TERM)
         logging.info(f"Models: {models}")
         assert models
         assert isinstance(models, list)
@@ -45,7 +45,7 @@ async def test_download_model_async(caplog: LogCap) -> None:
 async def test_get_options_out_of_session_async(caplog: LogCap) -> None:
     caplog.set_level(logging.DEBUG)
     async with AsyncClient() as client:
-        models = await client.repository.search_models(EXPECTED_DOWNLOAD_SEARCH_TERM)
+        models = await client.repository.search_models(SMALL_LLM_SEARCH_TERM)
         assert models
         assert isinstance(models, list)
         assert len(models) > 0
@@ -60,7 +60,7 @@ async def test_get_options_out_of_session_async(caplog: LogCap) -> None:
 async def test_download_out_of_session_async(caplog: LogCap) -> None:
     caplog.set_level(logging.DEBUG)
     async with AsyncClient() as client:
-        models = await client.repository.search_models(EXPECTED_DOWNLOAD_SEARCH_TERM)
+        models = await client.repository.search_models(SMALL_LLM_SEARCH_TERM)
         logging.info(f"Models: {models}")
         assert models
         assert isinstance(models, list)

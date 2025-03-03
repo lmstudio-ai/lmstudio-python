@@ -862,6 +862,27 @@ class _ModelLoadingEndpoint(
                 yield from self._update_progress(0.0)
             case {"type": "loadProgress" | "progress", "progress": progress}:
                 yield from self._update_progress(progress)
+            case {"type": "unloadingOtherJITModel", "info": other_model_info} if (
+                "modelKey" in other_model_info
+            ):
+                jit_unload_event = "Unloading other JIT model"
+                unloaded_model_key = other_model_info["modelKey"]
+                suggestion = (
+                    "You can disable this behavior by going to "
+                    "LM Studio -> Settings -> Developer -> Turn OFF JIT models auto-evict"
+                )
+                # Report the JIT unload
+                self._logger.info(
+                    jit_unload_event,
+                    unloaded_model_key=unloaded_model_key,
+                    suggestion=suggestion,
+                )
+                # Report further details on the unloaded model if debug messages are enabled
+                self._logger.debug(
+                    jit_unload_event,
+                    unloaded_model_key=unloaded_model_key,
+                    unloaded_model=other_model_info,
+                )
             case {
                 "type": "success" | "alreadyLoaded" | "loadSuccess",
                 "info": {

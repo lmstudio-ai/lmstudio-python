@@ -10,6 +10,8 @@
 import logging
 from contextlib import nullcontext
 
+from contextlib import suppress
+
 import pytest
 from pytest import LogCaptureFixture as LogCap
 from pytest_subtests import SubTests
@@ -20,12 +22,11 @@ from lmstudio.json_api import DownloadedModelBase, ModelHandleBase
 from ..support import (
     LLM_LOAD_CONFIG,
     EXPECTED_LLM,
-    EXPECTED_LLM_DEFAULT_ID,
     EXPECTED_LLM_ID,
     EXPECTED_EMBEDDING,
-    EXPECTED_EMBEDDING_DEFAULT_ID,
     EXPECTED_EMBEDDING_ID,
     EXPECTED_VLM_ID,
+    SMALL_LLM_ID,
     TOOL_LLM_ID,
     check_sdk_error,
 )
@@ -278,16 +279,15 @@ def test_get_or_load_when_unloaded_llm_sync(caplog: LogCap) -> None:
     caplog.set_level(logging.DEBUG)
     with Client() as client:
         llm = client.llm
-        llm.unload(EXPECTED_LLM_ID)
-        model = llm.model(EXPECTED_LLM_DEFAULT_ID, config=LLM_LOAD_CONFIG)
-        assert model.identifier == EXPECTED_LLM_DEFAULT_ID
+        with suppress(LMStudioModelNotFoundError):
+            llm.unload(EXPECTED_LLM_ID)
+        model = llm.model(EXPECTED_LLM_ID, config=LLM_LOAD_CONFIG)
+        assert model.identifier == EXPECTED_LLM_ID
         # LM Studio may default to JIT handling for models loaded with `getOrLoad`,
         # so ensure we restore a regular non-JIT instance with no TTL set
-        llm.unload(EXPECTED_LLM_ID)
-        model = llm.load_new_instance(
-            EXPECTED_LLM_DEFAULT_ID, config=LLM_LOAD_CONFIG, ttl=None
-        )
-        assert model.identifier == EXPECTED_LLM_DEFAULT_ID
+        model.unload()
+        model = llm.load_new_instance(EXPECTED_LLM_ID, config=LLM_LOAD_CONFIG, ttl=None)
+        assert model.identifier == EXPECTED_LLM_ID
 
 
 @pytest.mark.slow
@@ -296,11 +296,80 @@ def test_get_or_load_when_unloaded_embedding_sync(caplog: LogCap) -> None:
     caplog.set_level(logging.DEBUG)
     with Client() as client:
         embedding = client.embedding
-        embedding.unload(EXPECTED_EMBEDDING_ID)
-        model = embedding.model(EXPECTED_EMBEDDING_DEFAULT_ID)
-        assert model.identifier == EXPECTED_EMBEDDING_DEFAULT_ID
+        with suppress(LMStudioModelNotFoundError):
+            embedding.unload(EXPECTED_EMBEDDING_ID)
+        model = embedding.model(EXPECTED_EMBEDDING_ID)
+        assert model.identifier == EXPECTED_EMBEDDING_ID
         # LM Studio may default to JIT handling for models loaded with `getOrLoad`,
         # so ensure we restore a regular non-JIT instance with no TTL set
-        embedding.unload(EXPECTED_EMBEDDING_ID)
-        model = embedding.load_new_instance(EXPECTED_EMBEDDING_DEFAULT_ID, ttl=None)
-        assert model.identifier == EXPECTED_EMBEDDING_DEFAULT_ID
+        model.unload()
+        model = embedding.load_new_instance(EXPECTED_EMBEDDING_ID, ttl=None)
+        assert model.identifier == EXPECTED_EMBEDDING_ID
+
+
+@pytest.mark.slow
+@pytest.mark.lmstudio
+def test_jit_unloading_sync(caplog: LogCap) -> None:
+    # For the time being, only test the embedding vs LLM cross-namespace
+    # JIT unloading (since that ensures the info type mixing is handled).
+    # Assuming LM Studio eventually switches to per-namespace JIT unloading,
+    # this can be split into separate LLM and embedding test cases at that time.
+    caplog.set_level(logging.DEBUG)
+    with Client() as client:
+        # Unload the non-JIT instance of the embedding model
+        with suppress(LMStudioModelNotFoundError):
+            client.embedding.unload(EXPECTED_EMBEDDING_ID)
+        # Load a JIT instance of the embedding model
+        model1 = client.embedding.model(EXPECTED_EMBEDDING_ID, ttl=300)
+        assert model1.identifier == EXPECTED_EMBEDDING_ID
+        model1_info = model1.get_info()
+        assert model1_info.identifier == model1.identifier
+        # Load a JIT instance of the small testing LLM
+        # This will unload the JIT instance of the testing embedding model
+        model2 = client.llm.model(SMALL_LLM_ID, ttl=300)
+        assert model2.identifier == SMALL_LLM_ID
+        model2_info = model2.get_info()
+        assert model2_info.identifier == model2.identifier
+        # Attempting to query the now unloaded JIT embedding model will fail
+        with pytest.raises(LMStudioModelNotFoundError):
+            model1.get_info()
+        # Restore things to the way other test cases expect them to be
+        model2.unload()
+        model = client.embedding.load_new_instance(EXPECTED_EMBEDDING_ID, ttl=None)
+        assert model.identifier == EXPECTED_EMBEDDING_ID
+
+    # Check for expected log messages
+    jit_unload_event = "Unloading other JIT model"
+    jit_unload_messages_debug: list[str] = []
+    jit_unload_messages_info: list[str] = []
+    jit_unload_messages = {
+        logging.DEBUG: jit_unload_messages_debug,
+        logging.INFO: jit_unload_messages_info,
+    }
+    for _logger_name, log_level, message in caplog.record_tuples:
+        if jit_unload_event not in message:
+            continue
+        jit_unload_messages[log_level].append(message)
+
+    assert len(jit_unload_messages_info) == 1
+    assert len(jit_unload_messages_debug) == 1
+
+    info_message = jit_unload_messages_info[0]
+    debug_message = jit_unload_messages_debug[0]
+    # Ensure info message omits model info, but includes config guidance
+    unload_notice = f'"event": "{jit_unload_event}"'
+    assert unload_notice in info_message
+    loading_model_notice = f'"model_key": "{SMALL_LLM_ID}"'
+    assert loading_model_notice in info_message
+    unloaded_model_notice = f'"unloaded_model_key": "{EXPECTED_EMBEDDING_ID}"'
+    assert unloaded_model_notice in info_message
+    assert '"suggestion": ' in info_message
+    assert "disable this behavior" in info_message
+    assert '"unloaded_model": ' not in info_message
+    # Ensure debug message includes model info, but omits config guidance
+    assert unload_notice in debug_message
+    assert loading_model_notice in info_message
+    assert unloaded_model_notice in debug_message
+    assert '"suggestion": ' not in debug_message
+    assert "disable this behavior" not in debug_message
+    assert '"unloaded_model": ' in debug_message

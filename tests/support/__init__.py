@@ -24,14 +24,12 @@ from .lmstudio import ErrFunc
 THIS_DIR = Path(__file__).parent
 
 LOCAL_API_HOST = "localhost:1234"
-EXPECTED_DOWNLOAD_SEARCH_TERM = "smollm2-135m"
 
 ####################################################
 # Embedding model testing
 ####################################################
 EXPECTED_EMBEDDING = "nomic-ai/nomic-embed-text-v1.5"
 EXPECTED_EMBEDDING_ID = "text-embedding-nomic-embed-text-v1.5"
-EXPECTED_EMBEDDING_DEFAULT_ID = EXPECTED_EMBEDDING_ID  # the same for now
 EXPECTED_EMBEDDING_LENGTH = 768  # nomic has embedding dimension 768
 EXPECTED_EMBEDDING_CONTEXT_LENGTH = 2048  # nomic accepts a 2048 token context
 
@@ -40,7 +38,6 @@ EXPECTED_EMBEDDING_CONTEXT_LENGTH = 2048  # nomic accepts a 2048 token context
 ####################################################
 EXPECTED_LLM = "hugging-quants/llama-3.2-1b-instruct"
 EXPECTED_LLM_ID = "llama-3.2-1b-instruct"
-EXPECTED_LLM_DEFAULT_ID = EXPECTED_LLM_ID  # the same for now
 PROMPT = "Hello"
 MAX_PREDICTED_TOKENS = 50
 # Use a dict here to ensure dicts are accepted in all config APIs,
@@ -67,6 +64,12 @@ VLM_PROMPT = "What color is this figure?"
 # Tool use LLM testing
 ####################################################
 TOOL_LLM_ID = "qwen2.5-7b-instruct-1m"
+
+####################################################
+# Other specific models needed for testing
+####################################################
+SMALL_LLM_SEARCH_TERM = "smollm2-135m"
+SMALL_LLM_ID = "smollm2-135m-instruct"
 
 ####################################################
 # Structured LLM responses
