@@ -18,9 +18,11 @@ def is_prime(n: int) -> bool:
             return False
     return True
 
-model = lms.llm("qwen2.5-7b-instruct")
+chat = lms.Chat()
+model = lms.llm("qwen2.5-7b-instruct-1m")
 model.act(
     "Is the result of 12345 + 45668 a prime? Think step by step.",
     [add, is_prime],
-    on_message=print,
+    on_message=chat.append,
 )
+print(chat)

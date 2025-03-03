@@ -10,7 +10,6 @@ from pytest import LogCaptureFixture as LogCap
 from pytest_subtests import SubTests
 
 from lmstudio import (
-    AnyChatMessage,
     AsyncClient,
     Chat,
     Client,
@@ -209,7 +208,6 @@ def test_tool_using_agent_callbacks(caplog: LogCap) -> None:
         round_starts: list[int] = []
         round_ends: list[int] = []
         first_tokens: list[int] = []
-        messages: list[AnyChatMessage] = []
         predictions: list[PredictionRoundResult] = []
         fragments: list[LlmPredictionFragment] = []
         last_fragment_round_index = 0
@@ -227,7 +225,7 @@ def test_tool_using_agent_callbacks(caplog: LogCap) -> None:
             tools,
             on_first_token=first_tokens.append,
             on_prediction_fragment=_append_fragment,
-            on_message=messages.append,
+            on_message=chat.append,
             on_round_start=round_starts.append,
             on_round_end=round_ends.append,
             on_prediction_completed=predictions.append,
@@ -236,8 +234,12 @@ def test_tool_using_agent_callbacks(caplog: LogCap) -> None:
         sequential_round_indices = list(range(num_rounds))
         assert num_rounds > 1
         assert [p.round_index for p in predictions] == sequential_round_indices
-        assert first_tokens == sequential_round_indices
         assert round_starts == sequential_round_indices
         assert round_ends == sequential_round_indices
-        assert len(messages) == 2 * num_rounds - 1  # No tool results in last round
+        expected_token_indices = [p.round_index for p in predictions if p.content]
+        assert first_tokens == expected_token_indices
         assert last_fragment_round_index == num_rounds - 1
+        assert len(chat._messages) == 2 * num_rounds  # No tool results in last round
+
+        cloned_chat = chat.copy()
+        assert cloned_chat._messages == chat._messages
