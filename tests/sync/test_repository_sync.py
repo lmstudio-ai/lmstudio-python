@@ -14,7 +14,7 @@ from pytest import LogCaptureFixture as LogCap
 
 from lmstudio import Client, LMStudioClientError
 
-from ..support import EXPECTED_DOWNLOAD_SEARCH_TERM
+from ..support import SMALL_LLM_SEARCH_TERM
 
 
 # N.B. We can maybe provide a reference list for what should be available
@@ -27,7 +27,7 @@ from ..support import EXPECTED_DOWNLOAD_SEARCH_TERM
 def test_download_model_sync(caplog: LogCap) -> None:
     caplog.set_level(logging.DEBUG)
     with Client() as client:
-        models = client.repository.search_models(EXPECTED_DOWNLOAD_SEARCH_TERM)
+        models = client.repository.search_models(SMALL_LLM_SEARCH_TERM)
         logging.info(f"Models: {models}")
         assert models
         assert isinstance(models, list)
@@ -50,7 +50,7 @@ def test_download_model_sync(caplog: LogCap) -> None:
 def test_get_options_out_of_session_sync(caplog: LogCap) -> None:
     caplog.set_level(logging.DEBUG)
     with Client() as client:
-        models = client.repository.search_models(EXPECTED_DOWNLOAD_SEARCH_TERM)
+        models = client.repository.search_models(SMALL_LLM_SEARCH_TERM)
         assert models
         assert isinstance(models, list)
         assert len(models) > 0
@@ -64,7 +64,7 @@ def test_get_options_out_of_session_sync(caplog: LogCap) -> None:
 def test_download_out_of_session_sync(caplog: LogCap) -> None:
     caplog.set_level(logging.DEBUG)
     with Client() as client:
-        models = client.repository.search_models(EXPECTED_DOWNLOAD_SEARCH_TERM)
+        models = client.repository.search_models(SMALL_LLM_SEARCH_TERM)
         logging.info(f"Models: {models}")
         assert models
         assert isinstance(models, list)

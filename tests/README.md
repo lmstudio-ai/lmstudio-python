@@ -13,17 +13,23 @@ conditions must also be met for the test suite to pass:
 - the API server must be enabled and running on port 1234
 - the following models model must be loaded with their default identifiers
   - `text-embedding-nomic-embed-text-v1.5` (text embedding model)
-  - `llama-3.2-1b-instruct` (chat oriented text LLM)
+  - `llama-3.2-1b-instruct` (text LLM)
   - `ZiangWu/MobileVLM_V2-1.7B-GGUF` (visual LLM)
   - `qwen2.5-7b-instruct-1m` (tool using LLM)
 
 Additional models should NOT be loaded when running the test suite,
 as some model querying tests may fail in that case.
 
-However, there's no problem with having additional models downloaded.
+There are also some JIT model loading/unloading test cases which
+expect `smollm2-135m` (small text LLM) to already be downloaded.
+A full test run will download this model (since it is also the
+model used for the end-to-end search-and-download test case).
+
+There's no problem with having additional models downloaded.
 The only impact is that the test that checks all of the expected
 models can be found in the list of downloaded models will take a
 little longer to run.
+
 
 # Loading and unloading the required models
 
@@ -42,6 +48,12 @@ explicitly unload the test models:
 
 ```console
 $ tox -m unload-test-models
+```
+
+The model downloading test cases can be specifically run with:
+
+```console
+$ tox -m test -- -k test_download_model
 ```
 
 

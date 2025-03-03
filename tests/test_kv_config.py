@@ -35,9 +35,14 @@ GPU_CONFIG: GpuSettingDict = {
     "mainGpu": 0,
     "ratio": 0.5,
     "splitStrategy": "evenly",
-    "disabledGpus": [1, 2]
+    "disabledGpus": [1, 2],
 }
-SC_GPU_CONFIG = {"main_gpu": 0, "ratio": 0.5, "split_strategy": "evenly", "disabled_gpus": [1, 2]}
+SC_GPU_CONFIG = {
+    "main_gpu": 0,
+    "ratio": 0.5,
+    "split_strategy": "evenly",
+    "disabled_gpus": [1, 2],
+}
 
 LOAD_CONFIG_EMBEDDING: EmbeddingLoadModelConfigDict = {
     "contextLength": 1978,
