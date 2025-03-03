@@ -169,9 +169,7 @@ def test_tool_using_agent(caplog: LogCap) -> None:
     with Client() as client:
         llm = client.llm.model(model_id)
         chat = Chat()
-        chat.add_user_message(
-            "What is the sum of 123 and the largest prime smaller than 100?"
-        )
+        chat.add_user_message("What is the sum of 123 and 3210?")
         tools = [ADDITION_TOOL_SPEC]
         # Ensure ignoring the round index passes static type checks
         predictions: list[PredictionResult[str]] = []
@@ -179,7 +177,7 @@ def test_tool_using_agent(caplog: LogCap) -> None:
         act_result = llm.act(chat, tools, on_prediction_completed=predictions.append)
         assert len(predictions) > 1
         assert act_result.rounds == len(predictions)
-        assert "220" in predictions[-1].content
+        assert "3333" in predictions[-1].content
 
     for _logger_name, log_level, message in caplog.record_tuples:
         if log_level != logging.INFO:
@@ -189,7 +187,7 @@ def test_tool_using_agent(caplog: LogCap) -> None:
     else:
         assert False, "Failed to find tool call logging entry"
     assert "123" in message
-    assert "97" in message
+    assert "3210" in message
 
 
 @pytest.mark.lmstudio
@@ -201,9 +199,7 @@ def test_tool_using_agent_callbacks(caplog: LogCap) -> None:
     with Client() as client:
         llm = client.llm.model(model_id)
         chat = Chat()
-        chat.add_user_message(
-            "What is the sum of 123 and the largest prime smaller than 100?"
-        )
+        chat.add_user_message("What is the sum of 123 and 3210?")
         tools = [ADDITION_TOOL_SPEC]
         round_starts: list[int] = []
         round_ends: list[int] = []
