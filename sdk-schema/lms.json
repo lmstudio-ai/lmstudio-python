@@ -1174,6 +1174,12 @@
         },
         "splitStrategy": {
           "$ref": "#/definitions/llmSplitStrategy"
+        },
+        "disabledGpus": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
         }
       },
       "additionalProperties": false
@@ -3689,6 +3695,50 @@
       ],
       "additionalProperties": false
     },
+    "embedding/rpc/countTokens/parameter": {
+      "type": "object",
+      "properties": {
+        "specifier": {
+          "$ref": "#/definitions/modelSpecifier"
+        },
+        "inputString": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "specifier",
+        "inputString"
+      ],
+      "additionalProperties": false
+    },
+    "embedding/rpc/countTokens/returns": {
+      "type": "object",
+      "properties": {
+        "tokenCount": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "tokenCount"
+      ],
+      "additionalProperties": false
+    },
+    "pseudo/embedding/rpc/countTokens": {
+      "type": "object",
+      "properties": {
+        "parameter": {
+          "$ref": "#/definitions/embedding/rpc/countTokens/parameter"
+        },
+        "returns": {
+          "$ref": "#/definitions/embedding/rpc/countTokens/returns"
+        }
+      },
+      "required": [
+        "parameter",
+        "returns"
+      ],
+      "additionalProperties": false
+    },
     "embedding/channel/loadModel/creationParameter": {
       "type": "object",
       "properties": {
@@ -3878,7 +3928,7 @@
               "const": "unloadingOtherJITModel"
             },
             "info": {
-              "$ref": "#/definitions/embeddingModelInstanceInfo"
+              "$ref": "#/definitions/modelInstanceInfo"
             }
           },
           "required": [
@@ -3981,6 +4031,9 @@
         "rpcTokenize": {
           "$ref": "#/definitions/pseudo/embedding/rpc/tokenize"
         },
+        "rpcCountTokens": {
+          "$ref": "#/definitions/pseudo/embedding/rpc/countTokens"
+        },
         "channelLoadModel": {
           "$ref": "#/definitions/pseudo/embedding/channel/loadModel"
         },
@@ -3995,6 +4048,7 @@
         "rpcGetLoadConfig",
         "rpcEmbedString",
         "rpcTokenize",
+        "rpcCountTokens",
         "channelLoadModel",
         "channelGetOrLoad"
       ],
@@ -4831,7 +4885,7 @@
               "const": "unloadingOtherJITModel"
             },
             "info": {
-              "$ref": "#/definitions/llmInstanceInfo"
+              "$ref": "#/definitions/modelInstanceInfo"
             }
           },
           "required": [
