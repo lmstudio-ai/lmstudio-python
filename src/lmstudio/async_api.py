@@ -34,8 +34,8 @@ from .schemas import AnyLMStudioStruct, DictObject, DictSchema, ModelSchema
 from .history import (
     Chat,
     ChatHistoryDataDict,
-    _FileHandle,
-    _FileInputType,
+    FileHandle,
+    _FileCacheInputType,
     _LocalFileData,
 )
 from .json_api import (
@@ -581,18 +581,18 @@ class _AsyncSessionFiles(AsyncSession):
 
     API_NAMESPACE = "files"
 
-    async def _fetch_file_handle(self, file_data: _LocalFileData) -> _FileHandle:
+    async def _fetch_file_handle(self, file_data: _LocalFileData) -> FileHandle:
         handle = await self.remote_call("uploadFileBase64", file_data._as_fetch_param())
         # Returned dict provides the handle identifier, file type, and size in bytes
         # Add the extra fields needed for a FileHandle (aka ChatMessagePartFileData)
         handle["name"] = file_data.name
         handle["type"] = "file"
-        return load_struct(handle, _FileHandle)
+        return load_struct(handle, FileHandle)
 
     @sdk_public_api_async()
     async def _add_temp_file(
-        self, src: _FileInputType, name: str | None = None
-    ) -> _FileHandle:
+        self, src: _FileCacheInputType, name: str | None = None
+    ) -> FileHandle:
         """Add a file to the server."""
         # Private until LM Studio file handle support stabilizes
         file_data = _LocalFileData(src, name)
@@ -795,7 +795,7 @@ class AsyncSessionModel(
         on_load_progress: ModelLoadingCallback | None,
     ) -> TAsyncModelHandle:
         channel_type = self._API_TYPES.REQUEST_NEW_INSTANCE
-        config_type = self._API_TYPES.MODEL_LOAD_CONFIG
+        config_type: type[TLoadConfig] = self._API_TYPES.MODEL_LOAD_CONFIG
         endpoint = LoadModelEndpoint(
             model_key,
             instance_identifier,
@@ -847,7 +847,7 @@ class AsyncSessionModel(
         models = await self._system_session.list_downloaded_models()
         return [m for m in models if self._is_relevant_model(m)]
 
-    async def _fetch_file_handle(self, file_data: _LocalFileData) -> _FileHandle:
+    async def _fetch_file_handle(self, file_data: _LocalFileData) -> FileHandle:
         return await self._files_session._fetch_file_handle(file_data)
 
 
@@ -1054,7 +1054,6 @@ class AsyncSessionLlm(
         """Request a response in an ongoing assistant chat session and stream the generated tokens."""
         if not isinstance(history, Chat):
             history = Chat.from_history(history)
-        await history._fetch_file_handles_async(self._fetch_file_handle)
         endpoint = ChatResponseEndpoint(
             model_specifier,
             history,
@@ -1078,7 +1077,6 @@ class AsyncSessionLlm(
         """Apply a prompt template to the given history."""
         if not isinstance(history, Chat):
             history = Chat.from_history(history)
-        await history._fetch_file_handles_async(self._fetch_file_handle)
         if not isinstance(opts, LlmApplyPromptTemplateOpts):
             opts = LlmApplyPromptTemplateOpts.from_dict(opts)
         params = LlmRpcApplyPromptTemplateParameter._from_api_dict(
@@ -1505,8 +1503,8 @@ class AsyncClient(ClientBase):
     # Convenience methods
     @sdk_public_api_async()
     async def _add_temp_file(
-        self, src: _FileInputType, name: str | None = None
-    ) -> _FileHandle:
+        self, src: _FileCacheInputType, name: str | None = None
+    ) -> FileHandle:
         """Add a file to the server."""
         # Private until LM Studio file handle support stabilizes
         return await self._files._add_temp_file(src, name)

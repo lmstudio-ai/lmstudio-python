@@ -14,7 +14,7 @@ from pytest import LogCaptureFixture as LogCap
 
 from io import BytesIO
 
-from lmstudio import Client, Chat, _FileHandle, LMStudioServerError
+from lmstudio import Client, Chat, FileHandle, LMStudioServerError
 
 from ..support import (
     EXPECTED_VLM_ID,
@@ -32,7 +32,7 @@ def test_upload_from_pathlike_sync(caplog: LogCap) -> None:
         session = client._files
         file = session._add_temp_file(IMAGE_FILEPATH)
         assert file
-        assert isinstance(file, _FileHandle)
+        assert isinstance(file, FileHandle)
         logging.info(f"Uploaded file: {file}")
 
 
@@ -44,7 +44,7 @@ def test_upload_from_file_obj_sync(caplog: LogCap) -> None:
         with open(IMAGE_FILEPATH, "rb") as f:
             file = session._add_temp_file(f)
         assert file
-        assert isinstance(file, _FileHandle)
+        assert isinstance(file, FileHandle)
         logging.info(f"Uploaded file: {file}")
 
 
@@ -56,7 +56,7 @@ def test_upload_from_bytesio_sync(caplog: LogCap) -> None:
         with open(IMAGE_FILEPATH, "rb") as f:
             file = session._add_temp_file(BytesIO(f.read()))
         assert file
-        assert isinstance(file, _FileHandle)
+        assert isinstance(file, FileHandle)
         logging.info(f"Uploaded file: {file}")
 
 
@@ -97,15 +97,14 @@ def test_non_vlm_predict_sync(caplog: LogCap) -> None:
 
 @pytest.mark.slow
 @pytest.mark.lmstudio
-def test_vlm_predict_implicit_file_handles_sync(caplog: LogCap) -> None:
+def test_vlm_predict_image_param_sync(caplog: LogCap) -> None:
     prompt = VLM_PROMPT
     caplog.set_level(logging.DEBUG)
     model_id = EXPECTED_VLM_ID
     with Client() as client:
+        file_handle = client._files._add_temp_file(IMAGE_FILEPATH)
         history = Chat()
-        history.add_user_message(prompt)
-        # File handles will be implicitly acquired when preparing the prediction request
-        history._add_file(IMAGE_FILEPATH)
+        history.add_user_message(prompt, images=[file_handle])
         vlm = client.llm.model(model_id)
         response = vlm.respond(history, config=SHORT_PREDICTION_CONFIG)
     logging.info(f"VLM response: {response!r}")
@@ -117,15 +116,14 @@ def test_vlm_predict_implicit_file_handles_sync(caplog: LogCap) -> None:
 
 
 @pytest.mark.lmstudio
-def test_non_vlm_predict_implicit_file_handles_sync(caplog: LogCap) -> None:
+def test_non_vlm_predict_image_param_sync(caplog: LogCap) -> None:
     prompt = VLM_PROMPT
     caplog.set_level(logging.DEBUG)
     model_id = "hugging-quants/llama-3.2-1b-instruct"
     with Client() as client:
+        file_handle = client._files._add_temp_file(IMAGE_FILEPATH)
         history = Chat()
-        history.add_user_message(prompt)
-        # File handles will be implicitly acquired when preparing the prediction request
-        history._add_file(IMAGE_FILEPATH)
+        history.add_user_message(prompt, images=[file_handle])
         llm = client.llm.model(model_id)
         with pytest.raises(LMStudioServerError) as exc_info:
             llm.respond(history)
