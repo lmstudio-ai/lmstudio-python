@@ -7,7 +7,7 @@ from typing import Callable, cast
 
 import pytest
 
-from lmstudio.sdk_api import LMStudioOSError, LMStudioRuntimeError
+from lmstudio.sdk_api import LMStudioOSError
 from lmstudio.schemas import DictObject
 from lmstudio.history import (
     AnyChatMessageInput,
@@ -15,8 +15,10 @@ from lmstudio.history import (
     AnyChatMessageDict,
     ChatHistoryData,
     ChatHistoryDataDict,
-    _FileHandle,
-    _FileHandleDict,
+    _FileCacheInputType,
+    FileHandle,
+    _FileHandleCache,
+    FileHandleDict,
     _LocalFileData,
     TextData,
 )
@@ -255,13 +257,13 @@ def test_from_history_with_simple_text() -> None:
     assert chat._get_history_for_prediction() == expected_history
 
 
-INPUT_FILE_HANDLE = _FileHandle(
+INPUT_FILE_HANDLE = FileHandle(
     name="someFile.txt",
     identifier="some-file",
     size_bytes=100,
     file_type="text/plain",
 )
-INPUT_FILE_HANDLE_DICT: _FileHandleDict = {
+INPUT_FILE_HANDLE_DICT: FileHandleDict = {
     "type": "file",
     "name": "someOtherFile.txt",
     "identifier": "some-other-file",
@@ -377,98 +379,88 @@ def test_add_prediction_results() -> None:
     assert chat._get_history_for_prediction() == EXPECTED_PREDICTION_RESPONSE_HISTORY
 
 
-EXPECTED_LOCAL_FILE_MESSAGES = [
+EXPECTED_PENDING_FILE_HANDLES = [
     {
-        "content": [
-            {
-                "fileType": "unknown",
-                "identifier": "<file addition pending>",
-                "name": "raw-binary.txt",
-                "sizeBytes": -1,
-                "type": "file",
-            },
-            {
-                "fileType": "unknown",
-                "identifier": "<file addition pending>",
-                "name": "raw-binary.txt",
-                "sizeBytes": -1,
-                "type": "file",
-            },
-            {
-                "fileType": "unknown",
-                "identifier": "<file addition pending>",
-                "name": "lemmy.png",
-                "sizeBytes": -1,
-                "type": "file",
-            },
-            {
-                "fileType": "unknown",
-                "identifier": "<file addition pending>",
-                "name": "also-lemmy.png",
-                "sizeBytes": -1,
-                "type": "file",
-            },
-            {
-                "fileType": "unknown",
-                "identifier": "<file addition pending>",
-                "name": "lemmy.png",
-                "sizeBytes": -1,
-                "type": "file",
-            },
-        ],
-        "role": "user",
+        "fileType": "unknown",
+        "identifier": "<file addition pending>",
+        "name": "raw-binary.txt",
+        "sizeBytes": -1,
+        "type": "file",
+    },
+    {
+        "fileType": "unknown",
+        "identifier": "<file addition pending>",
+        "name": "raw-binary.txt",
+        "sizeBytes": -1,
+        "type": "file",
+    },
+    {
+        "fileType": "unknown",
+        "identifier": "<file addition pending>",
+        "name": "lemmy.png",
+        "sizeBytes": -1,
+        "type": "file",
+    },
+    {
+        "fileType": "unknown",
+        "identifier": "<file addition pending>",
+        "name": "also-lemmy.png",
+        "sizeBytes": -1,
+        "type": "file",
+    },
+    {
+        "fileType": "unknown",
+        "identifier": "<file addition pending>",
+        "name": "lemmy.png",
+        "sizeBytes": -1,
+        "type": "file",
     },
 ]
 
 
-EXPECTED_FILE_HANDLE_MESSAGES: list[DictObject] = [
+EXPECTED_RESOLVED_FILE_HANDLES: list[DictObject] = [
     {
-        "content": [
-            {
-                "fileType": "text/plain",
-                "identifier": "file-1",
-                "name": "raw-binary.txt",
-                "sizeBytes": 20,
-                "type": "file",
-            },
-            {
-                "fileType": "text/plain",
-                "identifier": "file-1",
-                "name": "raw-binary.txt",
-                "sizeBytes": 20,
-                "type": "file",
-            },
-            {
-                "fileType": "image",
-                "identifier": "file-2",
-                "name": "lemmy.png",
-                "sizeBytes": 41812,
-                "type": "file",
-            },
-            {
-                "fileType": "image",
-                "identifier": "file-3",
-                "name": "also-lemmy.png",
-                "sizeBytes": 41812,
-                "type": "file",
-            },
-            {
-                "fileType": "image",
-                "identifier": "file-2",
-                "name": "lemmy.png",
-                "sizeBytes": 41812,
-                "type": "file",
-            },
-        ],
-        "role": "user",
+        "fileType": "text/plain",
+        "identifier": "file-1",
+        "name": "raw-binary.txt",
+        "sizeBytes": 20,
+        "type": "file",
+    },
+    {
+        "fileType": "text/plain",
+        "identifier": "file-1",
+        "name": "raw-binary.txt",
+        "sizeBytes": 20,
+        "type": "file",
+    },
+    {
+        "fileType": "image",
+        "identifier": "file-2",
+        "name": "lemmy.png",
+        "sizeBytes": 41812,
+        "type": "file",
+    },
+    {
+        "fileType": "image",
+        "identifier": "file-3",
+        "name": "also-lemmy.png",
+        "sizeBytes": 41812,
+        "type": "file",
+    },
+    {
+        "fileType": "image",
+        "identifier": "file-2",
+        "name": "lemmy.png",
+        "sizeBytes": 41812,
+        "type": "file",
     },
 ]
 
 
-def _add_file(file_data: _LocalFileData, identifier: str) -> _FileHandle:
+def _add_file(file_data: _LocalFileData, identifier: str) -> FileHandle:
     name = file_data.name
     fetch_param = file_data._as_fetch_param()
-    return _FileHandle(
+    return FileHandle(
         name=name,
         identifier=identifier,
         size_bytes=len(fetch_param.content_base64),
@@ -476,146 +468,121 @@ def _add_file(file_data: _LocalFileData, identifier: str) -> _FileHandle:
     )
 
 
-def _check_pending_file(file_handle_dict: DictObject, name: str) -> None:
-    assert file_handle_dict["type"] == "file"
-    assert file_handle_dict["name"] == name
-    assert file_handle_dict["identifier"] == "<file addition pending>"
-    assert file_handle_dict["sizeBytes"] == -1
-    assert file_handle_dict["fileType"] == "unknown"
+def _check_pending_file(file_handle: FileHandle, name: str) -> None:
+    assert file_handle.type == "file"
+    assert file_handle.name == name
+    assert file_handle.identifier == "<file addition pending>"
+    assert file_handle.size_bytes == -1
+    assert file_handle.file_type == "unknown"
 
 
 def _check_fetched_text_file(
-    file_handle_dict: DictObject, name: str, identifier: str
+    file_handle: FileHandle, name: str, identifier: str
 ) -> None:
-    assert file_handle_dict["type"] == "file"
-    assert file_handle_dict["name"] == name
-    assert file_handle_dict["identifier"] == identifier
-    assert file_handle_dict["sizeBytes"] > 0
-    assert file_handle_dict["fileType"] == "text/plain"
+    assert file_handle.type == "file"
+    assert file_handle.name == name
+    assert file_handle.identifier == identifier
+    assert file_handle.size_bytes > 0
+    assert file_handle.file_type == "text/plain"
 
 
-def _make_local_file_context() -> tuple[Chat, int]:
+def _make_local_file_cache() -> tuple[_FileHandleCache, list[FileHandle], int]:
     # File context for fetching handles that ensures
     # * duplicate files are only looked up once
     # * files with different names are looked up under both names
-    chat = Chat()
+    cache = _FileHandleCache()
     num_unique_files = 3
-    chat._add_file(b"raw binary data", "raw-binary.txt")
-    chat._add_file(b"raw binary data", "raw-binary.txt")
-    chat._add_file(IMAGE_FILEPATH)
-    chat._add_file(IMAGE_FILEPATH, "also-lemmy.png")
-    chat._add_file(IMAGE_FILEPATH)
-    with pytest.raises(RuntimeError, match="Pending file handles must be fetched"):
-        chat._get_history_for_prediction()
-    history = chat._get_history_unchecked()
-    assert history["messages"] == EXPECTED_LOCAL_FILE_MESSAGES
-    return chat, num_unique_files
+    files_to_cache: list[tuple[_FileCacheInputType, str | None]] = [
+        (b"raw binary data", "raw-binary.txt"),
+        (b"raw binary data", "raw-binary.txt"),
+        (IMAGE_FILEPATH, None),
+        (IMAGE_FILEPATH, "also-lemmy.png"),
+        (IMAGE_FILEPATH, None),
+    ]
+    file_handles: list[FileHandle] = []
+    for args in files_to_cache:
+        file_handles.append(cache._get_file_handle(*args))
+    assert [h.to_dict() for h in file_handles] == EXPECTED_PENDING_FILE_HANDLES
+    return cache, file_handles, num_unique_files
 
 
 # TODO: Improve code sharing between this test case and its async counterpart
 #       (potentially by moving the async version to `async/test_history_async.py`)
-def test_implicit_file_handles() -> None:
+def test_file_handle_cache() -> None:
     local_files: list[_LocalFileData] = []
-    file_handles: list[_FileHandle] = []
+    unique_file_handles: list[FileHandle] = []
 
-    def add_file(file_data: _LocalFileData) -> _FileHandle:
+    def add_file(file_data: _LocalFileData) -> FileHandle:
         local_files.append(file_data)
         result = _add_file(file_data, f"file-{len(local_files)}")
-        file_handles.append(result)
+        unique_file_handles.append(result)
         return result
 
-    context, num_unique_files = _make_local_file_context()
-    context._fetch_file_handles(add_file)
+    cache, file_handles, num_unique_files = _make_local_file_cache()
+    cache._fetch_file_handles(add_file)
     assert len(local_files) == num_unique_files
-    assert len(file_handles) == num_unique_files
-    messages = context._get_history_for_prediction()["messages"]
-    assert messages == EXPECTED_FILE_HANDLE_MESSAGES
-    expected_num_message_parts = len(messages[0]["content"])
+    assert len(unique_file_handles) == num_unique_files
+    assert [h.to_dict() for h in file_handles] == EXPECTED_RESOLVED_FILE_HANDLES
     # Adding the same file again should immediately populate the handle
-    expected_num_message_parts += 1
-    context._add_file(IMAGE_FILEPATH)
-    messages = context._get_history_for_prediction()["messages"]
-    assert len(messages) == 1
-    assert len(messages[0]["content"]) == expected_num_message_parts
-    assert messages[0]["content"][-1] == messages[0]["content"][-2]
+    image_handle = cache._get_file_handle(IMAGE_FILEPATH)
+    assert image_handle == file_handles[-1]
     # Fetching again should not perform any lookups
-    context._fetch_file_handles(add_file)
+    cache._fetch_file_handles(add_file)
     assert len(local_files) == num_unique_files
-    assert len(file_handles) == num_unique_files
+    assert len(unique_file_handles) == num_unique_files
     # Adding a different file should require a new lookup
-    expected_num_message_parts += 1
-    context._add_file(__file__)
-    with pytest.raises(RuntimeError, match="Pending file handles must be fetched"):
-        context._get_history_for_prediction()
-    messages = context._get_history_unchecked()["messages"]
-    assert len(messages) == 1
-    assert len(messages[0]["content"]) == expected_num_message_parts
+    this_file_handle = cache._get_file_handle(__file__)
     expected_name = f"{__name__.rpartition('.')[2]}.py"
-    added_file_handle = messages[-1]["content"][-1]
-    _check_pending_file(added_file_handle, expected_name)
-    context._fetch_file_handles(add_file)
-    messages = context._get_history_for_prediction()["messages"]
+    _check_pending_file(this_file_handle, expected_name)
+    cache._fetch_file_handles(add_file)
     assert len(local_files) == num_unique_files + 1
-    assert len(file_handles) == num_unique_files + 1
-    # While the pending file handle should be updated in place,
-    # retrieving the history takes a snapshot of the internal state
-    added_file_handle = messages[-1]["content"][-1]
+    assert len(unique_file_handles) == num_unique_files + 1
     expected_identifier = f"file-{num_unique_files + 1}"
-    _check_fetched_text_file(added_file_handle, expected_name, expected_identifier)
+    _check_fetched_text_file(this_file_handle, expected_name, expected_identifier)
 
 
 @pytest.mark.asyncio
-async def test_implicit_file_handles_async() -> None:
+async def test_file_handle_cache_async() -> None:
     local_files: list[_LocalFileData] = []
-    file_handles: list[_FileHandle] = []
+    unique_file_handles: list[FileHandle] = []
 
-    async def add_file(file_data: _LocalFileData) -> _FileHandle:
+    async def add_file(file_data: _LocalFileData) -> FileHandle:
         local_files.append(file_data)
         result = _add_file(file_data, f"file-{len(local_files)}")
-        file_handles.append(result)
+        unique_file_handles.append(result)
         return result
 
-    context, num_unique_files = _make_local_file_context()
-    await context._fetch_file_handles_async(add_file)
+    cache, file_handles, num_unique_files = _make_local_file_cache()
+    await cache._fetch_file_handles_async(add_file)
     assert len(local_files) == num_unique_files
-    assert len(file_handles) == num_unique_files
-    messages = context._get_history_for_prediction()["messages"]
-    assert messages == EXPECTED_FILE_HANDLE_MESSAGES
-    expected_num_message_parts = len(messages[0]["content"])
+    assert len(unique_file_handles) == num_unique_files
+    assert [h.to_dict() for h in file_handles] == EXPECTED_RESOLVED_FILE_HANDLES
     # Adding the same file again should immediately populate the handle
-    expected_num_message_parts += 1
-    context._add_file(IMAGE_FILEPATH)
-    messages = context._get_history_for_prediction()["messages"]
-    assert len(messages) == 1
-    assert len(messages[0]["content"]) == expected_num_message_parts
-    assert messages[0]["content"][-1] == messages[0]["content"][-2]
+    image_handle = cache._get_file_handle(IMAGE_FILEPATH)
+    assert image_handle == file_handles[-1]
     # Fetching again should not perform any lookups
-    await context._fetch_file_handles_async(add_file)
+    await cache._fetch_file_handles_async(add_file)
     assert len(local_files) == num_unique_files
-    assert len(file_handles) == num_unique_files
+    assert len(unique_file_handles) == num_unique_files
     # Adding a different file should require a new lookup
-    expected_num_message_parts += 1
-    context._add_file(__file__)
-    with pytest.raises(RuntimeError, match="Pending file handles must be fetched"):
-        context._get_history_for_prediction()
-    messages = context._get_history_unchecked()["messages"]
-    assert len(messages) == 1
-    assert len(messages[0]["content"]) == expected_num_message_parts
+    this_file_handle = cache._get_file_handle(__file__)
     expected_name = f"{__name__.rpartition('.')[2]}.py"
-    added_file_handle = messages[-1]["content"][-1]
-    _check_pending_file(added_file_handle, expected_name)
-    await context._fetch_file_handles_async(add_file)
-    messages = context._get_history_for_prediction()["messages"]
+    _check_pending_file(this_file_handle, expected_name)
+    await cache._fetch_file_handles_async(add_file)
     assert len(local_files) == num_unique_files + 1
-    assert len(file_handles) == num_unique_files + 1
-    # While the pending file handle should be updated in place,
-    # retrieving the history takes a snapshot of the internal state
-    added_file_handle = messages[-1]["content"][-1]
+    assert len(unique_file_handles) == num_unique_files + 1
     expected_identifier = f"file-{num_unique_files + 1}"
-    _check_fetched_text_file(added_file_handle, expected_name, expected_identifier)
+    _check_fetched_text_file(this_file_handle, expected_name, expected_identifier)
 
 
-EXPECTED_PENDING_ATTACHMENT_MESSAGES = [
+def test_invalid_local_file() -> None:
+    cache = _FileHandleCache()
+    with pytest.raises(LMStudioOSError) as exc_info:
+        cache._get_file_handle("No such file")
+    check_sdk_error(exc_info, __file__)
+
+
+EXPECTED_USER_ATTACHMENT_MESSAGES = [
     {
         "content": [
             {
@@ -623,17 +590,17 @@ EXPECTED_PENDING_ATTACHMENT_MESSAGES = [
                 "type": "text",
             },
             {
-                "fileType": "unknown",
-                "identifier": "<file addition pending>",
+                "fileType": "image",
+                "identifier": "some-image",
                 "name": "lemmy.png",
-                "sizeBytes": -1,
+                "sizeBytes": 41812,
                 "type": "file",
             },
             {
-                "fileType": "unknown",
-                "identifier": "<file addition pending>",
-                "name": "test_history.py",
-                "sizeBytes": -1,
+                "fileType": "text/plain",
+                "identifier": "some-file",
+                "name": "someFile.txt",
+                "sizeBytes": 100,
                 "type": "file",
             },
         ],
@@ -641,14 +608,23 @@ EXPECTED_PENDING_ATTACHMENT_MESSAGES = [
     },
 ]
 
+INPUT_IMAGE_HANDLE = FileHandle(
+    name="lemmy.png",
+    identifier="some-image",
+    size_bytes=41812,
+    file_type="image",
+)
+
 
 def test_user_message_attachments() -> None:
     chat = Chat()
     chat.add_user_message(
-        "What do you make of this?", _images=[IMAGE_FILEPATH], _files=[__file__]
+        "What do you make of this?",
+        images=[INPUT_IMAGE_HANDLE],
+        _files=[INPUT_FILE_HANDLE],
     )
-    history = chat._get_history_unchecked()
-    assert history["messages"] == EXPECTED_PENDING_ATTACHMENT_MESSAGES
+    history = chat._get_history()
+    assert history["messages"] == EXPECTED_USER_ATTACHMENT_MESSAGES
 
 
 def test_assistant_responses_cannot_be_multipart_or_consecutive() -> None:
@@ -692,13 +668,6 @@ def test_initial_history_with_prompt_is_disallowed() -> None:
     chat = Chat()
     with pytest.raises(ValueError, match="initial history or a system prompt"):
         Chat("Initial prompt", _initial_history=chat._history)
-
-
-def test_invalid_local_file() -> None:
-    chat = Chat()
-    with pytest.raises(LMStudioOSError) as exc_info:
-        chat._add_file("No such file")
-    check_sdk_error(exc_info, __file__)
 
 
 EXPECTED_CHAT_STR = """\
@@ -758,11 +727,3 @@ def test_chat_duplication(clone: Callable[[Chat], Chat]) -> None:
     for source_message, cloned_message in zip(chat_messages, cloned_messages):
         assert cloned_message is not source_message
         assert cloned_message == source_message
-
-
-@pytest.mark.parametrize("clone", CLONING_MECHANISMS)
-def test_cannot_clone_with_pending_files(clone: Callable[[Chat], Chat]) -> None:
-    chat = Chat("Initial system prompt")
-    chat._add_file(__file__)
-    with pytest.raises(LMStudioRuntimeError, match="Cannot copy chat history"):
-        clone(chat)

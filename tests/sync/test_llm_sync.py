@@ -21,7 +21,7 @@ from ..support import EXPECTED_LLM, EXPECTED_LLM_ID
 @pytest.mark.parametrize("model_id", (EXPECTED_LLM, EXPECTED_LLM_ID))
 def test_apply_prompt_template_sync(model_id: str, caplog: LogCap) -> None:
     caplog.set_level(logging.DEBUG)
-    file_data = history._FileHandle(
+    file_data = history.FileHandle(
         name="someFile.txt",
         identifier="some-file",
         size_bytes=100,

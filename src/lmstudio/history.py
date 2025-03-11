@@ -43,53 +43,44 @@ from ._sdk_models import (
     ChatMessageDataSystem as SystemPrompt,
     ChatMessageDataAssistant as AssistantResponse,
     ChatMessageDataTool as ToolResultMessage,
-    # Private until LM Studio file handle support stabilizes
-    ChatMessagePartFileData as _FileHandle,
-    ChatMessagePartFileDataDict as _FileHandleDict,
+    ChatMessagePartFileData as FileHandle,
+    ChatMessagePartFileDataDict as FileHandleDict,
     ChatMessagePartTextData as TextData,
     ChatMessagePartTextDataDict as TextDataDict,
     ChatMessagePartToolCallRequestData as ToolCallRequestData,
     ChatMessagePartToolCallRequestDataDict as ToolCallRequestDataDict,
     ChatMessagePartToolCallResultData as ToolCallResultData,
     ChatMessagePartToolCallResultDataDict as ToolCallResultDataDict,
-    # Private until LM Studio file handle support stabilizes
-    # FileType,
     FilesRpcUploadFileBase64Parameter,
+    FileType as FileHandleType,
     ToolCallRequest as ToolCallRequest,
     FunctionToolCallRequestDict as ToolCallRequestDict,
 )
 
 __all__ = [
+    "AnyChatMessage",
+    "AnyChatMessageDict",
+    "AssistantResponse",
     "AssistantResponseContent",
     "Chat",
     "ChatHistoryData",
     "ChatHistoryDataDict",
-    "AnyChatMessage",
-    "AnyChatMessageDict",
-    "UserMessage",
-    "SystemPrompt",
-    "AssistantResponse",
-    "ToolResultMessage",
-    # Private until LM Studio file handle support stabilizes
-    "_FileHandle",  # Other modules need this to be exported
-    "_FileHandleDict",  # Other modules need this to be exported
-    # "FileType",
-    # "FileHandle",
-    # "FileHandleDict",
+    # Private until file handle caching support is part of the published SDK API
     # "FetchFileHandle",
+    "FileHandle",
+    "FileHandleDict",
+    "FileHandleInput",
+    "FileHandleType",
+    "SystemPrompt",
     "SystemPromptContent",
-    "TextData",
-    "TextDataDict",
-    # Private until user level tool call request management is defined
     "ToolCallRequest",
     "ToolCallResultData",
-    # "ToolCallRequest",
-    # "ToolCallResult",
+    "TextData",
+    "TextDataDict",
+    "ToolResultMessage",
+    "UserMessage",
     "UserMessageContent",
 ]
-
-# Private until LM Studio file handle support stabilizes
-_FileInputType = BinaryIO | bytes | str | os.PathLike[str]
 
 # A note on terminology:
 #
@@ -103,17 +94,19 @@ _FileInputType = BinaryIO | bytes | str | os.PathLike[str]
 # * when applying prompt templates, the entire resulting chat context history
 #   is referred to as the "chat prompt"
 
+FileHandleInput = FileHandle | FileHandleDict
+
 # Note: ChatMessageDataSystem nominally allows file handles in its content field,
 #       but that's only for internal use within the LM Studio plugin system
 SystemPromptContent = TextData
 SystemPromptContentDict = TextDataDict
-UserMessageContent = TextData | _FileHandle
-UserMessageContentDict = TextDataDict | _FileHandleDict
-AssistantResponseContent = TextData | _FileHandle
-AssistantResponseContentDict = TextDataDict | _FileHandleDict
-ChatMessageContent = TextData | _FileHandle | ToolCallRequestData | ToolCallResultData
+UserMessageContent = TextData | FileHandle
+UserMessageContentDict = TextDataDict | FileHandleDict
+AssistantResponseContent = TextData | FileHandle
+AssistantResponseContentDict = TextDataDict | FileHandleDict
+ChatMessageContent = TextData | FileHandle | ToolCallRequestData | ToolCallResultData
 ChatMessageContentDict = (
-    TextDataDict | _FileHandleDict | ToolCallRequestData | ToolCallResultDataDict
+    TextDataDict | FileHandleDict | ToolCallRequestData | ToolCallResultDataDict
 )
 
 
@@ -152,66 +145,6 @@ def _is_chat_message_input(value: AnyChatMessageInput) -> TypeIs[ChatMessageInpu
     return isinstance(value, (str, Mapping)) or not isinstance(value, Iterable)
 
 
-def _get_file_details(src: _FileInputType) -> Tuple[str, bytes]:
-    """Read file contents as binary data and generate a suitable default name."""
-    if isinstance(src, bytes):
-        # We interpreter bytes as raw data, not a bytes filesystem path
-        data = src
-        name = str(uuid.uuid4())
-    elif hasattr(src, "read"):
-        try:
-            data = src.read()
-        except OSError as exc:
-            err_msg = f"Error while reading {src!r} ({exc!r})"
-            raise LMStudioOSError(err_msg) from None
-        name = getattr(src, "name", str(uuid.uuid4()))
-    else:
-        try:
-            src_path = Path(src)
-        except Exception as exc:
-            err_msg = f"Expected file-like object, filesystem path, or bytes ({exc!r})"
-            raise LMStudioValueError(err_msg) from None
-        try:
-            data = src_path.read_bytes()
-        except OSError as exc:
-            err_msg = f"Error while reading {str(src_path)!r} ({exc!r})"
-            raise LMStudioOSError(err_msg) from None
-        name = str(src_path.name)
-    return name, data
-
-
-_ContentHash: TypeAlias = bytes
-_FileHandleCacheKey: TypeAlias = tuple[str, _ContentHash]
-
-
-# Private until LM Studio file handle support stabilizes
-class _LocalFileData:
-    """Local file data to be added to a chat session."""
-
-    name: str
-    raw_data: bytes
-
-    def __init__(self, src: _FileInputType, name: str | None = None) -> None:
-        default_name, raw_data = _get_file_details(src)
-        self.name = name or default_name
-        self.raw_data = raw_data
-
-    def _get_cache_key(self) -> _FileHandleCacheKey:
-        return (self.name, sha256(self.raw_data).digest())
-
-    def _as_fetch_param(self) -> FilesRpcUploadFileBase64Parameter:
-        content_base64 = b64encode(self.raw_data).decode("ascii")
-        return FilesRpcUploadFileBase64Parameter(
-            name=self.name, content_base64=content_base64
-        )
-
-
-_PendingFile: TypeAlias = tuple[_LocalFileData, _FileHandle]
-
-_FetchFileHandle: TypeAlias = Callable[[_LocalFileData], _FileHandle]
-_AsyncFetchFileHandle: TypeAlias = Callable[[_LocalFileData], Awaitable[_FileHandle]]
-
-
 class Chat:
     """Helper class to track LLM interactions."""
 
@@ -234,8 +167,6 @@ class Chat:
             self._history = _initial_history
         else:
             self._history = ChatHistoryData(messages=[])
-        self._pending_files: dict[_FileHandleCacheKey, _PendingFile] = {}
-        self._cached_file_handles: dict[_FileHandleCacheKey, _FileHandle] = {}
         if initial_prompt is not None:
             self.add_system_prompt(initial_prompt)
 
@@ -245,63 +176,21 @@ class Chat:
 
     def __str__(self) -> str:
         type_name = type(self).__name__
-        formatted_data = _format_json(self._get_history_unchecked())
+        formatted_data = _format_json(self._get_history())
         return f"{type_name}.from_history({formatted_data})"
 
-    def _get_history_unchecked(self) -> ChatHistoryDataDict:
-        # Convert the history without checking for pending files
+    def _get_history(self) -> ChatHistoryDataDict:
         return cast(ChatHistoryDataDict, to_builtins(self._history))
 
     def _get_history_for_prediction(self) -> ChatHistoryDataDict:
         """Convert the current history to a format suitable for an LLM prediction."""
-        if self._pending_files:
-            # If this happens, something elsewhere in the SDK messed up
-            # Raise a standard exception so the traceback doesn't get truncated
-            raise RuntimeError(
-                "Pending file handles must be fetched before requesting an LLM prediction"
-            )
-        return self._get_history_unchecked()
+        # For a wire message, we want the dict format
+        return self._get_history()
 
     def _get_history_for_copy(self) -> ChatHistoryData:
         """Convert the current history to a format suitable for initializing a new instance."""
-        if self._pending_files:
-            # Users can trigger this without the SDK doing anything wrong,
-            # so truncate the reported traceback at the SDK boundary
-            raise LMStudioRuntimeError(
-                "Cannot copy chat history with pending file handles"
-            )
-        return ChatHistoryData._from_api_dict(self._get_history_unchecked())
-
-    def _get_pending_files_to_fetch(self) -> Mapping[_FileHandleCacheKey, _PendingFile]:
-        pending_files = self._pending_files
-        self._pending_files = {}
-        return pending_files
-
-    @staticmethod
-    def _update_pending_handle(
-        pending_handle: _FileHandle, fetched_handle: _FileHandle
-    ) -> None:
-        # Mutate the pending handle so it keeps its place in the history
-        for attr in pending_handle.__struct_fields__:
-            setattr(pending_handle, attr, getattr(fetched_handle, attr))
-
-    def _fetch_file_handles(self, fetch_file_handle: _FetchFileHandle) -> None:
-        """Synchronously fetch all currently pending file handles from the LM Studio API."""
-        pending_files = self._get_pending_files_to_fetch()
-        for cache_key, (file_data, pending_handle) in pending_files.items():
-            fetched_handle = fetch_file_handle(file_data)
-            self._update_pending_handle(pending_handle, fetched_handle)
-            self._cached_file_handles[cache_key] = fetched_handle
-
-    async def _fetch_file_handles_async(
-        self, fetch_file_handle: _AsyncFetchFileHandle
-    ) -> None:
-        """Asynchronously fetch all currently pending file handles from the LM Studio API."""
-        pending_files = self._get_pending_files_to_fetch()
-        for cache_key, (file_data, pending_handle) in pending_files.items():
-            fetched_handle = await fetch_file_handle(file_data)
-            self._update_pending_handle(pending_handle, fetched_handle)
-            self._cached_file_handles[cache_key] = fetched_handle
+        # For a new chat instance, we want struct instances
+        return ChatHistoryData._from_api_dict(self._get_history())
 
     @classmethod
     @sdk_public_api()
@@ -317,10 +206,7 @@ class Chat:
         """
         if isinstance(history, cls):
             # Create a new `cls` instance with the same history as the given chat
-            self = cls(_initial_history=history._get_history_for_copy())
-            # Retrieving the history would fail if there were pending file handles
-            self._cached_file_handles.update(history._cached_file_handles)
-            return self
+            return cls(_initial_history=history._get_history_for_copy())
         if isinstance(history, ChatHistoryData):
             # Ensure the chat is not affected by future mutation of the given history
             return cls(_initial_history=deepcopy(history))
@@ -479,48 +365,15 @@ class Chat:
         self._messages.append(message)
         return message
 
-    def _get_file_handle(
-        self, src: _FileInputType, name: str | None = None
-    ) -> _FileHandle:
-        file_data = _LocalFileData(src, name)
-        cache_key = file_data._get_cache_key()
-        try:
-            # Check if file handle has already been fetched
-            return self._cached_file_handles[cache_key]
-        except KeyError:
-            pass
-        try:
-            # Check if file handle already has a fetch pending
-            pending_file = self._pending_files[cache_key]
-            return pending_file[1]
-        except KeyError:
-            pass
-        # Create a new pending file handle
-        to_be_populated = _FileHandle(
-            name=file_data.name,
-            identifier="<file addition pending>",
-            size_bytes=-1,  # Let the fetch operation set this later
-            file_type="unknown",
-        )
-        self._pending_files[cache_key] = (file_data, to_be_populated)
-        return to_be_populated
-
-    @sdk_public_api()
-    def _add_file(self, src: _FileInputType, name: str | None = None) -> UserMessage:
-        """Add a local file (or raw binary data) to the chat history."""
-        # Private until LM Studio file handle support stabilizes
-        file_handle = self._get_file_handle(src, name)
-        return self.add_user_message(file_handle)
-
     @sdk_public_api()
     def add_user_message(
         self,
         content: UserMessageInput | Iterable[UserMessageInput],
         *,
+        images: Sequence[FileHandleInput] = (),
         # Mark file parameters as private until LM Studio
         # file handle support stabilizes
-        _images: Sequence[_FileInputType] = (),
-        _files: Sequence[_FileInputType] = (),
+        _files: Sequence[FileHandleInput] = (),
     ) -> UserMessage:
         """Add a new user message to the chat history."""
         # Accept both singular and multi-part user messages
@@ -530,10 +383,10 @@ class Chat:
         else:
             content_items = list(content)
         # Convert given local file information to file handles
-        if _images:
-            content_items.extend(self._get_file_handle(f) for f in _images)
+        if images:
+            content_items.extend(images)
         if _files:
-            content_items.extend(self._get_file_handle(f) for f in _files)
+            content_items.extend(_files)
         # Consecutive messages with the same role are not supported,
         # but multi-part user messages are valid (to allow for file
         # attachments), so just merge them
@@ -547,7 +400,7 @@ class Chat:
             match item:
                 # Sadly, we can't use the union type aliases for matching,
                 # since the compiler needs visibility into every match target
-                case TextData() | _FileHandle():
+                case TextData() | FileHandle():
                     _content.append(item)
                 case str():
                     _content.append(TextData(text=item))
@@ -559,7 +412,7 @@ class Chat:
                     "file_type": _,
                 }:
                     # We accept snake_case here for consistency, but don't really expect it
-                    _content.append(_FileHandle._from_any_dict(item))
+                    _content.append(FileHandle._from_any_dict(item))
                 case _:
                     raise LMStudioValueError(
                         f"Unable to parse user message content: {item}"
@@ -573,14 +426,14 @@ class Chat:
     @classmethod
     def _parse_assistant_response(
         cls, response: AnyAssistantResponseInput
-    ) -> TextData | _FileHandle:
+    ) -> TextData | FileHandle:
         # Note: tool call requests are NOT accepted here, as they're expected
         # to follow an initial text response
         # It's not clear if file handles should be accepted as it's not obvious
         # how client applications should process those (even though the API
         # format nominally permits them here)
         match response:
-            case TextData() | _FileHandle():
+            case TextData() | FileHandle():
                 return response
             case str():
                 return TextData(text=response)
@@ -594,7 +447,7 @@ class Chat:
                 "file_type": _,
             }:
                 # We accept snake_case here for consistency, but don't really expect it
-                return _FileHandle._from_any_dict(response)
+                return FileHandle._from_any_dict(response)
             case _:
                 raise LMStudioValueError(
                     f"Unable to parse assistant response content: {response}"
@@ -664,3 +517,135 @@ class Chat:
         message = ToolResultMessage(content=[message_data])
         self._messages.append(message)
         return message
+
+
+# Private until file handle caching support is part of the published SDK API
+_FileCacheInputType = BinaryIO | bytes | str | os.PathLike[str]
+
+
+def _get_file_details(src: _FileCacheInputType) -> Tuple[str, bytes]:
+    """Read file contents as binary data and generate a suitable default name."""
+    if isinstance(src, bytes):
+        # We interpreter bytes as raw data, not a bytes filesystem path
+        data = src
+        name = str(uuid.uuid4())
+    elif hasattr(src, "read"):
+        try:
+            data = src.read()
+        except OSError as exc:
+            err_msg = f"Error while reading {src!r} ({exc!r})"
+            raise LMStudioOSError(err_msg) from None
+        name = getattr(src, "name", str(uuid.uuid4()))
+    else:
+        try:
+            src_path = Path(src)
+        except Exception as exc:
+            err_msg = f"Expected file-like object, filesystem path, or bytes ({exc!r})"
+            raise LMStudioValueError(err_msg) from None
+        try:
+            data = src_path.read_bytes()
+        except OSError as exc:
+            err_msg = f"Error while reading {str(src_path)!r} ({exc!r})"
+            raise LMStudioOSError(err_msg) from None
+        name = str(src_path.name)
+    return name, data
+
+
+_ContentHash: TypeAlias = bytes
+_FileHandleCacheKey: TypeAlias = tuple[str, _ContentHash]
+
+
+# Private until file handle caching support is part of the published SDK API
+class _LocalFileData:
+    """Local file data to be added to a chat history."""
+
+    name: str
+    raw_data: bytes
+
+    def __init__(self, src: _FileCacheInputType, name: str | None = None) -> None:
+        default_name, raw_data = _get_file_details(src)
+        self.name = name or default_name
+        self.raw_data = raw_data
+
+    def _get_cache_key(self) -> _FileHandleCacheKey:
+        return (self.name, sha256(self.raw_data).digest())
+
+    def _as_fetch_param(self) -> FilesRpcUploadFileBase64Parameter:
+        content_base64 = b64encode(self.raw_data).decode("ascii")
+        return FilesRpcUploadFileBase64Parameter(
+            name=self.name, content_base64=content_base64
+        )
+
+
+_PendingFile: TypeAlias = tuple[_LocalFileData, FileHandle]
+
+_FetchFileHandle: TypeAlias = Callable[[_LocalFileData], FileHandle]
+_AsyncFetchFileHandle: TypeAlias = Callable[[_LocalFileData], Awaitable[FileHandle]]
+
+
+# TODO: Now that the file handle caching is no longer part of the chat history management,
+#       redesign it to resolve file handles with the server immediately.
+class _FileHandleCache:
+    """Local file data to be added to a chat session."""
+
+    def __init__(self) -> None:
+        self._pending_files: dict[_FileHandleCacheKey, _PendingFile] = {}
+        self._cached_file_handles: dict[_FileHandleCacheKey, FileHandle] = {}
+
+    @sdk_public_api()
+    def _get_file_handle(
+        self, src: _FileCacheInputType, name: str | None = None
+    ) -> FileHandle:
+        file_data = _LocalFileData(src, name)
+        cache_key = file_data._get_cache_key()
+        try:
+            # Check if file handle has already been fetched
+            return self._cached_file_handles[cache_key]
+        except KeyError:
+            pass
+        try:
+            # Check if file handle already has a fetch pending
+            pending_file = self._pending_files[cache_key]
+            return pending_file[1]
+        except KeyError:
+            pass
+        # Create a new pending file handle
+        to_be_populated = FileHandle(
+            name=file_data.name,
+            identifier="<file addition pending>",
+            size_bytes=-1,  # Let the fetch operation set this later
+            file_type="unknown",
+        )
+        self._pending_files[cache_key] = (file_data, to_be_populated)
+        return to_be_populated
+
+    def _get_pending_files_to_fetch(self) -> Mapping[_FileHandleCacheKey, _PendingFile]:
+        pending_files = self._pending_files
+        self._pending_files = {}
+        return pending_files
+
+    @staticmethod
+    def _update_pending_handle(
+        pending_handle: FileHandle, fetched_handle: FileHandle
+    ) -> None:
+        # Mutate the pending handle so it keeps its place in the history
+        for attr in pending_handle.__struct_fields__:
+            setattr(pending_handle, attr, getattr(fetched_handle, attr))
+
+    def _fetch_file_handles(self, fetch_file_handle: _FetchFileHandle) -> None:
+        """Synchronously fetch all currently pending file handles from the LM Studio API."""
+        pending_files = self._get_pending_files_to_fetch()
+        for cache_key, (file_data, pending_handle) in pending_files.items():
+            fetched_handle = fetch_file_handle(file_data)
+            self._update_pending_handle(pending_handle, fetched_handle)
+            self._cached_file_handles[cache_key] = fetched_handle
+
+    async def _fetch_file_handles_async(
+        self, fetch_file_handle: _AsyncFetchFileHandle
+    ) -> None:
+        """Asynchronously fetch all currently pending file handles from the LM Studio API."""
+        pending_files = self._get_pending_files_to_fetch()
+        for cache_key, (file_data, pending_handle) in pending_files.items():
+            fetched_handle = await fetch_file_handle(file_data)
+            self._update_pending_handle(pending_handle, fetched_handle)
+            self._cached_file_handles[cache_key] = fetched_handle
