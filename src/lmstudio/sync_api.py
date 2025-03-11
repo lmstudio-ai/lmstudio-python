@@ -147,6 +147,8 @@ __all__ = [
     "list_downloaded_models",
     "list_loaded_models",
     "llm",
+    "prepare_file",
+    "prepare_image",
 ]
 
 
