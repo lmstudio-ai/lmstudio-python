@@ -15,7 +15,7 @@ from lmstudio.history import (
     AnyChatMessageDict,
     ChatHistoryData,
     ChatHistoryDataDict,
-    _FileCacheInputType,
+    LocalFileInput,
     FileHandle,
     _FileHandleCache,
     FileHandleDict,
@@ -492,7 +492,7 @@ def _make_local_file_cache() -> tuple[_FileHandleCache, list[FileHandle], int]:
     # * files with different names are looked up under both names
     cache = _FileHandleCache()
     num_unique_files = 3
-    files_to_cache: list[tuple[_FileCacheInputType, str | None]] = [
+    files_to_cache: list[tuple[LocalFileInput, str | None]] = [
         (b"raw binary data", "raw-binary.txt"),
         (b"raw binary data", "raw-binary.txt"),
         (IMAGE_FILEPATH, None),
@@ -589,18 +589,20 @@ EXPECTED_USER_ATTACHMENT_MESSAGES = [
                 "text": "What do you make of this?",
                 "type": "text",
             },
-            {
-                "fileType": "image",
-                "identifier": "some-image",
-                "name": "lemmy.png",
-                "sizeBytes": 41812,
-                "type": "file",
-            },
+            # Implementation attaches the prepared file handles
+            # before it attaches the prepared image handles
             {
                 "fileType": "text/plain",
                 "identifier": "some-file",
                 "name": "someFile.txt",
                 "sizeBytes": 100,
+                "type": "file",
+            },
+            {
+                "fileType": "image",
+                "identifier": "some-image",
+                "name": "lemmy.png",
+                "sizeBytes": 41812,
                 "type": "file",
             },
         ],
@@ -621,7 +623,7 @@ def test_user_message_attachments() -> None:
     chat.add_user_message(
         "What do you make of this?",
         images=[INPUT_IMAGE_HANDLE],
-        _files=[INPUT_FILE_HANDLE],
+        files=[INPUT_FILE_HANDLE],
     )
     history = chat._get_history()
     assert history["messages"] == EXPECTED_USER_ATTACHMENT_MESSAGES

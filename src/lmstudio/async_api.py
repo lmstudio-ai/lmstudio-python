@@ -35,7 +35,7 @@ from .history import (
     Chat,
     ChatHistoryDataDict,
     FileHandle,
-    _FileCacheInputType,
+    LocalFileInput,
     _LocalFileData,
 )
 from .json_api import (
@@ -590,8 +590,8 @@ class _AsyncSessionFiles(AsyncSession):
         return load_struct(handle, FileHandle)
 
     @sdk_public_api_async()
-    async def _add_temp_file(
-        self, src: _FileCacheInputType, name: str | None = None
+    async def prepare_file(
+        self, src: LocalFileInput, name: str | None = None
     ) -> FileHandle:
         """Add a file to the server."""
         # Private until LM Studio file handle support stabilizes
@@ -1502,12 +1502,12 @@ class AsyncClient(ClientBase):
 
     # Convenience methods
     @sdk_public_api_async()
-    async def _add_temp_file(
-        self, src: _FileCacheInputType, name: str | None = None
+    async def prepare_file(
+        self, src: LocalFileInput, name: str | None = None
     ) -> FileHandle:
         """Add a file to the server."""
         # Private until LM Studio file handle support stabilizes
-        return await self._files._add_temp_file(src, name)
+        return await self._files.prepare_file(src, name)
 
     @sdk_public_api_async()
     async def list_downloaded_models(

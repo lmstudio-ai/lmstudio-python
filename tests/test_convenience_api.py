@@ -47,11 +47,11 @@ def test_embedding_specific() -> None:
 
 
 @pytest.mark.lmstudio
-def test_add_temp_file() -> None:
+def test_prepare_file() -> None:
     # API is private until LM Studio file handle support stabilizes
     name = "example-file"
     raw_data = b"raw data"
-    file_handle = lms.sync_api._add_temp_file(raw_data, name)
+    file_handle = lms.sync_api.prepare_file(raw_data, name)
     assert file_handle.name == name
     assert file_handle.size_bytes == len(raw_data)
 

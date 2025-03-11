@@ -53,7 +53,7 @@ from .history import (
     Chat,
     ChatHistoryDataDict,
     FileHandle,
-    _FileCacheInputType,
+    LocalFileInput,
     _LocalFileData,
     ToolCallRequest,
 )
@@ -765,9 +765,7 @@ class _SyncSessionFiles(SyncSession):
         return load_struct(handle, FileHandle)
 
     @sdk_public_api()
-    def _add_temp_file(
-        self, src: _FileCacheInputType, name: str | None = None
-    ) -> FileHandle:
+    def prepare_file(self, src: LocalFileInput, name: str | None = None) -> FileHandle:
         """Add a file to the server."""
         # Private until LM Studio file handle support stabilizes
         file_data = _LocalFileData(src, name)
@@ -1820,12 +1818,10 @@ class Client(ClientBase):
 
     # Convenience methods
     @sdk_public_api()
-    def _add_temp_file(
-        self, src: _FileCacheInputType, name: str | None = None
-    ) -> FileHandle:
+    def prepare_file(self, src: LocalFileInput, name: str | None = None) -> FileHandle:
         """Add a file to the server."""
         # Private until LM Studio file handle support stabilizes
-        return self._files._add_temp_file(src, name)
+        return self._files.prepare_file(src, name)
 
     @sdk_public_api()
     def list_downloaded_models(
@@ -1895,10 +1891,10 @@ def embedding_model(
 
 
 @sdk_public_api()
-def _add_temp_file(src: _FileCacheInputType, name: str | None = None) -> FileHandle:
+def prepare_file(src: LocalFileInput, name: str | None = None) -> FileHandle:
     """Add a file to the server using the default global client."""
     # Private until LM Studio file handle support stabilizes
-    return get_default_client()._add_temp_file(src, name)
+    return get_default_client().prepare_file(src, name)
 
 
 @sdk_public_api()
