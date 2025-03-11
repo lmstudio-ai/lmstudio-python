@@ -26,6 +26,7 @@ from typing import (
     assert_never,
     cast,
     get_type_hints,
+    overload,
 )
 
 
@@ -490,6 +491,10 @@ class ActResult:
     # fmt: on
 
 
+@overload
+def _redact_json(data: DictObject) -> DictObject: ...
+@overload
+def _redact_json(data: None) -> None: ...
 def _redact_json(data: DictObject | None) -> DictObject | None:
     """Show top level structure without any substructure details."""
     if data is None:

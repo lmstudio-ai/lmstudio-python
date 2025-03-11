@@ -52,7 +52,7 @@ from ._sdk_models import (
     ChatMessagePartToolCallResultData as ToolCallResultData,
     ChatMessagePartToolCallResultDataDict as ToolCallResultDataDict,
     FilesRpcUploadFileBase64Parameter,
-    FileType as FileHandleType,
+    FileType,
     ToolCallRequest as ToolCallRequest,
     FunctionToolCallRequestDict as ToolCallRequestDict,
 )
@@ -70,7 +70,7 @@ __all__ = [
     "FileHandle",
     "FileHandleDict",
     "FileHandleInput",
-    "FileHandleType",
+    "FileType",
     "SystemPrompt",
     "SystemPromptContent",
     "ToolCallRequest",
