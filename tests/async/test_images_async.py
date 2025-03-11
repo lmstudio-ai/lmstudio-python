@@ -24,7 +24,7 @@ async def test_upload_from_pathlike_async(caplog: LogCap) -> None:
     caplog.set_level(logging.DEBUG)
     async with AsyncClient() as client:
         session = client._files
-        file = await session._add_temp_file(IMAGE_FILEPATH)
+        file = await session.prepare_file(IMAGE_FILEPATH)
         assert file
         assert isinstance(file, FileHandle)
         logging.info(f"Uploaded file: {file}")
@@ -37,7 +37,7 @@ async def test_upload_from_file_obj_async(caplog: LogCap) -> None:
     async with AsyncClient() as client:
         session = client._files
         with open(IMAGE_FILEPATH, "rb") as f:
-            file = await session._add_temp_file(f)
+            file = await session.prepare_file(f)
         assert file
         assert isinstance(file, FileHandle)
         logging.info(f"Uploaded file: {file}")
@@ -50,7 +50,7 @@ async def test_upload_from_bytesio_async(caplog: LogCap) -> None:
     async with AsyncClient() as client:
         session = client._files
         with open(IMAGE_FILEPATH, "rb") as f:
-            file = await session._add_temp_file(BytesIO(f.read()))
+            file = await session.prepare_file(BytesIO(f.read()))
         assert file
         assert isinstance(file, FileHandle)
         logging.info(f"Uploaded file: {file}")
@@ -64,7 +64,7 @@ async def test_vlm_predict_async(caplog: LogCap) -> None:
     caplog.set_level(logging.DEBUG)
     model_id = EXPECTED_VLM_ID
     async with AsyncClient() as client:
-        file_handle = await client._files._add_temp_file(IMAGE_FILEPATH)
+        file_handle = await client._files.prepare_file(IMAGE_FILEPATH)
         history = Chat()
         history.add_user_message((prompt, file_handle))
         vlm = await client.llm.model(model_id)
@@ -84,7 +84,7 @@ async def test_non_vlm_predict_async(caplog: LogCap) -> None:
     caplog.set_level(logging.DEBUG)
     model_id = "hugging-quants/llama-3.2-1b-instruct"
     async with AsyncClient() as client:
-        file_handle = await client._files._add_temp_file(IMAGE_FILEPATH)
+        file_handle = await client._files.prepare_file(IMAGE_FILEPATH)
         history = Chat()
         history.add_user_message((prompt, file_handle))
         llm = await client.llm.model(model_id)
@@ -101,7 +101,7 @@ async def test_vlm_predict_image_param_async(caplog: LogCap) -> None:
     caplog.set_level(logging.DEBUG)
     model_id = EXPECTED_VLM_ID
     async with AsyncClient() as client:
-        file_handle = await client._files._add_temp_file(IMAGE_FILEPATH)
+        file_handle = await client._files.prepare_file(IMAGE_FILEPATH)
         history = Chat()
         history.add_user_message(prompt, images=[file_handle])
         vlm = await client.llm.model(model_id)
@@ -121,7 +121,7 @@ async def test_non_vlm_predict_image_param_async(caplog: LogCap) -> None:
     caplog.set_level(logging.DEBUG)
     model_id = "hugging-quants/llama-3.2-1b-instruct"
     async with AsyncClient() as client:
-        file_handle = await client._files._add_temp_file(IMAGE_FILEPATH)
+        file_handle = await client._files.prepare_file(IMAGE_FILEPATH)
         history = Chat()
         history.add_user_message(prompt, images=[file_handle])
         llm = await client.llm.model(model_id)

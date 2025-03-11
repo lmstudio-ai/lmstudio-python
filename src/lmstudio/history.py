@@ -370,10 +370,8 @@ class Chat:
         self,
         content: UserMessageInput | Iterable[UserMessageInput],
         *,
+        files: Sequence[FileHandleInput] = (),
         images: Sequence[FileHandleInput] = (),
-        # Mark file parameters as private until LM Studio
-        # file handle support stabilizes
-        _files: Sequence[FileHandleInput] = (),
     ) -> UserMessage:
         """Add a new user message to the chat history."""
         # Accept both singular and multi-part user messages
@@ -383,10 +381,10 @@ class Chat:
         else:
             content_items = list(content)
         # Convert given local file information to file handles
+        if files:
+            content_items.extend(files)
         if images:
             content_items.extend(images)
-        if _files:
-            content_items.extend(_files)
         # Consecutive messages with the same role are not supported,
         # but multi-part user messages are valid (to allow for file
         # attachments), so just merge them
@@ -519,14 +517,16 @@ class Chat:
         return message
 
 
+LocalFileInput = BinaryIO | bytes | str | os.PathLike[str]
+
+
 # Private until file handle caching support is part of the published SDK API
-_FileCacheInputType = BinaryIO | bytes | str | os.PathLike[str]
 
 
-def _get_file_details(src: _FileCacheInputType) -> Tuple[str, bytes]:
+def _get_file_details(src: LocalFileInput) -> Tuple[str, bytes]:
     """Read file contents as binary data and generate a suitable default name."""
     if isinstance(src, bytes):
-        # We interpreter bytes as raw data, not a bytes filesystem path
+        # We process bytes as raw data, not a bytes filesystem path
         data = src
         name = str(uuid.uuid4())
     elif hasattr(src, "read"):
@@ -555,14 +555,13 @@ _ContentHash: TypeAlias = bytes
 _FileHandleCacheKey: TypeAlias = tuple[str, _ContentHash]
 
 
-# Private until file handle caching support is part of the published SDK API
 class _LocalFileData:
     """Local file data to be added to a chat history."""
 
     name: str
     raw_data: bytes
 
-    def __init__(self, src: _FileCacheInputType, name: str | None = None) -> None:
+    def __init__(self, src: LocalFileInput, name: str | None = None) -> None:
         default_name, raw_data = _get_file_details(src)
         self.name = name or default_name
         self.raw_data = raw_data
@@ -594,7 +593,7 @@ class _FileHandleCache:
 
     @sdk_public_api()
     def _get_file_handle(
-        self, src: _FileCacheInputType, name: str | None = None
+        self, src: LocalFileInput, name: str | None = None
     ) -> FileHandle:
         file_data = _LocalFileData(src, name)
         cache_key = file_data._get_cache_key()
