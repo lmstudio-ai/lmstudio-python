@@ -51,7 +51,7 @@ def test_embedding_specific() -> None:
 def test_prepare_file() -> None:
     name = "example-file.txt"
     raw_data = b"raw data"
-    file_handle = lms.sync_api.prepare_file(raw_data, name)
+    file_handle = lms.prepare_file(raw_data, name)
     assert file_handle.name == name
     assert file_handle.size_bytes == len(raw_data)
     assert file_handle.file_type == "text/plain"
@@ -59,7 +59,7 @@ def test_prepare_file() -> None:
 
 @pytest.mark.lmstudio
 def test_prepare_image() -> None:
-    file_handle = lms.sync_api.prepare_image(IMAGE_FILEPATH)
+    file_handle = lms.prepare_image(IMAGE_FILEPATH)
     assert file_handle.name == IMAGE_FILEPATH.name
     assert file_handle.size_bytes == len(IMAGE_FILEPATH.read_bytes())
     assert file_handle.file_type == "image"
