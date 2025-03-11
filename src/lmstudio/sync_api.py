@@ -112,6 +112,7 @@ from .json_api import (
     check_model_namespace,
     load_struct,
     _model_spec_to_api_dict,
+    _redact_json,
 )
 from ._kv_config import TLoadConfig, TLoadConfigDict, dict_from_fields_key
 from ._sdk_models import (
@@ -548,7 +549,14 @@ class SyncLMStudioWebsocket(LMStudioWebsocket[_AsyncWebsocketThread, queue.Queue
         """Initiate remote call to specified endpoint."""
         self._ensure_connected("send remote procedure call")
         call_message = rpc.get_rpc_message(endpoint, params)
-        self._logger.debug("Sending RPC request", json=call_message)
+        # TODO: Improve logging for large requests (such as file uploads)
+        #       without requiring explicit special casing here
+        logged_message: DictObject
+        if call_message.get("endpoint") == "uploadFileBase64":
+            logged_message = _redact_json(call_message)
+        else:
+            logged_message = call_message
+        self._logger.debug("Sending RPC request", json=logged_message)
         self._send_json(call_message)
 
     def remote_call(
@@ -766,8 +774,13 @@ class _SyncSessionFiles(SyncSession):
 
     @sdk_public_api()
     def prepare_file(self, src: LocalFileInput, name: str | None = None) -> FileHandle:
-        """Add a file to the server."""
-        # Private until LM Studio file handle support stabilizes
+        """Add a file to the server. Returns a file handle for use in prediction requests."""
+        file_data = _LocalFileData(src, name)
+        return self._fetch_file_handle(file_data)
+
+    @sdk_public_api()
+    def prepare_image(self, src: LocalFileInput, name: str | None = None) -> FileHandle:
+        """Add an image to the server. Returns a file handle for use in prediction requests."""
         file_data = _LocalFileData(src, name)
         return self._fetch_file_handle(file_data)
 
@@ -838,7 +851,7 @@ class SyncSessionModel(
 
     @property
     def _files_session(self) -> _SyncSessionFiles:
-        return self._client._files
+        return self._client.files
 
     def _get_load_config(self, model_specifier: AnyModelSpecifier) -> DictObject:
         """Get the model load config for the specified model."""
@@ -1806,9 +1819,8 @@ class Client(ClientBase):
         return self._get_session(SyncSessionSystem)
 
     @property
-    def _files(self) -> _SyncSessionFiles:
+    def files(self) -> _SyncSessionFiles:
         """Return the files API client session."""
-        # Private until LM Studio file handle support stabilizes
         return self._get_session(_SyncSessionFiles)
 
     @property
@@ -1819,9 +1831,13 @@ class Client(ClientBase):
     # Convenience methods
     @sdk_public_api()
     def prepare_file(self, src: LocalFileInput, name: str | None = None) -> FileHandle:
-        """Add a file to the server."""
-        # Private until LM Studio file handle support stabilizes
-        return self._files.prepare_file(src, name)
+        """Add a file to the server. Returns a file handle for use in prediction requests."""
+        return self.files.prepare_file(src, name)
+
+    @sdk_public_api()
+    def prepare_image(self, src: LocalFileInput, name: str | None = None) -> FileHandle:
+        """Add an image to the server. Returns a file handle for use in prediction requests."""
+        return self.files.prepare_image(src, name)
 
     @sdk_public_api()
     def list_downloaded_models(
@@ -1893,8 +1909,13 @@ def embedding_model(
 @sdk_public_api()
 def prepare_file(src: LocalFileInput, name: str | None = None) -> FileHandle:
     """Add a file to the server using the default global client."""
-    # Private until LM Studio file handle support stabilizes
     return get_default_client().prepare_file(src, name)
+
+
+@sdk_public_api()
+def prepare_image(src: LocalFileInput, name: str | None = None) -> FileHandle:
+    """Add an image to the server using the default global client."""
+    return get_default_client().prepare_image(src, name)
 
 
 @sdk_public_api()
