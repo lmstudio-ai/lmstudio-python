@@ -26,6 +26,9 @@ def convert_file(input_file: Path, sync_dir: Path) -> None:
 
     content = input_file.read_text()
 
+    # Note: some replacements will only be relevant after dropping 3.10 support
+    #       (as the native asyncio API were only added in 3.11)
+
     replacements = [
         (r"AsyncPredictionC", "SyncPredictionC"),  # Channel & CM
         (r"AsyncSession", "SyncSession"),
@@ -44,6 +47,9 @@ def convert_file(input_file: Path, sync_dir: Path) -> None:
         (r"anext", "next"),
         (r"Async", ""),
         (r"await +", ""),
+        # Switch to native asyncio APIs when dropping Python 3.10 support
+        (r"import anyio\n", ""),
+        (r"anyio\.fail_after\([^)]*\)", "nullcontext()"),
     ]
 
     for pattern in replacements:

@@ -16,17 +16,20 @@ from typing import (
     Iterable,
     Iterator,
     Mapping,
-    NoReturn,
-    Self,
     Sequence,
     Type,
     TypeAlias,
     TypedDict,
     TypeVar,
-    assert_never,
     cast,
     get_type_hints,
     overload,
+)
+from typing_extensions import (
+    # Native in 3.11+
+    assert_never,
+    NoReturn,
+    Self,
 )
 
 

@@ -3,7 +3,11 @@
 from contextlib import AsyncContextDecorator, ContextDecorator
 from os import getenv
 from types import TracebackType
-from typing import Self, Type, TypeVar
+from typing import Type, TypeVar
+from typing_extensions import (
+    # Native in 3.11+
+    Self,
+)
 
 from ._logging import StructuredLogger
 

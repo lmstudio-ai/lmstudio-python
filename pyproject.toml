@@ -21,10 +21,13 @@ dependencies = [
     # Minimum msgspec version for 3.13 compatibility
     "msgspec>=0.19.0 ; python_version >= '3.13'",
     "typing-extensions>=4.12.2",
+    # Task group handling for versions prior to Python 3.11
+    "anyio>=4.8.0",
+    "exceptiongroup>=1.2.2",
 ]
 
 # Keep this in sync with the target Python version in sync-sdk-schema.py
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 
 readme = "README.md"
 license = "MIT"
@@ -32,6 +35,7 @@ license-files = ["LICENSE"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -76,9 +80,11 @@ sync-sdk-schema = [
     "datamodel-code-generator[http]>=0.26.4",
 ]
 docs = [
-    "sphinx>=8.1.3",
-    "sphinx-inline-tabs>=2023.4.21",
-    "furo>=2024.8.6",
+    # Add markers to avoid trying to lock this group for Python 3.10
+    # Docs environment will always be Python 3.11 or later
+    "sphinx>=8.1.3; python_version >= '3.11'",
+    "sphinx-inline-tabs>=2023.4.21; python_version >= '3.11'",
+    "furo>=2024.8.6; python_version >= '3.11'",
 ]
 
 [tool.pytest.ini_options]
@@ -116,8 +122,8 @@ source = [
 ]
 
 [tool.ruff]
-# Assume Python 3.11
-target-version = "py311"
+# Assume Python 3.10+
+target-version = "py310"
 
 [tool.ruff.lint]
 # Enable all `pydocstyle` rules, limiting to those that adhere to the

@@ -19,6 +19,7 @@ from types import TracebackType
 from typing import (
     Any,
     AsyncGenerator,
+    Awaitable,
     ContextManager,
     Coroutine,
     Generator,
@@ -28,16 +29,22 @@ from typing import (
     Generic,
     Literal,
     NoReturn,
-    Self,
     Sequence,
     Type,
     TypeAlias,
     TypeVar,
     overload,
 )
-from typing_extensions import TypeIs
+from typing_extensions import (
+    # Native in 3.11+
+    Self,
+    # Native in 3.13+
+    TypeIs,
+)
 
 # Synchronous API still uses an async websocket (just in a background thread)
+from anyio import create_task_group
+from exceptiongroup import BaseExceptionGroup, catch
 from httpx_ws import aconnect_ws, AsyncWebSocketSession, HTTPXWSException
 
 from .sdk_api import (
@@ -384,7 +391,7 @@ class _AsyncWebsocketThread(threading.Thread):
 
     def _raise_on_termination(
         self,
-    ) -> tuple[Coroutine[None, None, NoReturn], Type[Exception]]:
+    ) -> tuple[Callable[[], Awaitable[NoReturn]], Type[Exception]]:
         class TerminateTask(Exception):
             pass
 
@@ -392,17 +399,21 @@ class _AsyncWebsocketThread(threading.Thread):
             await self._terminate.wait()
             raise TerminateTask
 
-        return raise_on_termination(), TerminateTask
+        return raise_on_termination, TerminateTask
 
     async def _demultiplexing_task(self) -> None:
         """Process received messages until connection is terminated."""
         raise_on_termination, terminated_exc = self._raise_on_termination()
-        try:
-            async with asyncio.TaskGroup() as tg:
-                tg.create_task(raise_on_termination)
-                tg.create_task(self._receive_messages())
-        except* terminated_exc:
+
+        # Use exceptiongroup.catch to handle the lack of native task
+        # and exception groups prior to Python 3.11
+        def log_termination(_exceptiongroup: BaseExceptionGroup[Any]) -> None:
             self._logger.info("Websocket closed, terminating demultiplexing task.")
+
+        with catch({terminated_exc: log_termination}):
+            async with create_task_group() as tg:
+                tg.start_soon(raise_on_termination)
+                tg.start_soon(self._receive_messages)
 
     async def _receive_messages(self) -> None:
         """Process received messages until task is cancelled."""

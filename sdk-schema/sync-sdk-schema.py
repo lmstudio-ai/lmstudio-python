@@ -349,7 +349,7 @@ def _generate_data_model_from_json_schema() -> None:
         custom_template_dir=_TEMPLATE_DIR,
         base_class="..schemas.LMStudioStruct",
         additional_imports=[
-            "typing.NotRequired",
+            "typing_extensions.NotRequired",
             "typing.TypedDict",
         ],
         snake_case_field=True,
@@ -373,7 +373,7 @@ def _generate_data_model_from_json_schema() -> None:
             },
         ),
         # Keep this in sync with the minimum version in pyproject.toml
-        target_python_version=PythonVersion.PY_311,
+        target_python_version=PythonVersion.PY_310,
     )
     if not _MODEL_PATH.exists():
         raise RuntimeError(f"Failed to create {_MODEL_PATH!r}")

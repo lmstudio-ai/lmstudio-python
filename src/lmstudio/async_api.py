@@ -17,14 +17,18 @@ from typing import (
     Generic,
     Iterable,
     Literal,
-    Self,
     Sequence,
     Type,
     TypeAlias,
     TypeVar,
     overload,
 )
-from typing_extensions import TypeIs
+from typing_extensions import (
+    # Native in 3.11+
+    Self,
+    # Native in 3.13+
+    TypeIs,
+)
 
 from httpx import RequestError, HTTPStatusError
 from httpx_ws import aconnect_ws, AsyncWebSocketSession, HTTPXWSException
