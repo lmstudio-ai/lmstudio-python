@@ -10,6 +10,9 @@ The SDK can be installed from PyPI as follows:
 $ pip install lmstudio
 ```
 
+Installation from the repository URL or a local clone is also
+supported for development and pre-release testing purposes.
+
 ## Examples
 
 The base component of the LM Studio SDK is the (synchronous) `Client`.
@@ -52,7 +55,32 @@ for message in EXAMPLE_MESSAGES:
     print(f"Shopkeeper: {response}")
 ```
 
-TODO: Refer readers to the SDK documentation for more info.
+Additional SDK examples and usage recommendations may be found in the main
+[LM Studio Python SDK documentation](https://lmstudio.ai/docs/python).
+
+## SDK versioning
+
+The LM Studio Python SDK uses a 3-part `X.Y.Z` numeric version identifier:
+
+* `X`: incremented when the minimum version of significant dependencies is updated
+  (for example, dropping support for older versions of Python or LM Studio).
+  Previously deprecated features may be dropped when this part of the version number
+  increases.
+* `Y`: incremented when new features are added, or some other notable change is
+  introduced (such as support for additional versions of Python). New deprecation
+  warnings may be introduced when this part of the version number increases.
+* `Z`: incremented for bug fix releases which don't contain any other changes.
+  Adding exceptions and warnings for previously undetected situations is considered
+  a bug fix.
+
+This versioning policy is intentionally similar to [semantic versioning](https://semver.org/),
+but differs in the specifics of when the different parts of the version number will be updated.
+
+Release candidates *may* be published prior to full releases, but this will typically only
+occur when seeking broader feedback on particular features prior to finalizing the release.
+
+Outside the preparation of a new release, the SDK repository will include a `.devN` suffix
+on the nominal Python package version.
 
 ## Contributing to SDK development
 
@@ -69,7 +97,6 @@ necessary to ensure the `lmstudio-js` submodule is updated:
 ```console
 $ git submodule update --init --recursive
 ```
-
 
 ### Development Environment
 
