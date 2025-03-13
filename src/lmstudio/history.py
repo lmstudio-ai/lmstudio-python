@@ -15,7 +15,6 @@ from typing import (
     Iterable,
     MutableSequence,
     Protocol,
-    Self,
     Sequence,
     Tuple,
     TypeAlias,
@@ -23,9 +22,14 @@ from typing import (
     get_args as get_typeform_args,
     runtime_checkable,
 )
+from typing_extensions import (
+    # Native in 3.11+
+    Self,
+    # Native in 3.13+
+    TypeIs,
+)
 
 from msgspec import to_builtins
-from typing_extensions import TypeIs
 
 from .sdk_api import (
     LMStudioOSError,

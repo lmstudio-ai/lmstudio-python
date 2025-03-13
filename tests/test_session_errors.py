@@ -17,11 +17,13 @@ from lmstudio.async_api import (
     AsyncSessionSystem,
 )
 from lmstudio.sync_api import (
+    SyncLMStudioWebsocket,
     SyncSession,
     SyncSessionSystem,
 )
 
 from .support import (
+    EXPECT_TB_TRUNCATION,
     InvalidEndpoint,
     nonresponsive_api_host,
     closed_api_host,
@@ -116,9 +118,13 @@ def check_call_errors_sync(session: SyncSession) -> None:
         session.remote_call("invalid")
     check_sdk_error(call_exc_info, __file__)
     # Creating channels is expected to fail when not connected
-    # This is an internal error, so we don't expect truncation
+    # This internal API may call a public one, so we expect partial truncation
+    # *unless* we're testing on Python 3.10, where there is no truncation at all
     channel_cm = session._create_channel(InvalidEndpoint())
-    err_func = cast(ErrFunc, session._ensure_connected)
+    if EXPECT_TB_TRUNCATION:
+        err_func = cast(ErrFunc, session._ensure_connected)
+    else:
+        err_func = cast(ErrFunc, SyncLMStudioWebsocket.connect)
     with pytest.raises(
         LMStudioWebsocketError,
         match="is not reachable",

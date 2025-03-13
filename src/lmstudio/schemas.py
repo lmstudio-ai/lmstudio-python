@@ -8,11 +8,14 @@ from typing import (
     Generic,
     Mapping,
     Protocol,
-    Self,
     Sequence,
     TypeVar,
     cast,
     runtime_checkable,
+)
+from typing_extensions import (
+    # Native in 3.11+
+    Self,
 )
 
 from msgspec import Struct, convert, to_builtins

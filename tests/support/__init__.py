@@ -1,8 +1,15 @@
 """Common test support interfaces and expected value definitions."""
 
+import sys
+
 from contextlib import closing, contextmanager
 from pathlib import Path
-from typing import Generator, Never, NoReturn
+from typing import Generator
+from typing_extensions import (
+    # Native in 3.11+
+    Never,
+    NoReturn,
+)
 
 import pytest
 
@@ -162,6 +169,11 @@ def closed_api_host() -> str:
 # Check details of raised SDK errors
 ####################################################
 
+# The truncation method used is only effective on Python 3.11+
+# Earlier versions report the traceback separately from the
+# exception value, so it gets restored after clearing the attribute
+EXPECT_TB_TRUNCATION = sys.version_info >= (3, 11)
+
 
 def check_sdk_error(
     exc_info: pytest.ExceptionInfo[BaseException],
@@ -170,7 +182,7 @@ def check_sdk_error(
     sdk_frames: int = 0,
     check_exc: bool = True,
 ) -> None:
-    # Traceback should be truncated at the SDK boundary,
+    # If possible, traceback should be truncated at the SDK boundary,
     # potentially showing the specified number of SDK frames
     tb = exc_info.tb
     assert tb.tb_frame.f_code.co_filename == calling_file
@@ -184,7 +196,7 @@ def check_sdk_error(
             raise Exception(
                 f"Unexpected frame location: {sdk_frame_path}"
             ) from exc_info.value
-    if tb.tb_next is not None:
+    if EXPECT_TB_TRUNCATION and tb.tb_next is not None:
         # Report full traceback if it is not as expected
         raise Exception("Traceback not truncated at SDK boundary") from exc_info.value
     if not check_exc:
@@ -226,5 +238,4 @@ def check_unfiltered_error(
                 f"Unexpected frame location: {sdk_frame_path}"
             ) from exc_info.value
     # Traceback should go all the way to the raising func
-    if tb.tb_frame.f_code is not err_func.__code__:
-        raise Exception("Unexpected exception source") from exc_info.value
+    assert tb.tb_frame.f_code is err_func.__code__

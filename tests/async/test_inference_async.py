@@ -1,9 +1,9 @@
 """Test making simple predictions with the API."""
 
-import asyncio
 import json
 import logging
 
+import anyio
 import pytest
 from pytest import LogCaptureFixture as LogCap
 from typing import Type
@@ -255,7 +255,7 @@ async def test_invalid_model_request_nostream_async(caplog: LogCap) -> None:
         model = client.llm._create_handle("No such model")
         # This should error rather than timing out,
         # but avoid any risk of the client hanging...
-        async with asyncio.timeout(30):
+        with anyio.fail_after(30):
             with pytest.raises(LMStudioModelNotFoundError) as exc_info:
                 await model.complete("Some text")
             check_sdk_error(exc_info, __file__)
@@ -270,7 +270,7 @@ async def test_invalid_model_request_stream_async(caplog: LogCap) -> None:
         model = client.llm._create_handle("No such model")
         # This should error rather than timing out,
         # but avoid any risk of the client hanging...
-        async with asyncio.timeout(30):
+        with anyio.fail_after(30):
             prediction_stream = await model.complete_stream("Some text")
             async with prediction_stream:
                 with pytest.raises(LMStudioModelNotFoundError) as exc_info:

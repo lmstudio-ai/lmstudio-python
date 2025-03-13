@@ -1,8 +1,8 @@
 """Test embedding strings with the API."""
 
-import asyncio
 import logging
 
+import anyio
 import pytest
 from pytest import LogCaptureFixture as LogCap
 
@@ -137,15 +137,15 @@ async def test_invalid_model_request_async(caplog: LogCap) -> None:
         model = client.embedding._create_handle("No such model")
         # This should error rather than timing out,
         # but avoid any risk of the client hanging...
-        async with asyncio.timeout(30):
+        with anyio.fail_after(30):
             with pytest.raises(LMStudioModelNotFoundError) as exc_info:
                 await model.embed("Some text")
             check_sdk_error(exc_info, __file__)
-        async with asyncio.timeout(30):
+        with anyio.fail_after(30):
             with pytest.raises(LMStudioModelNotFoundError) as exc_info:
                 await model.tokenize("Some text")
             check_sdk_error(exc_info, __file__)
-        async with asyncio.timeout(30):
+        with anyio.fail_after(30):
             with pytest.raises(LMStudioModelNotFoundError) as exc_info:
                 await model.get_context_length()
             check_sdk_error(exc_info, __file__)

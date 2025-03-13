@@ -23,7 +23,7 @@ in a dedicated [documentation repo](https://github.com/lmstudio-ai/docs).
 
 ## Development Workflow
 
-_`lmstudio-python` requires Python 3.11 or later_
+`lmstudio-python` makes extensive use of pattern matching and hence requires _Python 3.10 or later_
 
 1. Fork this repository
 2. Clone your fork: `git clone git@github.com:lmstudio-ai/lmstudio-python.git` onto your local development machine

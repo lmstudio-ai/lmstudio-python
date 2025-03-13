@@ -1,8 +1,8 @@
 """Test specific aspects of error and event logging."""
 
-import asyncio
 import logging
 
+import anyio
 import pytest
 from pytest import LogCaptureFixture as LogCap
 
@@ -19,11 +19,12 @@ async def test_invalid_endpoint_request_stream(caplog: LogCap) -> None:
     async with AsyncClient() as client:
         session = client.llm
         # This will time out due to the bad API endpoint
-        with pytest.raises(asyncio.TimeoutError):
-            async with asyncio.timeout(1):
+        with pytest.raises(TimeoutError):
+            with anyio.fail_after(1):
                 endpoint = InvalidEndpoint()
                 async with session._create_channel(endpoint) as channel:
-                    await anext(channel.rx_stream())
+                    async for _ in channel.rx_stream():
+                        break
     logged_errors = caplog.records
     logged_error = logged_errors[0]
     logged_msg = logged_error.getMessage()

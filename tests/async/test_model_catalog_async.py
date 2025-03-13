@@ -1,10 +1,10 @@
 """Test listing, downloading, and loading available models."""
 
-import asyncio
 import logging
 
 from contextlib import suppress
 
+import anyio
 import pytest
 from pytest import LogCaptureFixture as LogCap
 from pytest_subtests import SubTests
@@ -248,7 +248,7 @@ async def test_invalid_unload_request_llm_async(caplog: LogCap) -> None:
         llm = client.llm
         # This should error rather than timing out,
         # but avoid any risk of the client hanging...
-        async with asyncio.timeout(30):
+        with anyio.fail_after(30):
             with pytest.raises(LMStudioModelNotFoundError) as exc_info:
                 await llm.unload("No such model")
             check_sdk_error(exc_info, __file__)
@@ -261,7 +261,7 @@ async def test_invalid_unload_request_embedding_async(caplog: LogCap) -> None:
     async with AsyncClient() as client:
         # This should error rather than timing out,
         # but avoid any risk of the client hanging...
-        async with asyncio.timeout(30):
+        with anyio.fail_after(30):
             with pytest.raises(LMStudioModelNotFoundError) as exc_info:
                 await client.embedding.unload("No such model")
             check_sdk_error(exc_info, __file__)
