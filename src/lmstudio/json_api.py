@@ -1144,7 +1144,7 @@ class PredictionEndpoint(
                     config["rawTools"] = llm_tools.to_dict()
                 else:
                     config.raw_tools = llm_tools
-        config_stack = self._make_config_override(response_format, config)
+        structured, config_stack = self._make_config_override(response_format, config)
         params = PredictionChannelRequest._from_api_dict(
             {
                 "modelSpecifier": _model_spec_to_api_dict(model_specifier),
@@ -1155,7 +1155,7 @@ class PredictionEndpoint(
         super().__init__(params)
         # Status tracking for the prediction progress and result reporting
         self._is_cancelled = False
-        self._structured = response_format is not None
+        self._structured = structured
         self._on_message = on_message
         self._prompt_processing_progress = -1.0
         self._on_prompt_processing_progress = on_prompt_processing_progress
@@ -1172,7 +1172,7 @@ class PredictionEndpoint(
         cls,
         response_format: Type[ModelSchema] | DictSchema | None,
         config: LlmPredictionConfig | LlmPredictionConfigDict | None,
-    ) -> KvConfigStack:
+    ) -> tuple[bool, KvConfigStack]:
         return prediction_config_to_kv_config_stack(
             response_format, config, **cls._additional_config_options()
         )

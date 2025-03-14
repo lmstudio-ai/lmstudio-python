@@ -419,7 +419,8 @@ def test_kv_stack_load_config_llm(config_dict: DictObject) -> None:
 def test_kv_stack_prediction_config(config_dict: DictObject) -> None:
     # MyPy complains here that it can't be sure the dict has all the right keys
     # It is correct about that, but we want to ensure it is handled at runtime
-    kv_stack = prediction_config_to_kv_config_stack(None, config_dict)  # type: ignore[arg-type]
+    structured, kv_stack = prediction_config_to_kv_config_stack(None, config_dict)  # type: ignore[arg-type]
+    assert structured
     assert kv_stack.to_dict() == EXPECTED_KV_STACK_PREDICTION
 
 

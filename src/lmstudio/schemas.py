@@ -93,6 +93,13 @@ _CAMEL_CASE_OVERRIDES = {
     "useFp16ForKvCache": "useFp16ForKVCache",
 }
 
+_SKIP_FIELD_RECURSION = set(
+    (
+        "json_schema",
+        "jsonSchema",
+    )
+)
+
 
 def _snake_case_to_camelCase(key: str) -> str:
     first, *rest = key.split("_")
@@ -100,6 +107,9 @@ def _snake_case_to_camelCase(key: str) -> str:
     return _CAMEL_CASE_OVERRIDES.get(camelCase, camelCase)
 
 
+# TODO: Rework this conversion to be based on the API struct definitions
+#       * Only recurse into fields that allow substructs
+#       * Only check fields with a snake case -> camel case name conversion
 def _snake_case_keys_to_camelCase(data: DictObject) -> DictObject:
     translated_data: dict[str, Any] = {}
     dicts_to_process = [(data, translated_data)]
@@ -114,12 +124,14 @@ def _snake_case_keys_to_camelCase(data: DictObject) -> DictObject:
 
     for input_dict, output_dict in dicts_to_process:
         for k, v in input_dict.items():
-            new_value: Any
             match v:
                 case {}:
-                    new_dict: dict[str, Any] = {}
-                    _queue_dict(v, new_dict)
-                    new_value = new_dict
+                    if k in _SKIP_FIELD_RECURSION:
+                        new_value = v
+                    else:
+                        new_dict: dict[str, Any] = {}
+                        _queue_dict(v, new_dict)
+                        new_value = new_dict
                 case [*_]:
                     new_list: list[Any] = []
                     for item in v:
