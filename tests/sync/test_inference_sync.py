@@ -22,6 +22,7 @@ from lmstudio import (
     Chat,
     DictSchema,
     LlmInfo,
+    LlmPredictionConfigDict,
     LlmPredictionFragment,
     LlmPredictionStats,
     LMStudioModelNotFoundError,
@@ -34,6 +35,8 @@ from ..support import (
     EXPECTED_LLM_ID,
     PROMPT,
     RESPONSE_FORMATS,
+    RESPONSE_SCHEMA,
+    SCHEMA_FIELDS,
     SHORT_PREDICTION_CONFIG,
     check_sdk_error,
 )
@@ -96,7 +99,7 @@ def test_complete_stream_sync(caplog: LogCap) -> None:
 
 @pytest.mark.lmstudio
 @pytest.mark.parametrize("format_type", RESPONSE_FORMATS)
-def test_complete_structured_sync(
+def test_complete_response_format_sync(
     format_type: Type[ModelSchema] | DictSchema, caplog: LogCap
 ) -> None:
     prompt = PROMPT
@@ -110,7 +113,34 @@ def test_complete_structured_sync(
     assert isinstance(response.content, str)
     assert isinstance(response.parsed, dict)
     assert response.parsed == json.loads(response.content)
-    assert "response" in response.parsed
+    assert SCHEMA_FIELDS.keys() == response.parsed.keys()
+
+
+@pytest.mark.lmstudio
+def test_complete_structured_config_sync(caplog: LogCap) -> None:
+    prompt = PROMPT
+    caplog.set_level(logging.DEBUG)
+    model_id = EXPECTED_LLM_ID
+    with Client() as client:
+        llm = client.llm.model(model_id)
+        config: LlmPredictionConfigDict = {
+            # snake_case keys are accepted at runtime,
+            # but the type hinted spelling is the camelCase names
+            # This test case checks the schema field name is converted,
+            # but *not* the snake_case and camelCase field names in the
+            # schema itself
+            "structured": {
+                "type": "json",
+                "json_schema": RESPONSE_SCHEMA,
+            }  # type: ignore[typeddict-item]
+        }
+        response = llm.complete(prompt, config=config)
+    assert isinstance(response, PredictionResult)
+    logging.info(f"LLM response: {response!r}")
+    assert isinstance(response.content, str)
+    assert isinstance(response.parsed, dict)
+    assert response.parsed == json.loads(response.content)
+    assert SCHEMA_FIELDS.keys() == response.parsed.keys()
 
 
 @pytest.mark.lmstudio

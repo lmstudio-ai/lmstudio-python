@@ -82,22 +82,34 @@ SMALL_LLM_ID = "smollm2-135m-instruct"
 # Structured LLM responses
 ####################################################
 
+# Schema includes both snake_case and camelCase field
+# names to ensure the special-casing of snake_case
+# fields in dict inputs doesn't corrupt schema inputs
+SCHEMA_FIELDS = {
+    "response": {
+        "type": "string",
+    },
+    "first_word_in_response": {
+        "type": "string",
+    },
+    "lastWordInResponse": {
+        "type": "string",
+    },
+}
+SCHEMA_FIELD_NAMES = list(SCHEMA_FIELDS.keys())
+
 SCHEMA = {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "type": "object",
-    "required": ["response"],
-    "properties": {
-        "response": {
-            "type": "string",
-        }
-    },
+    "required": SCHEMA_FIELD_NAMES,
+    "properties": SCHEMA_FIELDS,
     "additionalProperties": False,
 }
 RESPONSE_SCHEMA = {
     "$defs": {
         "schema": {
-            "properties": {"response": {"type": "string"}},
-            "required": ["response"],
+            "properties": SCHEMA_FIELDS,
+            "required": SCHEMA_FIELD_NAMES,
             "title": "schema",
             "type": "object",
         }
@@ -114,6 +126,8 @@ class OtherResponseFormat:
 
 class LMStudioResponseFormat(BaseModel):
     response: str
+    first_word_in_response: str
+    lastWordInResponse: str
 
 
 RESPONSE_FORMATS = (LMStudioResponseFormat, OtherResponseFormat, SCHEMA)

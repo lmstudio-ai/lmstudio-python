@@ -268,7 +268,7 @@ def prediction_config_to_kv_config_stack(
     response_format: Type[ModelSchema] | DictSchema | None,
     config: LlmPredictionConfig | LlmPredictionConfigDict | None,
     for_text_completion: bool = False,
-) -> KvConfigStack:
+) -> tuple[bool, KvConfigStack]:
     dict_config: DictObject
     if config is None:
         dict_config = {}
@@ -279,6 +279,7 @@ def prediction_config_to_kv_config_stack(
         dict_config = LlmPredictionConfig._from_any_dict(config).to_dict()
     response_schema: DictSchema | None = None
     if response_format is not None:
+        structured = True
         if "structured" in dict_config:
             raise LMStudioValueError(
                 "Cannot specify both 'response_format' in API call and 'structured' in config"
@@ -289,6 +290,15 @@ def prediction_config_to_kv_config_stack(
             response_schema = response_format.model_json_schema()
         else:
             response_schema = response_format
+    else:
+        # The response schema may also be passed in via the config
+        # (doing it this way type hints as an unstructured result,
+        # but we still allow it at runtime for consistency with JS)
+        match dict_config:
+            case {"structured": {"type": "json"}}:
+                structured = True
+            case _:
+                structured = False
     fields = _to_kv_config_stack_base(
         dict_config,
         "llm",
@@ -308,7 +318,7 @@ def prediction_config_to_kv_config_stack(
     additional_layers: list[KvConfigStackLayerDict] = []
     if for_text_completion:
         additional_layers.append(_get_completion_config_layer())
-    return _api_override_kv_config_stack(fields, additional_layers)
+    return structured, _api_override_kv_config_stack(fields, additional_layers)
 
 
 def _get_completion_config_layer() -> KvConfigStackLayerDict:
