@@ -11,6 +11,9 @@ on:
       branches:
         - main
 
+# Require explicit job permissions
+permissions: {}
+
 jobs:
   zizmor:
     name: zizmor latest via PyPI

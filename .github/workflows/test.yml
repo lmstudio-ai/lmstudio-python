@@ -24,6 +24,9 @@ on:
     branches:
       - main
 
+# Require explicit job permissions
+permissions: {}
+
 defaults:
   run:
     # Use the Git for Windows bash shell, rather than supporting Powershell

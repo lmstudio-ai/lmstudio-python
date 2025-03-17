@@ -1,15 +1,19 @@
 name: "CLA Assistant"
 
+# NOTE: This workflow runs against PR *target* branches, not against the source branches.
+#       This ensures modified code cannot be executed with the workflow's permissions.
+#       It's still easier to misuse than most potential triggers, hence the zizmor warning.
+
 on:
   issue_comment:
     types: [created]
-  pull_request_target:
+  pull_request_target:  # zizmor: ignore[dangerous-triggers]
     types: [opened, closed, synchronize, labeled]  # Added "labeled" event to check for label changes
   workflow_dispatch:  # Allow manual triggering of the workflow
   
 permissions:
   actions: write
-  contents: write
+  contents: read  # Signatures are stored in a dedicated repository
   pull-requests: write
   statuses: write
   checks: write
