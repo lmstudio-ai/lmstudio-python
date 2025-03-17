@@ -77,26 +77,47 @@ def _gpu_offload_fields(
     offload_settings: DictObject,
 ) -> Sequence[KvConfigFieldDict]:
     fields: list[KvConfigFieldDict] = []
-    gpu_keys = (
-        ("ratio", f"{endpoint}.load.llama.acceleration.offloadRatio"),
-        ("mainGpu", "llama.load.mainGpu"),
-        ("splitStrategy", "llama.load.splitStrategy"),
-    )
-    for key, mapped_key in gpu_keys:
+    remaining_keys = set(offload_settings.keys())
+    simple_gpu_keys = (("ratio", f"{endpoint}.load.llama.acceleration.offloadRatio"),)
+    for key, mapped_key in simple_gpu_keys:
         if key in offload_settings:
+            remaining_keys.remove(key)
             fields.append({"key": mapped_key, "value": offload_settings[key]})
+    split_config_keys = ("mainGpu", "splitStrategy", "disabledGpus")
+    split_config_settings: dict[str, Any] = {}
+    for key in split_config_keys:
+        if key in offload_settings:
+            remaining_keys.remove(key)
+            split_config_settings[key] = offload_settings[key]
+    if split_config_settings:
+        fields.append({"key": "load.gpuSplitConfig", "value": split_config_settings})
+    if remaining_keys:
+        raise LMStudioValueError(
+            f"Unknown GPU offload settings: {sorted(remaining_keys)}"
+        )
     return fields
 
 
 # Some fields have different names in the client and server configs
+# (this map has also been used to avoid adding new key categories for new setting scopes)
 _CLIENT_TO_SERVER_KEYMAP = {
     "maxTokens": "maxPredictedTokens",
     "rawTools": "tools",
+    # "reasoning" scope
+    "reasoningParsing": "reasoning.parsing",
+    # "speculativeDecoding" scope
+    "draftModel": "speculativeDecoding.draftModel",
+    "speculativeDecodingNumDraftTokensExact": "speculativeDecoding.numDraftTokensExact",
+    "speculativeDecodingMinDraftLengthToConsider": "speculativeDecoding.minDraftLengthToConsider",
+    "speculativeDecodingMinContinueDraftingProbability": "speculativeDecoding.minContinueDraftingProbability",
 }
 
 
 def _to_server_key(key: str) -> str:
     return _CLIENT_TO_SERVER_KEYMAP.get(key, key)
+
+
+_NOT_YET_SUPPORTED_KEYS: set[str] = set()
 
 
 def _to_kv_config_stack_base(
@@ -114,9 +135,12 @@ def _to_kv_config_stack_base(
     # TODO: Define a JSON or TOML data file for mapping prediction config
     #       fields to config stack entries (preferably JSON exported by
     #       lmstudio-js rather than something maintained in the Python SDK)
+    #       https://github.com/lmstudio-ai/lmstudio-js/issues/253
+    remaining_keys = set(config.keys() - _NOT_YET_SUPPORTED_KEYS)
 
     for client_key in checkbox_keys:
         if client_key in config:
+            remaining_keys.remove(client_key)
             server_key = _to_server_key(client_key)
             fields.append(
                 _to_checkbox_kv(
@@ -125,12 +149,14 @@ def _to_kv_config_stack_base(
             )
     for client_key in simple_keys:
         if client_key in config:
+            remaining_keys.remove(client_key)
             server_key = _to_server_key(client_key)
             fields.append(
                 _to_simple_kv(f"{namespace}.{request}", server_key, config[client_key])
             )
     for client_key in llama_keys:
         if client_key in config:
+            remaining_keys.remove(client_key)
             server_key = _to_server_key(client_key)
             fields.append(
                 _to_simple_kv(
@@ -139,6 +165,7 @@ def _to_kv_config_stack_base(
             )
     for client_key in llama_checkbox_keys:
         if client_key in config:
+            remaining_keys.remove(client_key)
             server_key = _to_server_key(client_key)
             fields.append(
                 _to_checkbox_kv(
@@ -149,7 +176,11 @@ def _to_kv_config_stack_base(
             )
     for gpu_offload_key in gpu_offload_keys:
         if gpu_offload_key in config:
+            remaining_keys.remove(gpu_offload_key)
             fields.extend(_gpu_offload_fields(namespace, config[gpu_offload_key]))
+
+    if remaining_keys:
+        raise LMStudioValueError(f"Unknown config settings: {sorted(remaining_keys)}")
 
     return fields
 
@@ -179,6 +210,7 @@ _LLM_LOAD_CONFIG_KEYS = {
         "gpuOffload",
     ],
 }
+
 
 _EMBEDDING_LOAD_CONFIG_KEYS = {
     "checkbox_keys": [],
@@ -253,6 +285,11 @@ _PREDICTION_CONFIG_KEYS = {
         "topKSampling",
         "toolCallStopStrings",
         "rawTools",
+        "reasoningParsing",
+        "draftModel",
+        "speculativeDecodingNumDraftTokensExact",
+        "speculativeDecodingMinDraftLengthToConsider",
+        "speculativeDecodingMinContinueDraftingProbability",
     ],
     "llama_keys": [
         "cpuThreads",

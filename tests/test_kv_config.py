@@ -247,15 +247,7 @@ def test_snake_case_conversion(
         config_type._from_api_dict(input_dict)
 
 
-_NOT_YET_SUPPORTED_KEYS = {
-    "disabledGpus",
-    "reasoningParsing",
-    # "speculativeDecoding" scope
-    "draftModel",
-    "speculativeDecodingNumDraftTokensExact",
-    "speculativeDecodingMinDraftLengthToConsider",
-    "speculativeDecodingMinContinueDraftingProbability",
-}
+_NOT_YET_SUPPORTED_KEYS: set[str] = set()
 
 
 @pytest.mark.parametrize("keymap_dict,config_type", zip(KEYMAP_DICTS, KEYMAP_TYPES))
@@ -292,8 +284,14 @@ EXPECTED_KV_STACK_LOAD_EMBEDDING = {
                         "key": "embedding.load.llama.acceleration.offloadRatio",
                         "value": 0.5,
                     },
-                    {"key": "llama.load.mainGpu", "value": 0},
-                    {"key": "llama.load.splitStrategy", "value": "evenly"},
+                    {
+                        "key": "load.gpuSplitConfig",
+                        "value": {
+                            "mainGpu": 0,
+                            "splitStrategy": "evenly",
+                            "disabledGpus": [1, 2],
+                        },
+                    },
                 ],
             },
             "layerName": "apiOverride",
@@ -332,8 +330,14 @@ EXPECTED_KV_STACK_LOAD_LLM = {
                         "value": {"checked": True, "value": "f32"},
                     },
                     {"key": "llm.load.llama.acceleration.offloadRatio", "value": 0.5},
-                    {"key": "llama.load.mainGpu", "value": 0},
-                    {"key": "llama.load.splitStrategy", "value": "evenly"},
+                    {
+                        "key": "load.gpuSplitConfig",
+                        "value": {
+                            "mainGpu": 0,
+                            "splitStrategy": "evenly",
+                            "disabledGpus": [1, 2],
+                        },
+                    },
                 ]
             },
         }
@@ -392,7 +396,27 @@ EXPECTED_KV_STACK_PREDICTION = {
                         "value": ["yellow"],
                     },
                     {"key": "llm.prediction.tools", "value": {"type": "none"}},
-                    {"key": "llm.prediction.llama.cpuThreads", "value": 7.0},
+                    {
+                        "key": "llm.prediction.reasoning.parsing",
+                        "value": {"enabled": False, "startString": "", "endString": ""},
+                    },
+                    {
+                        "key": "llm.prediction.speculativeDecoding.draftModel",
+                        "value": "some-model-key",
+                    },
+                    {
+                        "key": "llm.prediction.speculativeDecoding.numDraftTokensExact",
+                        "value": 2,
+                    },
+                    {
+                        "key": "llm.prediction.speculativeDecoding.minDraftLengthToConsider",
+                        "value": 5,
+                    },
+                    {
+                        "key": "llm.prediction.speculativeDecoding.minContinueDraftingProbability",
+                        "value": 0.1,
+                    },
+                    {"key": "llm.prediction.llama.cpuThreads", "value": 7},
                 ],
             },
             "layerName": "apiOverride",
