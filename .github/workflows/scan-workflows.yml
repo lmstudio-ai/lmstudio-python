@@ -17,9 +17,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       security-events: write
-      # required for workflows in private repositories
-      contents: read
-      actions: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -34,9 +31,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    # TODO: upload results once the repository is public
-    #   - name: Upload SARIF file
-    #     uses: github/codeql-action/upload-sarif@v3
-    #     with:
-    #       sarif_file: results.sarif
-    #       category: zizmor
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: results.sarif
+          category: zizmor
