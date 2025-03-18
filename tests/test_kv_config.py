@@ -1,8 +1,6 @@
 """Test translation from flat dict configs to KvConfig layer stacks."""
 
-import itertools
-
-from typing import Any, Mapping, Sequence
+from typing import Any
 
 import msgspec
 
@@ -11,9 +9,10 @@ import pytest
 from lmstudio import BaseModel, DictObject, LMStudioValueError
 from lmstudio.schemas import LMStudioStruct
 from lmstudio._kv_config import (
-    _EMBEDDING_LOAD_CONFIG_KEYS,
-    _LLM_LOAD_CONFIG_KEYS,
-    _PREDICTION_CONFIG_KEYS,
+    ToServerKeymap,
+    TO_SERVER_LOAD_EMBEDDING,
+    TO_SERVER_LOAD_LLM,
+    TO_SERVER_PREDICTION,
     load_config_to_kv_config_stack,
     prediction_config_to_kv_config_stack,
 )
@@ -181,9 +180,9 @@ CONFIG_TYPES = (
 )
 
 KEYMAP_DICTS = (
-    _EMBEDDING_LOAD_CONFIG_KEYS,
-    _LLM_LOAD_CONFIG_KEYS,
-    _PREDICTION_CONFIG_KEYS,
+    TO_SERVER_LOAD_EMBEDDING,
+    TO_SERVER_LOAD_LLM,
+    TO_SERVER_PREDICTION,
 )
 
 KEYMAP_TYPES = CONFIG_TYPES[1:]
@@ -247,17 +246,14 @@ def test_snake_case_conversion(
         config_type._from_api_dict(input_dict)
 
 
-_NOT_YET_SUPPORTED_KEYS: set[str] = set()
-
-
-@pytest.mark.parametrize("keymap_dict,config_type", zip(KEYMAP_DICTS, KEYMAP_TYPES))
+@pytest.mark.parametrize("keymap,config_type", zip(KEYMAP_DICTS, KEYMAP_TYPES))
 def test_kv_stack_field_coverage(
-    keymap_dict: Mapping[str, Sequence[str]], config_type: LMStudioStruct[Any]
+    keymap: ToServerKeymap, config_type: LMStudioStruct[Any]
 ) -> None:
     # Ensure all expected keys are covered (even those with default values)
-    mapped_keys = set(itertools.chain(*keymap_dict.values()))
+    mapped_keys = keymap.keys()
     expected_keys = set(config_type.__struct_encode_fields__)
-    missing_keys = expected_keys - mapped_keys - _NOT_YET_SUPPORTED_KEYS
+    missing_keys = expected_keys - mapped_keys
     assert not missing_keys
     # Ensure no extra keys are mistakenly defined
     unknown_keys = mapped_keys - expected_keys
@@ -270,16 +266,6 @@ EXPECTED_KV_STACK_LOAD_EMBEDDING = {
             "config": {
                 "fields": [
                     {"key": "embedding.load.contextLength", "value": 1978},
-                    {"key": "embedding.load.llama.keepModelInMemory", "value": True},
-                    {"key": "embedding.load.llama.tryMmap", "value": False},
-                    {
-                        "key": "embedding.load.llama.ropeFrequencyBase",
-                        "value": {"checked": True, "value": 10.0},
-                    },
-                    {
-                        "key": "embedding.load.llama.ropeFrequencyScale",
-                        "value": {"checked": True, "value": 1.5},
-                    },
                     {
                         "key": "embedding.load.llama.acceleration.offloadRatio",
                         "value": 0.5,
@@ -292,6 +278,16 @@ EXPECTED_KV_STACK_LOAD_EMBEDDING = {
                             "disabledGpus": [1, 2],
                         },
                     },
+                    {"key": "embedding.load.llama.keepModelInMemory", "value": True},
+                    {
+                        "key": "embedding.load.llama.ropeFrequencyBase",
+                        "value": {"checked": True, "value": 10.0},
+                    },
+                    {
+                        "key": "embedding.load.llama.ropeFrequencyScale",
+                        "value": {"checked": True, "value": 1.5},
+                    },
+                    {"key": "embedding.load.llama.tryMmap", "value": False},
                 ],
             },
             "layerName": "apiOverride",
@@ -305,30 +301,7 @@ EXPECTED_KV_STACK_LOAD_LLM = {
             "layerName": "apiOverride",
             "config": {
                 "fields": [
-                    {"key": "llm.load.seed", "value": {"checked": True, "value": 313}},
                     {"key": "llm.load.contextLength", "value": 1978},
-                    {"key": "llm.load.numExperts", "value": 0},
-                    {"key": "llm.load.llama.evalBatchSize", "value": 42},
-                    {"key": "llm.load.llama.flashAttention", "value": False},
-                    {"key": "llm.load.llama.keepModelInMemory", "value": True},
-                    {"key": "llm.load.llama.useFp16ForKVCache", "value": True},
-                    {"key": "llm.load.llama.tryMmap", "value": False},
-                    {
-                        "key": "llm.load.llama.ropeFrequencyBase",
-                        "value": {"checked": True, "value": 10.0},
-                    },
-                    {
-                        "key": "llm.load.llama.ropeFrequencyScale",
-                        "value": {"checked": True, "value": 1.5},
-                    },
-                    {
-                        "key": "llm.load.llama.llamaKCacheQuantizationType",
-                        "value": {"checked": True, "value": "q8_0"},
-                    },
-                    {
-                        "key": "llm.load.llama.llamaVCacheQuantizationType",
-                        "value": {"checked": True, "value": "f32"},
-                    },
                     {"key": "llm.load.llama.acceleration.offloadRatio", "value": 0.5},
                     {
                         "key": "load.gpuSplitConfig",
@@ -338,6 +311,29 @@ EXPECTED_KV_STACK_LOAD_LLM = {
                             "disabledGpus": [1, 2],
                         },
                     },
+                    {"key": "llm.load.llama.evalBatchSize", "value": 42},
+                    {"key": "llm.load.llama.flashAttention", "value": False},
+                    {"key": "llm.load.llama.keepModelInMemory", "value": True},
+                    {
+                        "key": "llm.load.llama.llamaKCacheQuantizationType",
+                        "value": {"checked": True, "value": "q8_0"},
+                    },
+                    {
+                        "key": "llm.load.llama.llamaVCacheQuantizationType",
+                        "value": {"checked": True, "value": "f32"},
+                    },
+                    {
+                        "key": "llm.load.llama.ropeFrequencyBase",
+                        "value": {"checked": True, "value": 10.0},
+                    },
+                    {
+                        "key": "llm.load.llama.ropeFrequencyScale",
+                        "value": {"checked": True, "value": 1.5},
+                    },
+                    {"key": "llm.load.llama.tryMmap", "value": False},
+                    {"key": "llm.load.llama.useFp16ForKVCache", "value": True},
+                    {"key": "llm.load.numExperts", "value": 0},
+                    {"key": "llm.load.seed", "value": {"checked": True, "value": 313}},
                 ]
             },
         }
@@ -350,24 +346,17 @@ EXPECTED_KV_STACK_PREDICTION = {
             "config": {
                 "fields": [
                     {
+                        "key": "llm.prediction.contextOverflowPolicy",
+                        "value": "rollingWindow",
+                    },
+                    {"key": "llm.prediction.llama.cpuThreads", "value": 7},
+                    {
                         "key": "llm.prediction.maxPredictedTokens",
                         "value": {"checked": True, "value": 1234},
                     },
                     {
                         "key": "llm.prediction.minPSampling",
                         "value": {"checked": True, "value": 5.5},
-                    },
-                    {
-                        "key": "llm.prediction.repeatPenalty",
-                        "value": {"checked": True, "value": 6.5},
-                    },
-                    {
-                        "key": "llm.prediction.topPSampling",
-                        "value": {"checked": True, "value": 4.5},
-                    },
-                    {
-                        "key": "llm.prediction.contextOverflowPolicy",
-                        "value": "rollingWindow",
                     },
                     {
                         "key": "llm.prediction.promptTemplate",
@@ -384,39 +373,46 @@ EXPECTED_KV_STACK_PREDICTION = {
                             "type": "manual",
                         },
                     },
-                    {"key": "llm.prediction.stopStrings", "value": ["Banana!"]},
-                    {
-                        "key": "llm.prediction.structured",
-                        "value": {"jsonSchema": {"type": "string"}, "type": "json"},
-                    },
-                    {"key": "llm.prediction.temperature", "value": 2.5},
-                    {"key": "llm.prediction.topKSampling", "value": 3.5},
-                    {
-                        "key": "llm.prediction.toolCallStopStrings",
-                        "value": ["yellow"],
-                    },
-                    {"key": "llm.prediction.tools", "value": {"type": "none"}},
                     {
                         "key": "llm.prediction.reasoning.parsing",
                         "value": {"enabled": False, "startString": "", "endString": ""},
+                    },
+                    {
+                        "key": "llm.prediction.repeatPenalty",
+                        "value": {"checked": True, "value": 6.5},
                     },
                     {
                         "key": "llm.prediction.speculativeDecoding.draftModel",
                         "value": "some-model-key",
                     },
                     {
-                        "key": "llm.prediction.speculativeDecoding.numDraftTokensExact",
-                        "value": 2,
+                        "key": "llm.prediction.speculativeDecoding.minContinueDraftingProbability",
+                        "value": 0.1,
                     },
                     {
                         "key": "llm.prediction.speculativeDecoding.minDraftLengthToConsider",
                         "value": 5,
                     },
                     {
-                        "key": "llm.prediction.speculativeDecoding.minContinueDraftingProbability",
-                        "value": 0.1,
+                        "key": "llm.prediction.speculativeDecoding.numDraftTokensExact",
+                        "value": 2,
                     },
-                    {"key": "llm.prediction.llama.cpuThreads", "value": 7},
+                    {"key": "llm.prediction.stopStrings", "value": ["Banana!"]},
+                    {
+                        "key": "llm.prediction.structured",
+                        "value": {"jsonSchema": {"type": "string"}, "type": "json"},
+                    },
+                    {"key": "llm.prediction.temperature", "value": 2.5},
+                    {
+                        "key": "llm.prediction.toolCallStopStrings",
+                        "value": ["yellow"],
+                    },
+                    {"key": "llm.prediction.tools", "value": {"type": "none"}},
+                    {"key": "llm.prediction.topKSampling", "value": 3.5},
+                    {
+                        "key": "llm.prediction.topPSampling",
+                        "value": {"checked": True, "value": 4.5},
+                    },
                 ],
             },
             "layerName": "apiOverride",
