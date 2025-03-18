@@ -59,8 +59,9 @@ from .schemas import (
 from ._kv_config import (
     TLoadConfig,
     TLoadConfigDict,
-    dict_from_fields_key,
     load_config_to_kv_config_stack,
+    parse_llm_load_config,
+    parse_prediction_config,
     prediction_config_to_kv_config_stack,
 )
 from ._sdk_models import (
@@ -128,6 +129,7 @@ from ._logging import get_logger, LogEventContext, StructuredLogger
 # implicitly as part of the top-level `lmstudio` API.
 __all__ = [
     "ActResult",
+    "AnyLoadConfig",
     "AnyModelSpecifier",
     "DownloadFinalizedCallback",
     "DownloadProgressCallback",
@@ -180,6 +182,7 @@ DEFAULT_API_HOST = "localhost:1234"
 DEFAULT_TTL = 60 * 60  # By default, leaves idle models loaded for an hour
 
 AnyModelSpecifier: TypeAlias = str | ModelSpecifier | ModelQuery | DictObject
+AnyLoadConfig: TypeAlias = EmbeddingLoadModelConfig | LlmLoadModelConfig
 
 GetOrLoadChannelRequest: TypeAlias = (
     EmbeddingChannelGetOrLoadCreationParameter | LlmChannelGetOrLoadCreationParameter
@@ -441,12 +444,9 @@ class PredictionResult(Generic[TPrediction]):
     parsed: TPrediction            # dict for structured predictions, str otherwise
     stats: LlmPredictionStats      # Statistics about the prediction process
     model_info: LlmInfo            # Information about the model used
-    structured: bool = field(init=False)  # Whether the result is structured or not
-    # Note that the configuration reported here uses the *server* config names,
-    # not the attributes used to set the configuration in the client SDK
-    # Private until these attributes store the client config types
-    _load_config: DictObject        # The configuration used to load the model
-    _prediction_config: DictObject  # The configuration used for the prediction
+    structured: bool = field(init=False)    # Whether the result is structured or not
+    load_config: LlmLoadModelConfig         # The configuration used to load the model
+    prediction_config: LlmPredictionConfig  # The configuration used for the prediction
     # fmt: on
 
     def __post_init__(self) -> None:
@@ -1262,8 +1262,8 @@ class PredictionEndpoint(
                         parsed=parsed_content,
                         stats=LlmPredictionStats._from_any_api_dict(stats),
                         model_info=LlmInfo._from_any_api_dict(model_info),
-                        _load_config=dict_from_fields_key(load_kvconfig),
-                        _prediction_config=dict_from_fields_key(prediction_kvconfig),
+                        load_config=parse_llm_load_config(load_kvconfig),
+                        prediction_config=parse_prediction_config(prediction_kvconfig),
                     )
                 )
             case unmatched:
@@ -1477,19 +1477,19 @@ class PredictionStreamBase(Generic[TPrediction]):
 
     # Private until this API can emit the client config types
     @property
-    def _load_config(self) -> DictObject | None:
+    def _load_config(self) -> LlmLoadModelConfig | None:
         """Get the load configuration used for the current prediction if available."""
         if self._final_result is None:
             return None
-        return self._final_result._load_config
+        return self._final_result.load_config
 
     # Private until this API can emit the client config types
     @property
-    def _prediction_config(self) -> DictObject | None:
+    def _prediction_config(self) -> LlmPredictionConfig | None:
         """Get the prediction configuration used for the current prediction if available."""
         if self._final_result is None:
             return None
-        return self._final_result._prediction_config
+        return self._final_result.prediction_config
 
     @sdk_public_api()
     def result(self) -> PredictionResult[TPrediction]:

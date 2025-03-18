@@ -123,7 +123,7 @@ _COMMON_MODEL_LOAD_KEYS: DictObject = {
     "contextLength": ConfigField("contextLength"),
 }
 
-_SUPPORTED_SERVER_KEYS: dict[str, DictObject] = {
+SUPPORTED_SERVER_KEYS: dict[str, DictObject] = {
     "load": {
         "gpuSplitConfig": MultiPartField(
             "gpuOffload", ("mainGpu", "splitStrategy", "disabledGpus")
@@ -189,7 +189,7 @@ def _iter_server_keys(*namespaces: str) -> Iterable[tuple[str, ConfigField]]:
     # Map dotted config field names to their client config field counterparts
     for namespace in namespaces:
         scopes: list[tuple[str, DictObject]] = [
-            (namespace, _SUPPORTED_SERVER_KEYS[namespace])
+            (namespace, SUPPORTED_SERVER_KEYS[namespace])
         ]
         for prefix, scope in scopes:
             for k, v in scope.items():
@@ -204,6 +204,7 @@ def _iter_server_keys(*namespaces: str) -> Iterable[tuple[str, ConfigField]]:
 FROM_SERVER_LOAD_LLM = dict(_iter_server_keys("load", "llm.load"))
 FROM_SERVER_LOAD_EMBEDDING = dict(_iter_server_keys("load", "embedding.load"))
 FROM_SERVER_PREDICTION = dict(_iter_server_keys("llm.prediction"))
+FROM_SERVER_CONFIG = dict(_iter_server_keys(*SUPPORTED_SERVER_KEYS))
 
 
 # Define mappings to translate client config instances to server KV configs
@@ -237,8 +238,26 @@ def dict_from_kvconfig(config: KvConfig) -> DictObject:
     return {kv.key: kv.value for kv in config.fields}
 
 
-def dict_from_fields_key(config: DictObject) -> DictObject:
-    return {kv["key"]: kv["value"] for kv in config.get("fields", [])}
+def parse_server_config(server_config: DictObject) -> DictObject:
+    """Map server config fields to client config fields."""
+    result: MutableDictObject = {}
+    for kv in server_config.get("fields", []):
+        key = kv["key"]
+        config_field = FROM_SERVER_CONFIG.get(key, None)
+        if config_field is None:
+            # Skip unknown keys (server might be newer than the SDK)
+            continue
+        value = kv["value"]
+        config_field.update_client_config(result, value)
+    return result
+
+
+def parse_llm_load_config(server_config: DictObject) -> LlmLoadModelConfig:
+    return LlmLoadModelConfig._from_any_api_dict(parse_server_config(server_config))
+
+
+def parse_prediction_config(server_config: DictObject) -> LlmPredictionConfig:
+    return LlmPredictionConfig._from_any_api_dict(parse_server_config(server_config))
 
 
 def _api_override_kv_config_stack(

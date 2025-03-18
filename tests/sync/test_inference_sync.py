@@ -22,6 +22,8 @@ from lmstudio import (
     Chat,
     DictSchema,
     LlmInfo,
+    LlmLoadModelConfig,
+    LlmPredictionConfig,
     LlmPredictionConfigDict,
     LlmPredictionFragment,
     LlmPredictionStats,
@@ -264,12 +266,12 @@ def test_complete_prediction_metadata_sync(caplog: LogCap) -> None:
     logging.info(f"LLM response: {response.content!r}")
     assert response.stats
     assert response.model_info
-    assert response._load_config
-    assert response._prediction_config
+    assert response.load_config
+    assert response.prediction_config
     assert isinstance(response.stats, LlmPredictionStats)
     assert isinstance(response.model_info, LlmInfo)
-    assert isinstance(response._load_config, dict)
-    assert isinstance(response._prediction_config, dict)
+    assert isinstance(response.load_config, LlmLoadModelConfig)
+    assert isinstance(response.prediction_config, LlmPredictionConfig)
 
 
 @pytest.mark.lmstudio

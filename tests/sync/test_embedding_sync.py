@@ -13,7 +13,7 @@ from contextlib import nullcontext
 import pytest
 from pytest import LogCaptureFixture as LogCap
 
-from lmstudio import Client, LMStudioModelNotFoundError
+from lmstudio import Client, EmbeddingLoadModelConfig, LMStudioModelNotFoundError
 
 from ..support import (
     EXPECTED_EMBEDDING,
@@ -115,7 +115,7 @@ def test_get_load_config_sync(model_id: str, caplog: LogCap) -> None:
         response = client.embedding._get_load_config(model_id)
     logging.info(f"Load config response: {response}")
     assert response
-    assert isinstance(response, dict)
+    assert isinstance(response, EmbeddingLoadModelConfig)
 
 
 @pytest.mark.lmstudio

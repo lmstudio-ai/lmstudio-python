@@ -66,6 +66,7 @@ from .history import (
 )
 from .json_api import (
     ActResult,
+    AnyLoadConfig,
     AnyModelSpecifier,
     AvailableModelBase,
     ChannelEndpoint,
@@ -121,7 +122,7 @@ from .json_api import (
     _model_spec_to_api_dict,
     _redact_json,
 )
-from ._kv_config import TLoadConfig, TLoadConfigDict, dict_from_fields_key
+from ._kv_config import TLoadConfig, TLoadConfigDict, parse_server_config
 from ._sdk_models import (
     EmbeddingRpcEmbedStringParameter,
     EmbeddingRpcTokenizeParameter,
@@ -866,7 +867,7 @@ class SyncSessionModel(
     def _files_session(self) -> _SyncSessionFiles:
         return self._client.files
 
-    def _get_load_config(self, model_specifier: AnyModelSpecifier) -> DictObject:
+    def _get_load_config(self, model_specifier: AnyModelSpecifier) -> AnyLoadConfig:
         """Get the model load config for the specified model."""
         # Note that the configuration reported here uses the *server* config names,
         # not the attributes used to set the configuration in the client SDK
@@ -876,7 +877,8 @@ class SyncSessionModel(
             }
         )
         config = self.remote_call("getLoadConfig", params)
-        return dict_from_fields_key(config)
+        result_type = self._API_TYPES.MODEL_LOAD_CONFIG
+        return result_type._from_any_api_dict(parse_server_config(config))
 
     def _get_api_model_info(self, model_specifier: AnyModelSpecifier) -> Any:
         """Get the raw model info (if any) for a model matching the given criteria."""
@@ -1339,7 +1341,7 @@ class SyncModelHandle(ModelHandleBase[TSyncSessionModel]):
 
     # Private until this API can emit the client config types
     @sdk_public_api()
-    def _get_load_config(self) -> DictObject:
+    def _get_load_config(self) -> AnyLoadConfig:
         """Get the model load config for this model."""
         return self._session._get_load_config(self.identifier)
 

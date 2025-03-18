@@ -43,6 +43,7 @@ from .history import (
     _LocalFileData,
 )
 from .json_api import (
+    AnyLoadConfig,
     AnyModelSpecifier,
     AvailableModelBase,
     ChannelEndpoint,
@@ -93,7 +94,7 @@ from .json_api import (
     _model_spec_to_api_dict,
     _redact_json,
 )
-from ._kv_config import TLoadConfig, TLoadConfigDict, dict_from_fields_key
+from ._kv_config import TLoadConfig, TLoadConfigDict, parse_server_config
 from ._sdk_models import (
     EmbeddingRpcEmbedStringParameter,
     EmbeddingRpcTokenizeParameter,
@@ -693,7 +694,9 @@ class AsyncSessionModel(
     def _files_session(self) -> _AsyncSessionFiles:
         return self._client.files
 
-    async def _get_load_config(self, model_specifier: AnyModelSpecifier) -> DictObject:
+    async def _get_load_config(
+        self, model_specifier: AnyModelSpecifier
+    ) -> AnyLoadConfig:
         """Get the model load config for the specified model."""
         # Note that the configuration reported here uses the *server* config names,
         # not the attributes used to set the configuration in the client SDK
@@ -703,7 +706,8 @@ class AsyncSessionModel(
             }
         )
         config = await self.remote_call("getLoadConfig", params)
-        return dict_from_fields_key(config)
+        result_type = self._API_TYPES.MODEL_LOAD_CONFIG
+        return result_type._from_any_api_dict(parse_server_config(config))
 
     async def _get_api_model_info(self, model_specifier: AnyModelSpecifier) -> Any:
         """Get the raw model info (if any) for a model matching the given criteria."""
@@ -1158,7 +1162,9 @@ class AsyncSessionEmbedding(
         )
 
 
-class AsyncModelHandle(ModelHandleBase[TAsyncSessionModel]):
+class AsyncModelHandle(
+    Generic[TAsyncSessionModel], ModelHandleBase[TAsyncSessionModel]
+):
     """Reference to a loaded LM Studio model."""
 
     @sdk_public_api_async()
@@ -1171,9 +1177,8 @@ class AsyncModelHandle(ModelHandleBase[TAsyncSessionModel]):
         """Get the model info for this model."""
         return await self._session.get_model_info(self.identifier)
 
-    # Private until this API can emit the client config types
     @sdk_public_api_async()
-    async def _get_load_config(self) -> DictObject:
+    async def get_load_config(self) -> AnyLoadConfig:
         """Get the model load config for this model."""
         return await self._session._get_load_config(self.identifier)
 
