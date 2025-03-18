@@ -2,10 +2,11 @@
 
 # Known KV config settings are defined in
 # https://github.com/lmstudio-ai/lmstudio-js/blob/main/packages/lms-kv-config/src/schema.ts
-from typing import Any, Sequence, Type, TypeVar
+from dataclasses import dataclass
+from typing import Any, Iterable, Sequence, Type, TypeVar
 
 from .sdk_api import LMStudioValueError
-from .schemas import DictSchema, DictObject, ModelSchema
+from .schemas import DictSchema, DictObject, ModelSchema, MutableDictObject
 from ._sdk_models import (
     EmbeddingLoadModelConfig,
     EmbeddingLoadModelConfigDict,
@@ -19,7 +20,211 @@ from ._sdk_models import (
     LlmPredictionConfigDict,
 )
 
-# TODO we can reasonably add unit tests for this module: compare against lmstudio-js?
+
+@dataclass(frozen=True)
+class ConfigField:
+    client_key: str
+
+    def to_kv_field(
+        self, server_key: str, client_config: DictObject
+    ) -> KvConfigFieldDict | None:
+        return {
+            "key": server_key,
+            "value": client_config[self.client_key],
+        }
+
+    def update_client_config(
+        self, client_config: MutableDictObject, value: Any
+    ) -> None:
+        client_config[self.client_key] = value
+
+
+@dataclass(frozen=True)
+class CheckboxField(ConfigField):
+    def to_kv_field(
+        self, server_key: str, client_config: DictObject
+    ) -> KvConfigFieldDict | None:
+        return {
+            "key": server_key,
+            "value": {"checked": True, "value": client_config[self.client_key]},
+        }
+
+    def update_client_config(
+        self, client_config: MutableDictObject, value: DictObject
+    ) -> None:
+        if value.get("key", False):
+            client_config[self.client_key] = value["value"]
+
+
+@dataclass(frozen=True)
+class NestedKeyField(ConfigField):
+    nested_key: str
+
+    def to_kv_field(
+        self, server_key: str, client_config: DictObject
+    ) -> KvConfigFieldDict | None:
+        containing_value = client_config[self.client_key]
+        nested_key = self.nested_key
+        if nested_key not in containing_value:
+            return None
+        return {
+            "key": server_key,
+            "value": containing_value[nested_key],
+        }
+
+    def update_client_config(
+        self, client_config: MutableDictObject, value: Any
+    ) -> None:
+        containing_value = client_config.setdefault(self.client_key, {})
+        containing_value[self.nested_key] = value
+
+
+@dataclass(frozen=True)
+class MultiPartField(ConfigField):
+    nested_keys: tuple[str, ...]
+
+    def to_kv_field(
+        self, server_key: str, client_config: DictObject
+    ) -> KvConfigFieldDict | None:
+        containing_value = client_config[self.client_key]
+        value: dict[str, Any] = {}
+        for key in self.nested_keys:
+            value[key] = containing_value[key]
+        return {
+            "key": server_key,
+            "value": value,
+        }
+
+    def update_client_config(
+        self, client_config: MutableDictObject, value: DictObject
+    ) -> None:
+        containing_value = client_config.setdefault(self.client_key, {})
+        for key in self.nested_keys:
+            if key in value:
+                containing_value[key] = value[key]
+
+
+# TODO: figure out a way to compare this module against the lmstudio-js mappings
+# TODO: Define a JSON or TOML data file for mapping prediction config
+#       fields to config stack entries (preferably JSON exported by
+#       lmstudio-js rather than something maintained in the Python SDK)
+#       https://github.com/lmstudio-ai/lmstudio-js/issues/253
+_COMMON_LLAMA_LOAD_KEYS: DictObject = {
+    "keepModelInMemory": ConfigField("keepModelInMemory"),
+    "ropeFrequencyBase": CheckboxField("ropeFrequencyBase"),
+    "ropeFrequencyScale": CheckboxField("ropeFrequencyScale"),
+    "tryMmap": ConfigField("tryMmap"),
+    "acceleration": {
+        "offloadRatio": NestedKeyField("gpuOffload", "ratio"),
+    },
+}
+
+_COMMON_MODEL_LOAD_KEYS: DictObject = {
+    "contextLength": ConfigField("contextLength"),
+}
+
+_SUPPORTED_SERVER_KEYS: dict[str, DictObject] = {
+    "load": {
+        "gpuSplitConfig": MultiPartField(
+            "gpuOffload", ("mainGpu", "splitStrategy", "disabledGpus")
+        ),
+    },
+    "embedding.load": {
+        **_COMMON_MODEL_LOAD_KEYS,
+        "llama": _COMMON_LLAMA_LOAD_KEYS,
+    },
+    "llm.load": {
+        **_COMMON_MODEL_LOAD_KEYS,
+        "numExperts": ConfigField("numExperts"),
+        "seed": CheckboxField("seed"),
+        "llama": {
+            **_COMMON_LLAMA_LOAD_KEYS,
+            "evalBatchSize": ConfigField("evalBatchSize"),
+            "flashAttention": ConfigField("flashAttention"),
+            "llamaKCacheQuantizationType": CheckboxField("llamaKCacheQuantizationType"),
+            "llamaVCacheQuantizationType": CheckboxField("llamaVCacheQuantizationType"),
+            "useFp16ForKVCache": ConfigField("useFp16ForKVCache"),
+        },
+    },
+    "llm.prediction": {
+        "contextOverflowPolicy": ConfigField("contextOverflowPolicy"),
+        "maxPredictedTokens": CheckboxField("maxTokens"),  # Shorter name in client API
+        "minPSampling": CheckboxField("minPSampling"),
+        "promptTemplate": ConfigField("promptTemplate"),
+        "repeatPenalty": CheckboxField("repeatPenalty"),
+        "stopStrings": ConfigField("stopStrings"),
+        "structured": ConfigField("structured"),
+        "temperature": ConfigField("temperature"),
+        "toolCallStopStrings": ConfigField("toolCallStopStrings"),
+        "tools": ConfigField("rawTools"),  # Encourage calling .act() instead
+        "topKSampling": ConfigField("topKSampling"),
+        "topPSampling": CheckboxField("topPSampling"),
+        "llama": {
+            # Nested KV structure is flattened in client API
+            "cpuThreads": ConfigField("cpuThreads"),
+        },
+        "reasoning": {
+            # Nested KV structure is flattened in client API
+            "parsing": ConfigField("reasoningParsing"),
+        },
+        "speculativeDecoding": {
+            # Nested KV structure is flattened in client API
+            "draftModel": ConfigField("draftModel"),
+            "minDraftLengthToConsider": ConfigField(
+                "speculativeDecodingMinDraftLengthToConsider"
+            ),
+            "minContinueDraftingProbability": ConfigField(
+                "speculativeDecodingMinContinueDraftingProbability"
+            ),
+            "numDraftTokensExact": ConfigField(
+                "speculativeDecodingNumDraftTokensExact"
+            ),
+        },
+    },
+}
+
+
+# Define mappings to translate server KV configs to client config instances
+def _iter_server_keys(*namespaces: str) -> Iterable[tuple[str, ConfigField]]:
+    # Map dotted config field names to their client config field counterparts
+    for namespace in namespaces:
+        scopes: list[tuple[str, DictObject]] = [
+            (namespace, _SUPPORTED_SERVER_KEYS[namespace])
+        ]
+        for prefix, scope in scopes:
+            for k, v in scope.items():
+                prefixed_key = f"{prefix}.{k}" if prefix else k
+                if isinstance(v, ConfigField):
+                    yield prefixed_key, v
+                else:
+                    assert isinstance(v, dict)
+                    scopes.append((prefixed_key, v))
+
+
+FROM_SERVER_LOAD_LLM = dict(_iter_server_keys("load", "llm.load"))
+FROM_SERVER_LOAD_EMBEDDING = dict(_iter_server_keys("load", "embedding.load"))
+FROM_SERVER_PREDICTION = dict(_iter_server_keys("llm.prediction"))
+
+
+# Define mappings to translate client config instances to server KV configs
+FromServerKeymap = dict[str, ConfigField]
+ToServerKeymap = dict[str, list[tuple[str, ConfigField]]]
+
+
+def _invert_config_keymap(from_server: FromServerKeymap) -> ToServerKeymap:
+    to_server: ToServerKeymap = {}
+    for server_key, config_field in sorted(from_server.items()):
+        client_key = config_field.client_key
+        # There's at least one client field (gpuOffload) which maps to
+        # multiple KV config fields, so don't expect a 1:1 mapping
+        config_fields = to_server.setdefault(client_key, [])
+        config_fields.append((server_key, config_field))
+    return to_server
+
+
+TO_SERVER_LOAD_LLM = _invert_config_keymap(FROM_SERVER_LOAD_LLM)
+TO_SERVER_LOAD_EMBEDDING = _invert_config_keymap(FROM_SERVER_LOAD_EMBEDDING)
+TO_SERVER_PREDICTION = _invert_config_keymap(FROM_SERVER_PREDICTION)
 
 
 TLoadConfig = TypeVar("TLoadConfig", LlmLoadModelConfig, EmbeddingLoadModelConfig)
@@ -55,198 +260,28 @@ def _api_override_kv_config_stack(
     )
 
 
-def _to_simple_kv(prefix: str, key: str, value: Any) -> KvConfigFieldDict:
-    return {
-        "key": f"{prefix}.{key}",
-        "value": value,
-    }
-
-
-def _to_checkbox_kv(prefix: str, key: str, value: Any) -> KvConfigFieldDict:
-    return {
-        "key": f"{prefix}.{key}",
-        "value": {
-            "checked": True,
-            "value": value,
-        },
-    }
-
-
-def _gpu_offload_fields(
-    endpoint: str,
-    offload_settings: DictObject,
-) -> Sequence[KvConfigFieldDict]:
-    fields: list[KvConfigFieldDict] = []
-    remaining_keys = set(offload_settings.keys())
-    simple_gpu_keys = (("ratio", f"{endpoint}.load.llama.acceleration.offloadRatio"),)
-    for key, mapped_key in simple_gpu_keys:
-        if key in offload_settings:
-            remaining_keys.remove(key)
-            fields.append({"key": mapped_key, "value": offload_settings[key]})
-    split_config_keys = ("mainGpu", "splitStrategy", "disabledGpus")
-    split_config_settings: dict[str, Any] = {}
-    for key in split_config_keys:
-        if key in offload_settings:
-            remaining_keys.remove(key)
-            split_config_settings[key] = offload_settings[key]
-    if split_config_settings:
-        fields.append({"key": "load.gpuSplitConfig", "value": split_config_settings})
-    if remaining_keys:
-        raise LMStudioValueError(
-            f"Unknown GPU offload settings: {sorted(remaining_keys)}"
-        )
-    return fields
-
-
-# Some fields have different names in the client and server configs
-# (this map has also been used to avoid adding new key categories for new setting scopes)
-_CLIENT_TO_SERVER_KEYMAP = {
-    "maxTokens": "maxPredictedTokens",
-    "rawTools": "tools",
-    # "reasoning" scope
-    "reasoningParsing": "reasoning.parsing",
-    # "speculativeDecoding" scope
-    "draftModel": "speculativeDecoding.draftModel",
-    "speculativeDecodingNumDraftTokensExact": "speculativeDecoding.numDraftTokensExact",
-    "speculativeDecodingMinDraftLengthToConsider": "speculativeDecoding.minDraftLengthToConsider",
-    "speculativeDecodingMinContinueDraftingProbability": "speculativeDecoding.minContinueDraftingProbability",
-}
-
-
-def _to_server_key(key: str) -> str:
-    return _CLIENT_TO_SERVER_KEYMAP.get(key, key)
-
-
-_NOT_YET_SUPPORTED_KEYS: set[str] = set()
-
-
 def _to_kv_config_stack_base(
-    config: DictObject,
-    namespace: str,
-    request: str,
-    /,
-    checkbox_keys: Sequence[str],
-    simple_keys: Sequence[str],
-    llama_keys: Sequence[str],
-    llama_checkbox_keys: Sequence[str],
-    gpu_offload_keys: Sequence[str] = (),
+    config: DictObject, keymap: ToServerKeymap
 ) -> list[KvConfigFieldDict]:
     fields: list[KvConfigFieldDict] = []
-    # TODO: Define a JSON or TOML data file for mapping prediction config
-    #       fields to config stack entries (preferably JSON exported by
-    #       lmstudio-js rather than something maintained in the Python SDK)
-    #       https://github.com/lmstudio-ai/lmstudio-js/issues/253
-    remaining_keys = set(config.keys() - _NOT_YET_SUPPORTED_KEYS)
-
-    for client_key in checkbox_keys:
-        if client_key in config:
-            remaining_keys.remove(client_key)
-            server_key = _to_server_key(client_key)
-            fields.append(
-                _to_checkbox_kv(
-                    f"{namespace}.{request}", server_key, config[client_key]
-                )
-            )
-    for client_key in simple_keys:
-        if client_key in config:
-            remaining_keys.remove(client_key)
-            server_key = _to_server_key(client_key)
-            fields.append(
-                _to_simple_kv(f"{namespace}.{request}", server_key, config[client_key])
-            )
-    for client_key in llama_keys:
-        if client_key in config:
-            remaining_keys.remove(client_key)
-            server_key = _to_server_key(client_key)
-            fields.append(
-                _to_simple_kv(
-                    f"{namespace}.{request}.llama", server_key, config[client_key]
-                )
-            )
-    for client_key in llama_checkbox_keys:
-        if client_key in config:
-            remaining_keys.remove(client_key)
-            server_key = _to_server_key(client_key)
-            fields.append(
-                _to_checkbox_kv(
-                    f"{namespace}.{request}.llama",
-                    server_key,
-                    config[client_key],
-                )
-            )
-    for gpu_offload_key in gpu_offload_keys:
-        if gpu_offload_key in config:
-            remaining_keys.remove(gpu_offload_key)
-            fields.extend(_gpu_offload_fields(namespace, config[gpu_offload_key]))
-
+    remaining_keys = set(config.keys())
+    for client_key, config_fields in keymap.items():
+        if client_key not in config:
+            continue
+        remaining_keys.remove(client_key)
+        for server_key, config_field in config_fields:
+            kv_field = config_field.to_kv_field(server_key, config)
+            if kv_field is not None:
+                fields.append(kv_field)
     if remaining_keys:
         raise LMStudioValueError(f"Unknown config settings: {sorted(remaining_keys)}")
-
     return fields
 
 
-_LLM_LOAD_CONFIG_KEYS = {
-    "checkbox_keys": [
-        "seed",
-    ],
-    "simple_keys": [
-        "contextLength",
-        "numExperts",
-    ],
-    "llama_keys": [
-        "evalBatchSize",
-        "flashAttention",
-        "keepModelInMemory",
-        "useFp16ForKVCache",
-        "tryMmap",
-    ],
-    "llama_checkbox_keys": [
-        "ropeFrequencyBase",
-        "ropeFrequencyScale",
-        "llamaKCacheQuantizationType",
-        "llamaVCacheQuantizationType",
-    ],
-    "gpu_offload_keys": [
-        "gpuOffload",
-    ],
-}
-
-
-_EMBEDDING_LOAD_CONFIG_KEYS = {
-    "checkbox_keys": [],
-    "simple_keys": [
-        "contextLength",
-    ],
-    "llama_keys": [
-        "keepModelInMemory",
-        "tryMmap",
-    ],
-    "llama_checkbox_keys": [
-        "ropeFrequencyBase",
-        "ropeFrequencyScale",
-    ],
-    "gpu_offload_keys": [
-        "gpuOffload",
-    ],
-}
-
-
-def _llm_load_config_to_kv_config_stack(
-    config: DictObject,
+def _client_config_to_kv_config_stack(
+    config: DictObject, keymap: ToServerKeymap
 ) -> KvConfigStack:
-    fields = _to_kv_config_stack_base(config, "llm", "load", **_LLM_LOAD_CONFIG_KEYS)
-    return _api_override_kv_config_stack(fields)
-
-
-def _embedding_load_config_to_kv_config_stack(
-    config: DictObject,
-) -> KvConfigStack:
-    fields = _to_kv_config_stack_base(
-        config,
-        "embedding",
-        "load",
-        **_EMBEDDING_LOAD_CONFIG_KEYS,
-    )
+    fields = _to_kv_config_stack_base(config, keymap)
     return _api_override_kv_config_stack(fields)
 
 
@@ -262,43 +297,10 @@ def load_config_to_kv_config_stack(
     else:
         assert isinstance(config, dict)
         dict_config = config_type._from_any_dict(config).to_dict()
-    if config_type is EmbeddingLoadModelConfig:
-        return _embedding_load_config_to_kv_config_stack(dict_config)
-    assert config_type is LlmLoadModelConfig
-    return _llm_load_config_to_kv_config_stack(dict_config)
-
-
-_PREDICTION_CONFIG_KEYS = {
-    "checkbox_keys": [
-        "maxTokens",
-        "minPSampling",
-        "repeatPenalty",
-        "topPSampling",
-        # "logProbs",  # Not yet supported via the SDK API
-    ],
-    "simple_keys": [
-        "contextOverflowPolicy",
-        "promptTemplate",
-        "stopStrings",
-        "structured",
-        "temperature",
-        "topKSampling",
-        "toolCallStopStrings",
-        "rawTools",
-        "reasoningParsing",
-        "draftModel",
-        "speculativeDecodingNumDraftTokensExact",
-        "speculativeDecodingMinDraftLengthToConsider",
-        "speculativeDecodingMinContinueDraftingProbability",
-    ],
-    "llama_keys": [
-        "cpuThreads",
-    ],
-    "llama_checkbox_keys": [
-        # "xtcProbability",  # Not yet supported via the SDK API
-        # "xtcThreshold",  # Not yet supported via the SDK API
-    ],
-}
+    if config_type is LlmLoadModelConfig:
+        return _client_config_to_kv_config_stack(dict_config, TO_SERVER_LOAD_LLM)
+    assert config_type is EmbeddingLoadModelConfig
+    return _client_config_to_kv_config_stack(dict_config, TO_SERVER_LOAD_EMBEDDING)
 
 
 def prediction_config_to_kv_config_stack(
@@ -336,12 +338,7 @@ def prediction_config_to_kv_config_stack(
                 structured = True
             case _:
                 structured = False
-    fields = _to_kv_config_stack_base(
-        dict_config,
-        "llm",
-        "prediction",
-        **_PREDICTION_CONFIG_KEYS,
-    )
+    fields = _to_kv_config_stack_base(dict_config, TO_SERVER_PREDICTION)
     if response_schema is not None:
         fields.append(
             {

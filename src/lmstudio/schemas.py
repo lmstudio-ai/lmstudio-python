@@ -7,6 +7,7 @@ from typing import (
     ClassVar,
     Generic,
     Mapping,
+    MutableMapping,
     Protocol,
     Sequence,
     TypeVar,
@@ -31,6 +32,7 @@ __all__ = [
 ]
 
 DictObject = Mapping[str, Any]  # Any JSON-compatible string-keyed dict
+MutableDictObject = MutableMapping[str, Any]
 DictSchema = Mapping[str, Any]  # JSON schema as a string-keyed dict
 
 
