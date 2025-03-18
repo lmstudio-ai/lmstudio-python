@@ -6,7 +6,7 @@ import anyio
 import pytest
 from pytest import LogCaptureFixture as LogCap
 
-from lmstudio import AsyncClient, LMStudioModelNotFoundError
+from lmstudio import AsyncClient, EmbeddingLoadModelConfig, LMStudioModelNotFoundError
 
 from ..support import (
     EXPECTED_EMBEDDING,
@@ -114,7 +114,7 @@ async def test_get_load_config_async(model_id: str, caplog: LogCap) -> None:
         response = await client.embedding._get_load_config(model_id)
     logging.info(f"Load config response: {response}")
     assert response
-    assert isinstance(response, dict)
+    assert isinstance(response, EmbeddingLoadModelConfig)
 
 
 @pytest.mark.asyncio

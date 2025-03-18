@@ -24,6 +24,8 @@ from lmstudio.history import (
 )
 from lmstudio.json_api import (
     LlmInfo,
+    LlmLoadModelConfig,
+    LlmPredictionConfig,
     LlmPredictionStats,
     PredictionResult,
     TPrediction,
@@ -347,8 +349,8 @@ def _make_prediction_result(data: TPrediction) -> PredictionResult[TPrediction]:
             trained_for_tool_use=False,
             max_context_length=32,
         ),
-        _load_config={},
-        _prediction_config={},
+        load_config=LlmLoadModelConfig(),
+        prediction_config=LlmPredictionConfig(),
     )
 
 

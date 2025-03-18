@@ -12,7 +12,7 @@ import logging
 import pytest
 from pytest import LogCaptureFixture as LogCap
 
-from lmstudio import Client, history
+from lmstudio import Client, LlmLoadModelConfig, history
 
 from ..support import EXPECTED_LLM, EXPECTED_LLM_ID
 
@@ -96,7 +96,7 @@ def test_get_load_config_sync(model_id: str, caplog: LogCap) -> None:
         response = client.llm._get_load_config(model_id)
     logging.info(f"Load config response: {response}")
     assert response
-    assert isinstance(response, dict)
+    assert isinstance(response, LlmLoadModelConfig)
 
 
 @pytest.mark.lmstudio
