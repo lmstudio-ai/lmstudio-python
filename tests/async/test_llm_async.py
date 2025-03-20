@@ -93,7 +93,8 @@ async def test_context_length_async(model_id: str, caplog: LogCap) -> None:
 async def test_get_load_config_async(model_id: str, caplog: LogCap) -> None:
     caplog.set_level(logging.DEBUG)
     async with AsyncClient() as client:
-        response = await client.llm._get_load_config(model_id)
+        model = await client.llm.model(model_id)
+        response = await model.get_load_config()
     logging.info(f"Load config response: {response}")
     assert response
     assert isinstance(response, LlmLoadModelConfig)

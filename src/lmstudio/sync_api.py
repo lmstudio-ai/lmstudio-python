@@ -1339,9 +1339,8 @@ class SyncModelHandle(ModelHandleBase[TSyncSessionModel]):
         """Get the model info for this model."""
         return self._session.get_model_info(self.identifier)
 
-    # Private until this API can emit the client config types
     @sdk_public_api()
-    def _get_load_config(self) -> AnyLoadConfig:
+    def get_load_config(self) -> AnyLoadConfig:
         """Get the model load config for this model."""
         return self._session._get_load_config(self.identifier)
 
