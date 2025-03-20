@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Example script demonstrating an interactive LLM chatbot."""
+"""Example script demonstrating structured responses."""
 
 import json
 
