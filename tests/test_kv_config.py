@@ -45,7 +45,7 @@ SC_GPU_CONFIG = {
 
 LOAD_CONFIG_EMBEDDING: EmbeddingLoadModelConfigDict = {
     "contextLength": 1978,
-    "gpuOffload": GPU_CONFIG,
+    "gpu": GPU_CONFIG,
     "keepModelInMemory": True,
     "ropeFrequencyBase": 10.0,
     "ropeFrequencyScale": 1.5,
@@ -54,7 +54,7 @@ LOAD_CONFIG_EMBEDDING: EmbeddingLoadModelConfigDict = {
 
 SC_LOAD_CONFIG_EMBEDDING = {
     "context_length": 1978,
-    "gpu_offload": SC_GPU_CONFIG,
+    "gpu": SC_GPU_CONFIG,
     "keep_model_in_memory": True,
     "rope_frequency_base": 10.0,
     "rope_frequency_scale": 1.5,
@@ -65,7 +65,8 @@ LOAD_CONFIG_LLM: LlmLoadModelConfigDict = {
     "contextLength": 1978,
     "evalBatchSize": 42,
     "flashAttention": False,
-    "gpuOffload": GPU_CONFIG,
+    "gpu": GPU_CONFIG,
+    "gpuStrictVramCap": False,
     "keepModelInMemory": True,
     "llamaKCacheQuantizationType": "q8_0",
     "llamaVCacheQuantizationType": "f32",
@@ -81,7 +82,8 @@ SC_LOAD_CONFIG_LLM = {
     "context_length": 1978,
     "eval_batch_size": 42,
     "flash_attention": False,
-    "gpu_offload": SC_GPU_CONFIG,
+    "gpu": SC_GPU_CONFIG,
+    "gpu_strict_vram_cap": False,
     "keep_model_in_memory": True,
     "llama_k_cache_quantization_type": "q8_0",
     "llama_v_cache_quantization_type": "f32",
@@ -334,6 +336,7 @@ EXPECTED_KV_STACK_LOAD_LLM = {
                     {"key": "llm.load.llama.useFp16ForKVCache", "value": True},
                     {"key": "llm.load.numExperts", "value": 0},
                     {"key": "llm.load.seed", "value": {"checked": True, "value": 313}},
+                    {"key": "load.gpuStrictVramCap", "value": False},
                 ]
             },
         }
@@ -455,6 +458,6 @@ def test_kv_stack_prediction_config_conflict() -> None:
 #       (this will most likely involve changing the data model code generation)
 # def test_nested_unknown_keys() -> None:
 #     config = LOAD_CONFIG_EMBEDDING.copy()
-#     LOAD_CONFIG_EMBEDDING["gpuOffload"] = SC_GPU_CONFIG
+#     LOAD_CONFIG_EMBEDDING["gpu"] = SC_GPU_CONFIG
 #     with pytest.raises(msgspec.ValidationError):
 #         EmbeddingLoadModelConfigStrict._from_api_dict(config)

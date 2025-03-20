@@ -3,7 +3,7 @@
 # Known KV config settings are defined in
 # https://github.com/lmstudio-ai/lmstudio-js/blob/main/packages/lms-kv-config/src/schema.ts
 from dataclasses import dataclass
-from typing import Any, Iterable, Sequence, Type, TypeVar
+from typing import Any, Container, Iterable, Sequence, Type, TypeVar
 
 from .sdk_api import LMStudioValueError
 from .schemas import DictSchema, DictObject, ModelSchema, MutableDictObject
@@ -115,7 +115,7 @@ _COMMON_LLAMA_LOAD_KEYS: DictObject = {
     "ropeFrequencyScale": CheckboxField("ropeFrequencyScale"),
     "tryMmap": ConfigField("tryMmap"),
     "acceleration": {
-        "offloadRatio": NestedKeyField("gpuOffload", "ratio"),
+        "offloadRatio": NestedKeyField("gpu", "ratio"),
     },
 }
 
@@ -126,8 +126,9 @@ _COMMON_MODEL_LOAD_KEYS: DictObject = {
 SUPPORTED_SERVER_KEYS: dict[str, DictObject] = {
     "load": {
         "gpuSplitConfig": MultiPartField(
-            "gpuOffload", ("mainGpu", "splitStrategy", "disabledGpus")
+            "gpu", ("mainGpu", "splitStrategy", "disabledGpus")
         ),
+        "gpuStrictVramCap": ConfigField("gpuStrictVramCap"),
     },
     "embedding.load": {
         **_COMMON_MODEL_LOAD_KEYS,
@@ -185,7 +186,9 @@ SUPPORTED_SERVER_KEYS: dict[str, DictObject] = {
 
 
 # Define mappings to translate server KV configs to client config instances
-def _iter_server_keys(*namespaces: str) -> Iterable[tuple[str, ConfigField]]:
+def _iter_server_keys(
+    *namespaces: str, excluded: Container[str] = ()
+) -> Iterable[tuple[str, ConfigField]]:
     # Map dotted config field names to their client config field counterparts
     for namespace in namespaces:
         scopes: list[tuple[str, DictObject]] = [
@@ -193,6 +196,9 @@ def _iter_server_keys(*namespaces: str) -> Iterable[tuple[str, ConfigField]]:
         ]
         for prefix, scope in scopes:
             for k, v in scope.items():
+                if k in excluded:
+                    # 'load' config namespace currently includes some LLM-only config keys
+                    continue
                 prefixed_key = f"{prefix}.{k}" if prefix else k
                 if isinstance(v, ConfigField):
                     yield prefixed_key, v
@@ -202,7 +208,9 @@ def _iter_server_keys(*namespaces: str) -> Iterable[tuple[str, ConfigField]]:
 
 
 FROM_SERVER_LOAD_LLM = dict(_iter_server_keys("load", "llm.load"))
-FROM_SERVER_LOAD_EMBEDDING = dict(_iter_server_keys("load", "embedding.load"))
+FROM_SERVER_LOAD_EMBEDDING = dict(
+    _iter_server_keys("load", "embedding.load", excluded="gpuStrictVramCap")
+)
 FROM_SERVER_PREDICTION = dict(_iter_server_keys("llm.prediction"))
 FROM_SERVER_CONFIG = dict(_iter_server_keys(*SUPPORTED_SERVER_KEYS))
 
@@ -216,7 +224,7 @@ def _invert_config_keymap(from_server: FromServerKeymap) -> ToServerKeymap:
     to_server: ToServerKeymap = {}
     for server_key, config_field in sorted(from_server.items()):
         client_key = config_field.client_key
-        # There's at least one client field (gpuOffload) which maps to
+        # There's at least one client field (gpu) which maps to
         # multiple KV config fields, so don't expect a 1:1 mapping
         config_fields = to_server.setdefault(client_key, [])
         config_fields.append((server_key, config_field))
