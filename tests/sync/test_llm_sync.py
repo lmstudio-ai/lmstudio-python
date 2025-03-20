@@ -93,7 +93,8 @@ def test_context_length_sync(model_id: str, caplog: LogCap) -> None:
 def test_get_load_config_sync(model_id: str, caplog: LogCap) -> None:
     caplog.set_level(logging.DEBUG)
     with Client() as client:
-        response = client.llm._get_load_config(model_id)
+        model = client.llm.model(model_id)
+        response = model.get_load_config()
     logging.info(f"Load config response: {response}")
     assert response
     assert isinstance(response, LlmLoadModelConfig)
