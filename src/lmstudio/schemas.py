@@ -10,6 +10,7 @@ from typing import (
     MutableMapping,
     Protocol,
     Sequence,
+    TypeAlias,
     TypeVar,
     cast,
     runtime_checkable,
@@ -26,14 +27,16 @@ from .sdk_api import LMStudioValueError, sdk_public_api, sdk_public_type
 
 __all__ = [
     "BaseModel",
-    "ModelSchema",
     "DictObject",
     "DictSchema",
+    "ModelSchema",
 ]
 
-DictObject = Mapping[str, Any]  # Any JSON-compatible string-keyed dict
-MutableDictObject = MutableMapping[str, Any]
-DictSchema = Mapping[str, Any]  # JSON schema as a string-keyed dict
+DictObject: TypeAlias = Mapping[str, Any]  # Any JSON-compatible string-keyed dict
+MutableDictObject: TypeAlias = MutableMapping[str, Any]
+DictSchema: TypeAlias = Mapping[str, Any]  # JSON schema as a string-keyed dict
+# It would be nice to require a "type" key in DictSchema, but that's currently tricky
+# without "extra_items" support in TypedDict: https://peps.python.org/pep-0728/
 
 
 def _format_json(data: Any, *, sort_keys: bool = True) -> str:

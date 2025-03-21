@@ -48,15 +48,14 @@ from .history import AssistantResponse, Chat, ToolCallRequest, ToolCallResultDat
 from .schemas import (
     AnyLMStudioStruct,
     DictObject,
-    DictSchema,
     LMStudioStruct,
-    ModelSchema,
     TWireFormat,
     _format_json,
     _snake_case_keys_to_camelCase,
     _to_json_schema,
 )
 from ._kv_config import (
+    ResponseSchema,
     TLoadConfig,
     TLoadConfigDict,
     load_config_to_kv_config_stack,
@@ -168,6 +167,7 @@ __all__ = [
     "PredictionResult",
     "PredictionRoundResult",
     "PromptProcessingCallback",
+    "ResponseSchema",
     "SerializedLMSExtendedError",
     "ToolDefinition",
     "ToolFunctionDef",
@@ -184,6 +184,7 @@ DEFAULT_TTL = 60 * 60  # By default, leaves idle models loaded for an hour
 
 AnyModelSpecifier: TypeAlias = str | ModelSpecifier | ModelQuery | DictObject
 AnyLoadConfig: TypeAlias = EmbeddingLoadModelConfig | LlmLoadModelConfig
+
 
 GetOrLoadChannelRequest: TypeAlias = (
     EmbeddingChannelGetOrLoadCreationParameter | LlmChannelGetOrLoadCreationParameter
@@ -1122,7 +1123,7 @@ class PredictionEndpoint(
         self,
         model_specifier: AnyModelSpecifier,
         history: Chat,
-        response_format: Type[ModelSchema] | DictSchema | None = None,
+        response_format: ResponseSchema | None = None,
         config: LlmPredictionConfig | LlmPredictionConfigDict | None = None,
         preset_config: str | None = None,
         on_message: PredictionMessageCallback | None = None,
@@ -1181,7 +1182,7 @@ class PredictionEndpoint(
     @classmethod
     def _make_config_override(
         cls,
-        response_format: Type[ModelSchema] | DictSchema | None,
+        response_format: ResponseSchema | None,
         config: LlmPredictionConfig | LlmPredictionConfigDict | None,
     ) -> tuple[bool, KvConfigStack]:
         return prediction_config_to_kv_config_stack(
@@ -1264,7 +1265,11 @@ class PredictionEndpoint(
                 # to parse the received content in the latter case.
                 result_content = "".join(self._fragment_content)
                 if self._structured and not self._is_cancelled:
-                    parsed_content = json.loads(result_content)
+                    try:
+                        parsed_content = json.loads(result_content)
+                    except json.JSONDecodeError:
+                        # Fall back to unstructured result reporting
+                        parsed_content = result_content
                 else:
                     parsed_content = result_content
                 yield self._set_result(
@@ -1385,7 +1390,7 @@ class CompletionEndpoint(PredictionEndpoint[TPrediction]):
         self,
         model_specifier: AnyModelSpecifier,
         prompt: str,
-        response_format: Type[ModelSchema] | DictSchema | None = None,
+        response_format: ResponseSchema | None = None,
         config: LlmPredictionConfig | LlmPredictionConfigDict | None = None,
         preset_config: str | None = None,
         on_message: PredictionMessageCallback | None = None,

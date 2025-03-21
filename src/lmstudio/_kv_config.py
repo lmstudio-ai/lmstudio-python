@@ -3,10 +3,10 @@
 # Known KV config settings are defined in
 # https://github.com/lmstudio-ai/lmstudio-js/blob/main/packages/lms-kv-config/src/schema.ts
 from dataclasses import dataclass
-from typing import Any, Container, Iterable, Sequence, Type, TypeVar
+from typing import Any, Container, Iterable, Sequence, Type, TypeAlias, TypeVar, cast
 
 from .sdk_api import LMStudioValueError
-from .schemas import DictSchema, DictObject, ModelSchema, MutableDictObject
+from .schemas import DictObject, DictSchema, ModelSchema, MutableDictObject
 from ._sdk_models import (
     EmbeddingLoadModelConfig,
     EmbeddingLoadModelConfigDict,
@@ -18,6 +18,8 @@ from ._sdk_models import (
     LlmLoadModelConfigDict,
     LlmPredictionConfig,
     LlmPredictionConfigDict,
+    LlmStructuredPredictionSetting,
+    LlmStructuredPredictionSettingDict,
 )
 
 
@@ -330,12 +332,20 @@ def load_config_to_kv_config_stack(
     return _client_config_to_kv_config_stack(dict_config, TO_SERVER_LOAD_EMBEDDING)
 
 
+ResponseSchema: TypeAlias = (
+    DictSchema
+    | LlmStructuredPredictionSetting
+    | LlmStructuredPredictionSettingDict
+    | type[ModelSchema]
+)
+
+
 def prediction_config_to_kv_config_stack(
-    response_format: Type[ModelSchema] | DictSchema | None,
+    response_format: Type[ModelSchema] | ResponseSchema | None,
     config: LlmPredictionConfig | LlmPredictionConfigDict | None,
     for_text_completion: bool = False,
 ) -> tuple[bool, KvConfigStack]:
-    dict_config: DictObject
+    dict_config: LlmPredictionConfigDict
     if config is None:
         dict_config = {}
     elif isinstance(config, LlmPredictionConfig):
@@ -343,39 +353,55 @@ def prediction_config_to_kv_config_stack(
     else:
         assert isinstance(config, dict)
         dict_config = LlmPredictionConfig._from_any_dict(config).to_dict()
-    response_schema: DictSchema | None = None
     if response_format is not None:
-        structured = True
         if "structured" in dict_config:
             raise LMStudioValueError(
                 "Cannot specify both 'response_format' in API call and 'structured' in config"
             )
-        if isinstance(response_format, type) and issubclass(
+        response_schema: LlmStructuredPredictionSettingDict
+        structured = True
+        if isinstance(response_format, LlmStructuredPredictionSetting):
+            response_schema = response_format.to_dict()
+        elif isinstance(response_format, type) and issubclass(
             response_format, ModelSchema
         ):
-            response_schema = response_format.model_json_schema()
+            response_schema = {
+                "type": "json",
+                "jsonSchema": response_format.model_json_schema(),
+            }
         else:
-            response_schema = response_format
+            # Casts are needed as mypy doesn't detect that the given case patterns
+            # conform to the definition of LlmStructuredPredictionSettingDict
+            match response_format:
+                case {"type": "json", "jsonSchema": _} as json_schema:
+                    response_schema = cast(
+                        LlmStructuredPredictionSettingDict, json_schema
+                    )
+                case {"type": "gbnf", "gbnfGrammar": _} as gbnf_schema:
+                    response_schema = cast(
+                        LlmStructuredPredictionSettingDict, gbnf_schema
+                    )
+                case {"type": _}:
+                    # Assume any other input with a type key is a JSON schema definition
+                    response_schema = {
+                        "type": "json",
+                        "jsonSchema": response_format,
+                    }
+                case _:
+                    raise LMStudioValueError(
+                        f"Failed to parse response format: {response_format!r}"
+                    )
+        dict_config["structured"] = response_schema
     else:
         # The response schema may also be passed in via the config
         # (doing it this way type hints as an unstructured result,
         # but we still allow it at runtime for consistency with JS)
         match dict_config:
-            case {"structured": {"type": "json"}}:
+            case {"structured": {"type": "json" | "gbnf"}}:
                 structured = True
             case _:
                 structured = False
     fields = _to_kv_config_stack_base(dict_config, TO_SERVER_PREDICTION)
-    if response_schema is not None:
-        fields.append(
-            {
-                "key": "llm.prediction.structured",
-                "value": {
-                    "type": "json",
-                    "jsonSchema": response_schema,
-                },
-            }
-        )
     additional_layers: list[KvConfigStackLayerDict] = []
     if for_text_completion:
         additional_layers.append(_get_completion_config_layer())

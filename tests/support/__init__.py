@@ -23,7 +23,7 @@ from lmstudio import (
     LMStudioChannelClosedError,
 )
 from lmstudio.json_api import ChannelEndpoint
-from lmstudio._sdk_models import LlmPredictionConfigDict
+from lmstudio._sdk_models import LlmPredictionConfigDict, LlmStructuredPredictionSetting
 
 # Imports from the nominal "SDK" used in some test cases
 from .lmstudio import ErrFunc
@@ -98,6 +98,22 @@ SCHEMA_FIELDS = {
 }
 SCHEMA_FIELD_NAMES = list(SCHEMA_FIELDS.keys())
 
+# Specify a JSON response format, so this can pass the JSON test cases
+# String field definition is from the Llama JSON GBNF example at:
+# https://github.com/ggml-org/llama.cpp/blob/960e72607761eb2dd170b33f02a5a2840ec412fe/grammars/json.gbnf#L16C1-L20C13
+# Note: comments and blank lines in the grammar are not yet supported
+GBNF_GRAMMAR = r"""
+root ::= "{\"response\":" response ",\"first_word_in_response\":" first-word-in-response ",\"lastWordInResponse\":" last-word-in-response "}"
+response ::= string
+first-word-in-response ::= string
+last-word-in-response ::= string
+string ::=
+  "\"" (
+    [^"\\\x7f\x00-\x1f] |
+    "\\" (["\\bfnrt] | "u" [0-9a-fA-F]{4})
+  )* "\""
+""".lstrip()
+
 SCHEMA = {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "type": "object",
@@ -130,7 +146,30 @@ class LMStudioResponseFormat(BaseModel):
     lastWordInResponse: str
 
 
-RESPONSE_FORMATS = (LMStudioResponseFormat, OtherResponseFormat, SCHEMA)
+TYPED_JSON_SCHEMA = LlmStructuredPredictionSetting(type="json", json_schema=SCHEMA)
+TYPED_JSON_SCHEMA_DICT = {
+    "type": "json",
+    "jsonSchema": SCHEMA,
+}
+
+TYPED_GBNF_GRAMMAR = LlmStructuredPredictionSetting(
+    type="gbnf", gbnf_grammar=GBNF_GRAMMAR
+)
+TYPED_GBNF_GRAMMAR_DICT = {
+    "type": "gbnf",
+    "gbnfGrammar": GBNF_GRAMMAR,
+}
+
+
+RESPONSE_FORMATS = (
+    LMStudioResponseFormat,
+    OtherResponseFormat,
+    SCHEMA,
+    TYPED_JSON_SCHEMA,
+    TYPED_JSON_SCHEMA_DICT,
+    TYPED_GBNF_GRAMMAR,
+    TYPED_GBNF_GRAMMAR_DICT,
+)
 
 ####################################################
 # Provoke/emulate connection issues
