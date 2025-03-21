@@ -502,7 +502,10 @@ class AsyncDownloadedModel(
         config: TLoadConfig | TLoadConfigDict | None = None,
         on_load_progress: ModelLoadingCallback | None = None,
     ) -> TAsyncModelHandle:
-        """Load this model with the given identifier and configuration."""
+        """Load this model with the given identifier and configuration.
+
+        Note: details of configuration fields may change in SDK feature releases.
+        """
         handle: TAsyncModelHandle = await self._session._load_new_instance(
             self.model_key, instance_identifier, ttl, config, on_load_progress
         )
@@ -516,6 +519,11 @@ class AsyncDownloadedModel(
         config: TLoadConfig | TLoadConfigDict | None = None,
         on_load_progress: ModelLoadingCallback | None = None,
     ) -> TAsyncModelHandle:
+        """Retrieve model with given identifier, or load it with given configuration.
+
+        Note: configuration of retrieved model is NOT checked against the given config.
+        Note: details of configuration fields may change in SDK feature releases.
+        """
         # Call _get_or_load directly, since we have a model identifier
         handle: TAsyncModelHandle = await self._session._get_or_load(
             self.model_key, ttl, config, on_load_progress
@@ -786,7 +794,11 @@ class AsyncSessionModel(
         config: TLoadConfig | TLoadConfigDict | None = None,
         on_load_progress: ModelLoadingCallback | None = None,
     ) -> TAsyncModelHandle:
-        """Get a handle to the specified model (loading it if necessary)."""
+        """Get a handle to the specified model (loading it if necessary).
+
+        Note: configuration of retrieved model is NOT checked against the given config.
+        Note: details of configuration fields may change in SDK feature releases.
+        """
         if model_key is None:
             # Should this raise an error if a config is supplied?
             return await self._get_any()
@@ -816,7 +828,10 @@ class AsyncSessionModel(
         config: TLoadConfig | TLoadConfigDict | None = None,
         on_load_progress: ModelLoadingCallback | None = None,
     ) -> TAsyncModelHandle:
-        """Load the specified model with the given identifier and configuration."""
+        """Load the specified model with the given identifier and configuration.
+
+        Note: details of configuration fields may change in SDK feature releases.
+        """
         return await self._load_new_instance(
             model_key, instance_identifier, ttl, config, on_load_progress
         )
@@ -1033,7 +1048,10 @@ class AsyncSessionLlm(
         on_prediction_fragment: PredictionFragmentCallback | None = None,
         on_prompt_processing_progress: PromptProcessingCallback | None = None,
     ) -> AsyncPredictionStream[str] | AsyncPredictionStream[DictObject]:
-        """Request a one-off prediction without any context and stream the generated tokens."""
+        """Request a one-off prediction without any context and stream the generated tokens.
+
+        Note: details of configuration fields may change in SDK feature releases.
+        """
         endpoint = CompletionEndpoint(
             model_specifier,
             prompt,
@@ -1086,7 +1104,10 @@ class AsyncSessionLlm(
         on_prediction_fragment: PredictionFragmentCallback | None = None,
         on_prompt_processing_progress: PromptProcessingCallback | None = None,
     ) -> AsyncPredictionStream[str] | AsyncPredictionStream[DictObject]:
-        """Request a response in an ongoing assistant chat session and stream the generated tokens."""
+        """Request a response in an ongoing assistant chat session and stream the generated tokens.
+
+        Note: details of configuration fields may change in SDK feature releases.
+        """
         if not isinstance(history, Chat):
             history = Chat.from_history(history)
         endpoint = ChatResponseEndpoint(
@@ -1256,7 +1277,10 @@ class AsyncLLM(AsyncModelHandle[AsyncSessionLlm]):
         on_prediction_fragment: PredictionFragmentCallback | None = None,
         on_prompt_processing_progress: PromptProcessingCallback | None = None,
     ) -> AsyncPredictionStream[str] | AsyncPredictionStream[DictObject]:
-        """Request a one-off prediction without any context and stream the generated tokens."""
+        """Request a one-off prediction without any context and stream the generated tokens.
+
+        Note: details of configuration fields may change in SDK feature releases.
+        """
         return await self._session._complete_stream(
             self.identifier,
             prompt,
@@ -1304,7 +1328,10 @@ class AsyncLLM(AsyncModelHandle[AsyncSessionLlm]):
         on_prediction_fragment: PredictionFragmentCallback | None = None,
         on_prompt_processing_progress: PromptProcessingCallback | None = None,
     ) -> PredictionResult[str] | PredictionResult[DictObject]:
-        """Request a one-off prediction without any context."""
+        """Request a one-off prediction without any context.
+
+        Note: details of configuration fields may change in SDK feature releases.
+        """
         prediction_stream = await self._session._complete_stream(
             self.identifier,
             prompt,
@@ -1357,7 +1384,10 @@ class AsyncLLM(AsyncModelHandle[AsyncSessionLlm]):
         on_prediction_fragment: PredictionFragmentCallback | None = None,
         on_prompt_processing_progress: PromptProcessingCallback | None = None,
     ) -> AsyncPredictionStream[str] | AsyncPredictionStream[DictObject]:
-        """Request a response in an ongoing assistant chat session and stream the generated tokens."""
+        """Request a response in an ongoing assistant chat session and stream the generated tokens.
+
+        Note: details of configuration fields may change in SDK feature releases.
+        """
         return await self._session._respond_stream(
             self.identifier,
             history,
@@ -1405,7 +1435,10 @@ class AsyncLLM(AsyncModelHandle[AsyncSessionLlm]):
         on_prediction_fragment: PredictionFragmentCallback | None = None,
         on_prompt_processing_progress: PromptProcessingCallback | None = None,
     ) -> PredictionResult[str] | PredictionResult[DictObject]:
-        """Request a response in an ongoing assistant chat session."""
+        """Request a response in an ongoing assistant chat session.
+
+        Note: details of configuration fields may change in SDK feature releases.
+        """
         prediction_stream = await self._session._respond_stream(
             self.identifier,
             history,

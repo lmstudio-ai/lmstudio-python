@@ -67,12 +67,16 @@
         },
         {
           "$ref": "#/definitions/presetManifest"
+        },
+        {
+          "$ref": "#/definitions/modelManifest"
         }
       ],
       "discriminator": {
         "mapping": {
           "plugin": "#/definitions/pluginManifest",
-          "preset": "#/definitions/presetManifest"
+          "preset": "#/definitions/presetManifest",
+          "model": "#/definitions/modelManifest"
         },
         "propertyName": "type"
       }
@@ -84,10 +88,14 @@
           "$ref": "#/definitions/kebabCase"
         },
         "name": {
-          "$ref": "#/definitions/kebabCase"
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "minLength": 1,
+          "maxLength": 100
         },
         "description": {
-          "type": "string"
+          "type": "string",
+          "maxLength": 1000
         },
         "revision": {
           "type": "integer"
@@ -425,7 +433,7 @@
     "embeddingLoadModelConfig": {
       "type": "object",
       "properties": {
-        "gpuOffload": {
+        "gpu": {
           "$ref": "#/definitions/gpuSetting"
         },
         "contextLength": {
@@ -592,6 +600,9 @@
         },
         {
           "$ref": "#/definitions/errorDisplayDataGenericEngineDoesNotSupportFeature"
+        },
+        {
+          "$ref": "#/definitions/errorDisplayDataGenericPresetNotFound"
         }
       ],
       "discriminator": {
@@ -601,7 +612,8 @@
           "generic.pathNotFound": "#/definitions/errorDisplayDataGenericPathNotFound",
           "generic.identifierNotFound": "#/definitions/errorDisplayDataGenericIdentifierNotFound",
           "generic.domainMismatch": "#/definitions/errorDisplayDataGenericDomainMismatch",
-          "generic.engineDoesNotSupportFeature": "#/definitions/errorDisplayDataGenericEngineDoesNotSupportFeature"
+          "generic.engineDoesNotSupportFeature": "#/definitions/errorDisplayDataGenericEngineDoesNotSupportFeature",
+          "generic.presetNotFound": "#/definitions/errorDisplayDataGenericPresetNotFound"
         },
         "propertyName": "code"
       }
@@ -656,6 +668,50 @@
         "unknown"
       ]
     },
+    "gpuSplitConfig": {
+      "type": "object",
+      "properties": {
+        "strategy": {
+          "$ref": "#/definitions/gpuSplitStrategy"
+        },
+        "disabledGpus": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "priority": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "customRatio": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 0
+          }
+        }
+      },
+      "required": [
+        "strategy",
+        "disabledGpus",
+        "priority",
+        "customRatio"
+      ],
+      "additionalProperties": false
+    },
+    "gpuSplitStrategy": {
+      "type": "string",
+      "enum": [
+        "evenly",
+        "priorityOrder",
+        "custom"
+      ]
+    },
     "kvConfigFieldDependency": {
       "type": "object",
       "properties": {
@@ -688,10 +744,12 @@
     "kvConfigLayerName": {
       "type": "string",
       "enum": [
+        "currentlyEditing",
         "currentlyLoaded",
         "apiOverride",
         "conversationSpecific",
         "conversationGlobal",
+        "preset",
         "serverSession",
         "httpServerRequestOverride",
         "completeModeFormatting",
@@ -852,8 +910,11 @@
     "llmLoadModelConfig": {
       "type": "object",
       "properties": {
-        "gpuOffload": {
+        "gpu": {
           "$ref": "#/definitions/gpuSetting"
+        },
+        "gpuStrictVramCap": {
+          "type": "boolean"
         },
         "contextLength": {
           "type": "integer",
@@ -1697,6 +1758,9 @@
         },
         "jsonSchema": {
           "$ref": "#/definitions/functionToolCallRequest/properties/arguments/additionalProperties"
+        },
+        "gbnfGrammar": {
+          "type": "string"
         }
       },
       "required": [
@@ -1708,7 +1772,8 @@
       "type": "string",
       "enum": [
         "none",
-        "json"
+        "json",
+        "gbnf"
       ]
     },
     "llmToolArray": {
@@ -2449,6 +2514,41 @@
       ],
       "additionalProperties": false
     },
+    "modelManifest": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "model",
+          "default": "model",
+          "title": "Type"
+        },
+        "virtual": {
+          "type": "boolean",
+          "const": true
+        },
+        "owner": {
+          "$ref": "#/definitions/kebabCase"
+        },
+        "name": {
+          "$ref": "#/definitions/artifactManifestBase/properties/name"
+        },
+        "description": {
+          "$ref": "#/definitions/artifactManifestBase/properties/description"
+        },
+        "revision": {
+          "$ref": "#/definitions/artifactManifestBase/properties/revision"
+        }
+      },
+      "required": [
+        "type",
+        "virtual",
+        "owner",
+        "name",
+        "description"
+      ],
+      "additionalProperties": false
+    },
     "modelQuery": {
       "type": "object",
       "properties": {
@@ -2500,7 +2600,7 @@
           "$ref": "#/definitions/kebabCase"
         },
         "name": {
-          "$ref": "#/definitions/kebabCase"
+          "$ref": "#/definitions/artifactManifestBase/properties/name"
         },
         "description": {
           "$ref": "#/definitions/artifactManifestBase/properties/description"
@@ -2537,7 +2637,7 @@
           "$ref": "#/definitions/kebabCase"
         },
         "name": {
-          "$ref": "#/definitions/kebabCase"
+          "$ref": "#/definitions/artifactManifestBase/properties/name"
         },
         "description": {
           "$ref": "#/definitions/artifactManifestBase/properties/description"
@@ -4149,6 +4249,9 @@
         "predictionConfigStack": {
           "$ref": "#/definitions/kvConfigStack"
         },
+        "fuzzyPresetIdentifier": {
+          "type": "string"
+        },
         "ignoreServerSessionConfig": {
           "type": "boolean"
         }
@@ -5582,6 +5685,49 @@
         "engineType",
         "installedVersion",
         "supportedVersion"
+      ],
+      "additionalProperties": false
+    },
+    "errorDisplayDataGenericPresetNotFound": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "const": "generic.presetNotFound",
+          "default": "generic.presetNotFound",
+          "title": "Code"
+        },
+        "specifiedFuzzyPresetIdentifier": {
+          "type": "string"
+        },
+        "availablePresetsSample": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "identifier": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "identifier",
+              "name"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "totalAvailablePresets": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "code",
+        "specifiedFuzzyPresetIdentifier",
+        "availablePresetsSample",
+        "totalAvailablePresets"
       ],
       "additionalProperties": false
     },

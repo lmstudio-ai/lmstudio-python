@@ -67,6 +67,9 @@
         },
         {
           "$ref": "#/definitions/presetManifest"
+        },
+        {
+          "$ref": "#/definitions/modelManifest"
         }
       ]
     },
@@ -77,10 +80,14 @@
           "$ref": "#/definitions/kebabCase"
         },
         "name": {
-          "$ref": "#/definitions/kebabCase"
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "minLength": 1,
+          "maxLength": 100
         },
         "description": {
-          "type": "string"
+          "type": "string",
+          "maxLength": 1000
         },
         "revision": {
           "type": "integer"
@@ -492,7 +499,7 @@
     "embeddingLoadModelConfig": {
       "type": "object",
       "properties": {
-        "gpuOffload": {
+        "gpu": {
           "$ref": "#/definitions/gpuSetting"
         },
         "contextLength": {
@@ -795,6 +802,47 @@
             "supportedVersion"
           ],
           "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "type": "string",
+              "const": "generic.presetNotFound"
+            },
+            "specifiedFuzzyPresetIdentifier": {
+              "type": "string"
+            },
+            "availablePresetsSample": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "identifier": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "identifier",
+                  "name"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "totalAvailablePresets": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "code",
+            "specifiedFuzzyPresetIdentifier",
+            "availablePresetsSample",
+            "totalAvailablePresets"
+          ],
+          "additionalProperties": false
         }
       ]
     },
@@ -869,6 +917,50 @@
         "unknown"
       ]
     },
+    "gpuSplitConfig": {
+      "type": "object",
+      "properties": {
+        "strategy": {
+          "$ref": "#/definitions/gpuSplitStrategy"
+        },
+        "disabledGpus": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "priority": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "customRatio": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 0
+          }
+        }
+      },
+      "required": [
+        "strategy",
+        "disabledGpus",
+        "priority",
+        "customRatio"
+      ],
+      "additionalProperties": false
+    },
+    "gpuSplitStrategy": {
+      "type": "string",
+      "enum": [
+        "evenly",
+        "priorityOrder",
+        "custom"
+      ]
+    },
     "kvConfigFieldDependency": {
       "type": "object",
       "properties": {
@@ -930,10 +1022,12 @@
     "kvConfigLayerName": {
       "type": "string",
       "enum": [
+        "currentlyEditing",
         "currentlyLoaded",
         "apiOverride",
         "conversationSpecific",
         "conversationGlobal",
+        "preset",
         "serverSession",
         "httpServerRequestOverride",
         "completeModeFormatting",
@@ -1217,8 +1311,11 @@
     "llmLoadModelConfig": {
       "type": "object",
       "properties": {
-        "gpuOffload": {
+        "gpu": {
           "$ref": "#/definitions/gpuSetting"
+        },
+        "gpuStrictVramCap": {
+          "type": "boolean"
         },
         "contextLength": {
           "type": "integer",
@@ -2115,6 +2212,9 @@
         },
         "jsonSchema": {
           "$ref": "#/definitions/functionToolCallRequest/properties/arguments/additionalProperties"
+        },
+        "gbnfGrammar": {
+          "type": "string"
         }
       },
       "required": [
@@ -2126,7 +2226,8 @@
       "type": "string",
       "enum": [
         "none",
-        "json"
+        "json",
+        "gbnf"
       ]
     },
     "llmToolArray": {
@@ -2866,6 +2967,39 @@
       ],
       "additionalProperties": false
     },
+    "modelManifest": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "model"
+        },
+        "virtual": {
+          "type": "boolean",
+          "const": true
+        },
+        "owner": {
+          "$ref": "#/definitions/kebabCase"
+        },
+        "name": {
+          "$ref": "#/definitions/artifactManifestBase/properties/name"
+        },
+        "description": {
+          "$ref": "#/definitions/artifactManifestBase/properties/description"
+        },
+        "revision": {
+          "$ref": "#/definitions/artifactManifestBase/properties/revision"
+        }
+      },
+      "required": [
+        "type",
+        "virtual",
+        "owner",
+        "name",
+        "description"
+      ],
+      "additionalProperties": false
+    },
     "modelQuery": {
       "type": "object",
       "properties": {
@@ -2936,7 +3070,7 @@
           "$ref": "#/definitions/kebabCase"
         },
         "name": {
-          "$ref": "#/definitions/kebabCase"
+          "$ref": "#/definitions/artifactManifestBase/properties/name"
         },
         "description": {
           "$ref": "#/definitions/artifactManifestBase/properties/description"
@@ -2971,7 +3105,7 @@
           "$ref": "#/definitions/kebabCase"
         },
         "name": {
-          "$ref": "#/definitions/kebabCase"
+          "$ref": "#/definitions/artifactManifestBase/properties/name"
         },
         "description": {
           "$ref": "#/definitions/artifactManifestBase/properties/description"
@@ -4978,6 +5112,9 @@
         },
         "predictionConfigStack": {
           "$ref": "#/definitions/kvConfigStack"
+        },
+        "fuzzyPresetIdentifier": {
+          "type": "string"
         },
         "ignoreServerSessionConfig": {
           "type": "boolean"
