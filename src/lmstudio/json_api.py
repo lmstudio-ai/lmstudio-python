@@ -151,6 +151,7 @@ __all__ = [
     "LMStudioChannelClosedError",
     "LMStudioModelNotFoundError",
     "LMStudioPredictionError",
+    "LMStudioPresetNotFoundError",
     "LMStudioServerError",
     "LMStudioUnknownMessageError",
     "LMStudioWebsocketError",
@@ -371,6 +372,8 @@ class LMStudioServerError(LMStudioError):
             match display_data:
                 case {"code": "generic.noModelMatchingQuery"}:
                     specific_error = LMStudioModelNotFoundError(str(default_error))
+                case {"code": "generic.presetNotFound"}:
+                    specific_error = LMStudioPresetNotFoundError(str(default_error))
             if specific_error is not None:
                 specific_error._raw_error = default_error._raw_error
                 specific_error.server_error = default_error.server_error
@@ -381,6 +384,11 @@ class LMStudioServerError(LMStudioError):
 @sdk_public_type
 class LMStudioModelNotFoundError(LMStudioServerError):
     """No model matching the given specifier could be located on the server."""
+
+
+@sdk_public_type
+class LMStudioPresetNotFoundError(LMStudioServerError):
+    """No preset config matching the given identifier could be located on the server."""
 
 
 @sdk_public_type
@@ -1116,6 +1124,7 @@ class PredictionEndpoint(
         history: Chat,
         response_format: Type[ModelSchema] | DictSchema | None = None,
         config: LlmPredictionConfig | LlmPredictionConfigDict | None = None,
+        preset_config: str | None = None,
         on_message: PredictionMessageCallback | None = None,
         on_first_token: PredictionFirstTokenCallback | None = None,
         on_prediction_fragment: PredictionFragmentCallback | None = None,
@@ -1152,6 +1161,8 @@ class PredictionEndpoint(
                 "predictionConfigStack": config_stack.to_dict(),
             }
         )
+        if preset_config is not None:
+            params.fuzzy_preset_identifier = preset_config
         super().__init__(params)
         # Status tracking for the prediction progress and result reporting
         self._is_cancelled = False
@@ -1376,6 +1387,7 @@ class CompletionEndpoint(PredictionEndpoint[TPrediction]):
         prompt: str,
         response_format: Type[ModelSchema] | DictSchema | None = None,
         config: LlmPredictionConfig | LlmPredictionConfigDict | None = None,
+        preset_config: str | None = None,
         on_message: PredictionMessageCallback | None = None,
         on_first_token: PredictionFirstTokenCallback | None = None,
         on_prediction_fragment: PredictionFragmentCallback | None = None,
@@ -1389,6 +1401,7 @@ class CompletionEndpoint(PredictionEndpoint[TPrediction]):
             history,
             response_format,
             config,
+            preset_config,
             on_message,
             on_first_token,
             on_prediction_fragment,

@@ -28,6 +28,7 @@ from lmstudio import (
     LlmPredictionFragment,
     LlmPredictionStats,
     LMStudioModelNotFoundError,
+    LMStudioPresetNotFoundError,
     ModelSchema,
     PredictionResult,
     TextData,
@@ -300,6 +301,36 @@ def test_invalid_model_request_stream_sync(caplog: LogCap) -> None:
             prediction_stream = model.complete_stream("Some text")
             with prediction_stream:
                 with pytest.raises(LMStudioModelNotFoundError) as exc_info:
+                    prediction_stream.wait_for_result()
+                check_sdk_error(exc_info, __file__)
+
+
+@pytest.mark.lmstudio
+def test_invalid_preset_request_nostream_sync(caplog: LogCap) -> None:
+    caplog.set_level(logging.DEBUG)
+    with Client() as client:
+        model = client.llm.model()
+        # This should error rather than timing out,
+        # but avoid any risk of the client hanging...
+        with nullcontext():
+            with pytest.raises(LMStudioPresetNotFoundError) as exc_info:
+                model.complete("Some text", preset="No such preset")
+            check_sdk_error(exc_info, __file__)
+
+
+@pytest.mark.lmstudio
+def test_invalid_preset_request_stream_sync(caplog: LogCap) -> None:
+    caplog.set_level(logging.DEBUG)
+    with Client() as client:
+        model = client.llm.model()
+        # This should error rather than timing out,
+        # but avoid any risk of the client hanging...
+        with nullcontext():
+            prediction_stream = model.complete_stream(
+                "Some text", preset="No such preset"
+            )
+            with prediction_stream:
+                with pytest.raises(LMStudioPresetNotFoundError) as exc_info:
                     prediction_stream.wait_for_result()
                 check_sdk_error(exc_info, __file__)
 
