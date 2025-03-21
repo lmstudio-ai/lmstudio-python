@@ -6,14 +6,12 @@ import logging
 import anyio
 import pytest
 from pytest import LogCaptureFixture as LogCap
-from typing import Type
 
 from lmstudio import (
     AssistantResponse,
     AsyncClient,
     AsyncPredictionStream,
     Chat,
-    DictSchema,
     LlmInfo,
     LlmLoadModelConfig,
     LlmPredictionConfig,
@@ -22,13 +20,14 @@ from lmstudio import (
     LlmPredictionStats,
     LMStudioModelNotFoundError,
     LMStudioPresetNotFoundError,
-    ModelSchema,
     PredictionResult,
+    ResponseSchema,
     TextData,
 )
 
 from ..support import (
     EXPECTED_LLM_ID,
+    GBNF_GRAMMAR,
     PROMPT,
     RESPONSE_FORMATS,
     RESPONSE_SCHEMA,
@@ -99,8 +98,8 @@ async def test_complete_stream_async(caplog: LogCap) -> None:
 @pytest.mark.asyncio
 @pytest.mark.lmstudio
 @pytest.mark.parametrize("format_type", RESPONSE_FORMATS)
-async def test_complete_response_format_async(
-    format_type: Type[ModelSchema] | DictSchema, caplog: LogCap
+async def test_complete_structured_response_format_async(
+    format_type: ResponseSchema, caplog: LogCap
 ) -> None:
     prompt = PROMPT
     caplog.set_level(logging.DEBUG)
@@ -118,7 +117,7 @@ async def test_complete_response_format_async(
 
 @pytest.mark.asyncio
 @pytest.mark.lmstudio
-async def test_complete_structured_config_async(caplog: LogCap) -> None:
+async def test_complete_structured_config_json_async(caplog: LogCap) -> None:
     prompt = PROMPT
     caplog.set_level(logging.DEBUG)
     model_id = EXPECTED_LLM_ID
@@ -133,6 +132,34 @@ async def test_complete_structured_config_async(caplog: LogCap) -> None:
             "structured": {
                 "type": "json",
                 "json_schema": RESPONSE_SCHEMA,
+            }  # type: ignore[typeddict-item]
+        }
+        response = await llm.complete(prompt, config=config)
+    assert isinstance(response, PredictionResult)
+    logging.info(f"LLM response: {response!r}")
+    assert isinstance(response.content, str)
+    assert isinstance(response.parsed, dict)
+    assert response.parsed == json.loads(response.content)
+    assert SCHEMA_FIELDS.keys() == response.parsed.keys()
+
+
+@pytest.mark.asyncio
+@pytest.mark.lmstudio
+async def test_complete_structured_config_gbnf_async(caplog: LogCap) -> None:
+    prompt = PROMPT
+    caplog.set_level(logging.DEBUG)
+    model_id = EXPECTED_LLM_ID
+    async with AsyncClient() as client:
+        llm = await client.llm.model(model_id)
+        config: LlmPredictionConfigDict = {
+            # snake_case keys are accepted at runtime,
+            # but the type hinted spelling is the camelCase names
+            # This test case checks the schema field name is converted,
+            # but *not* the snake_case and camelCase field names in the
+            # schema itself
+            "structured": {
+                "type": "gbnf",
+                "gbnf_grammar": GBNF_GRAMMAR,
             }  # type: ignore[typeddict-item]
         }
         response = await llm.complete(prompt, config=config)
