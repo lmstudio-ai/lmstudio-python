@@ -177,11 +177,13 @@ __all__ = [
 
 T = TypeVar("T")
 TStruct = TypeVar("TStruct", bound=AnyLMStudioStruct)
-TPrediction = TypeVar("TPrediction", str, DictObject)
 
 DEFAULT_API_HOST = "localhost:1234"
 DEFAULT_TTL = 60 * 60  # By default, leaves idle models loaded for an hour
 
+UnstructuredPrediction: TypeAlias = str
+StructuredPrediction: TypeAlias = DictObject
+AnyPrediction = StructuredPrediction | UnstructuredPrediction
 AnyModelSpecifier: TypeAlias = str | ModelSpecifier | ModelQuery | DictObject
 AnyLoadConfig: TypeAlias = EmbeddingLoadModelConfig | LlmLoadModelConfig
 
@@ -445,12 +447,12 @@ class ModelLoadResult:
 
 
 @dataclass(kw_only=True, frozen=True, slots=True)
-class PredictionResult(Generic[TPrediction]):
+class PredictionResult:
     """The final result of a prediction."""
 
     # fmt: off
     content: str                   # The text content of the prediction
-    parsed: TPrediction            # dict for structured predictions, str otherwise
+    parsed: AnyPrediction          # dict for structured predictions, str otherwise
     stats: LlmPredictionStats      # Statistics about the prediction process
     model_info: LlmInfo            # Information about the model used
     structured: bool = field(init=False)    # Whether the result is structured or not
@@ -475,13 +477,13 @@ class PredictionResult(Generic[TPrediction]):
 
 
 @dataclass(kw_only=True, frozen=True, slots=True)
-class PredictionRoundResult(PredictionResult[str]):
+class PredictionRoundResult(PredictionResult):
     """The result of a prediction within a multi-round tool using action."""
 
     round_index: int  # The round within the action that produced this result
 
     @classmethod
-    def from_result(cls, result: PredictionResult[str], round_index: int) -> Self:
+    def from_result(cls, result: PredictionResult, round_index: int) -> Self:
         """Create a prediction round result from its underlying prediction result."""
         copied_keys = {
             k: getattr(result, k)
@@ -1110,10 +1112,7 @@ PromptProcessingCallback: TypeAlias = Callable[[float], Any]
 
 
 class PredictionEndpoint(
-    Generic[TPrediction],
-    ChannelEndpoint[
-        PredictionResult[TPrediction], PredictionRxEvent, PredictionChannelRequestDict
-    ],
+    ChannelEndpoint[PredictionResult, PredictionRxEvent, PredictionChannelRequestDict],
 ):
     """Helper class for prediction endpoint message handling."""
 
@@ -1264,14 +1263,20 @@ class PredictionEndpoint(
                 # or has been successfully cancelled. Don't try
                 # to parse the received content in the latter case.
                 result_content = "".join(self._fragment_content)
+                parsed_content: AnyPrediction = result_content
                 if self._structured and not self._is_cancelled:
                     try:
+                        # Check if the content is valid JSON
                         parsed_content = json.loads(result_content)
                     except json.JSONDecodeError:
+                        # This likely indicates a non-JSON GBNF grammar
                         # Fall back to unstructured result reporting
-                        parsed_content = result_content
-                else:
-                    parsed_content = result_content
+                        pass
+                    else:
+                        if not isinstance(parsed_content, dict):
+                            # This likely indicates a non-JSON GBNF grammar
+                            # Fall back to unstructured result reporting
+                            parsed_content = result_content
                 yield self._set_result(
                     PredictionResult(
                         content=result_content,
@@ -1381,7 +1386,7 @@ class PredictionEndpoint(
         self._is_cancelled = True
 
 
-class CompletionEndpoint(PredictionEndpoint[TPrediction]):
+class CompletionEndpoint(PredictionEndpoint):
     """API channel endpoint for requesting text completion from a model."""
 
     _NOTICE_PREFIX = "Completion"
@@ -1421,7 +1426,7 @@ class CompletionEndpoint(PredictionEndpoint[TPrediction]):
 ToolDefinition: TypeAlias = ToolFunctionDef | ToolFunctionDefDict | Callable[..., Any]
 
 
-class ChatResponseEndpoint(PredictionEndpoint[TPrediction]):
+class ChatResponseEndpoint(PredictionEndpoint):
     """API channel endpoint for requesting a chat response from a model."""
 
     _NOTICE_PREFIX = "Chat response"
@@ -1457,26 +1462,20 @@ class ChatResponseEndpoint(PredictionEndpoint[TPrediction]):
         return LlmToolUseSettingToolArray(tools=llm_tool_defs), client_tool_map
 
 
-class PredictionStreamBase(Generic[TPrediction]):
+class PredictionStreamBase:
     """Common base class for sync and async prediction streams."""
 
     def __init__(
         self,
-        endpoint: PredictionEndpoint[TPrediction],
+        endpoint: PredictionEndpoint,
     ) -> None:
         """Initialize a prediction process representation."""
-        # Split initialisation out to a separate helper function that plays nice with bound generic type vars
-        # To avoid type errors in mypy, subclasses may call this directly (instead of `super().__init__(endpoint)`)
-        # https://discuss.python.org/t/how-to-share-type-variables-when-inheriting-from-generic-base-classes/78839
-        self._init_prediction(endpoint)
-
-    def _init_prediction(self, endpoint: PredictionEndpoint[TPrediction]) -> None:
-        self._endpoint: PredictionEndpoint[TPrediction] = endpoint
+        self._endpoint = endpoint
 
         # Final result reporting
         self._is_started = False
         self._is_finished = False
-        self._final_result: PredictionResult[TPrediction] | None = None
+        self._final_result: PredictionResult | None = None
         self._error: BaseException | None = None
 
     @property
@@ -1510,7 +1509,7 @@ class PredictionStreamBase(Generic[TPrediction]):
         return self._final_result.prediction_config
 
     @sdk_public_api()
-    def result(self) -> PredictionResult[TPrediction]:
+    def result(self) -> PredictionResult:
         """Get the result of a completed prediction.
 
         This API raises an exception if the result is not available,
