@@ -8,13 +8,19 @@
 """Test non-inference methods on LLMs."""
 
 import logging
+from contextlib import nullcontext
 
 import pytest
 from pytest import LogCaptureFixture as LogCap
 
-from lmstudio import Client, LlmLoadModelConfig, history
+from lmstudio import (
+    Client,
+    LlmLoadModelConfig,
+    LMStudioModelNotFoundError,
+    history,
+)
 
-from ..support import EXPECTED_LLM, EXPECTED_LLM_ID
+from ..support import EXPECTED_LLM, EXPECTED_LLM_ID, check_sdk_error
 
 
 @pytest.mark.lmstudio
@@ -55,10 +61,14 @@ def test_tokenize_sync(model_id: str, caplog: LogCap) -> None:
 
     caplog.set_level(logging.DEBUG)
     with Client() as client:
-        response = client.llm._tokenize(model_id, input=text)
+        model = client.llm.model(model_id)
+        num_tokens = model.count_tokens(text)
+        response = model.tokenize(text)
     logging.info(f"Tokenization response: {response}")
     assert response
     assert isinstance(response, list)
+    # Ensure token count and tokenization are consistent
+    assert len(response) == num_tokens
 
 
 @pytest.mark.lmstudio
@@ -68,7 +78,8 @@ def test_tokenize_list_sync(model_id: str, caplog: LogCap) -> None:
 
     caplog.set_level(logging.DEBUG)
     with Client() as client:
-        response = client.llm._tokenize(model_id, input=text)
+        model = client.llm.model(model_id)
+        response = model.tokenize(text)
     logging.info(f"Tokenization response: {response}")
     assert response
     assert isinstance(response, list)
@@ -108,3 +119,32 @@ def test_get_model_info_sync(model_id: str, caplog: LogCap) -> None:
         response = client.llm.get_model_info(model_id)
     logging.info(f"Model config response: {response}")
     assert response
+
+
+@pytest.mark.lmstudio
+def test_invalid_model_request_sync(caplog: LogCap) -> None:
+    caplog.set_level(logging.DEBUG)
+    with Client() as client:
+        # Deliberately create an invalid model handle
+        model = client.llm._create_handle("No such model")
+        # This should error rather than timing out,
+        # but avoid any risk of the client hanging...
+        with nullcontext():
+            with pytest.raises(LMStudioModelNotFoundError) as exc_info:
+                model.complete("Some text")
+            check_sdk_error(exc_info, __file__)
+        with nullcontext():
+            with pytest.raises(LMStudioModelNotFoundError) as exc_info:
+                model.respond("Some text")
+            check_sdk_error(exc_info, __file__)
+        with nullcontext():
+            with pytest.raises(LMStudioModelNotFoundError) as exc_info:
+                model.count_tokens("Some text")
+        with nullcontext():
+            with pytest.raises(LMStudioModelNotFoundError) as exc_info:
+                model.tokenize("Some text")
+            check_sdk_error(exc_info, __file__)
+        with nullcontext():
+            with pytest.raises(LMStudioModelNotFoundError) as exc_info:
+                model.get_context_length()
+            check_sdk_error(exc_info, __file__)
