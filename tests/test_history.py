@@ -28,7 +28,6 @@ from lmstudio.json_api import (
     LlmPredictionConfig,
     LlmPredictionStats,
     PredictionResult,
-    TPrediction,
 )
 
 from .support import IMAGE_FILEPATH, check_sdk_error
@@ -334,7 +333,7 @@ def test_add_entries_class_content() -> None:
     assert chat._get_history_for_prediction() == EXPECTED_HISTORY
 
 
-def _make_prediction_result(data: TPrediction) -> PredictionResult[TPrediction]:
+def _make_prediction_result(data: str | DictObject) -> PredictionResult:
     return PredictionResult(
         content=(data if isinstance(data, str) else json.dumps(data)),
         parsed=data,

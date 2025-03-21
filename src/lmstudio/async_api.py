@@ -16,12 +16,10 @@ from typing import (
     Callable,
     Generic,
     Iterable,
-    Literal,
     Sequence,
     Type,
     TypeAlias,
     TypeVar,
-    overload,
 )
 from typing_extensions import (
     # Native in 3.11+
@@ -89,7 +87,6 @@ from .json_api import (
     RemoteCallHandler,
     ResponseSchema,
     TModelInfo,
-    TPrediction,
     check_model_namespace,
     load_struct,
     _model_spec_to_api_dict,
@@ -902,24 +899,23 @@ class AsyncSessionModel(
         return await self._files_session._fetch_file_handle(file_data)
 
 
-AsyncPredictionChannel: TypeAlias = AsyncChannel[PredictionResult[T]]
-AsyncPredictionCM: TypeAlias = AsyncContextManager[AsyncPredictionChannel[T]]
+AsyncPredictionChannel: TypeAlias = AsyncChannel[PredictionResult]
+AsyncPredictionCM: TypeAlias = AsyncContextManager[AsyncPredictionChannel]
 
 
-class AsyncPredictionStream(PredictionStreamBase[TPrediction]):
+class AsyncPredictionStream(PredictionStreamBase):
     """Async context manager for an ongoing prediction process."""
 
     def __init__(
         self,
-        channel_cm: AsyncPredictionCM[TPrediction],
-        endpoint: PredictionEndpoint[TPrediction],
+        channel_cm: AsyncPredictionCM,
+        endpoint: PredictionEndpoint,
     ) -> None:
         """Initialize a prediction process representation."""
         self._resource_manager = AsyncExitStack()
-        self._channel_cm: AsyncPredictionCM[TPrediction] = channel_cm
-        self._channel: AsyncPredictionChannel[TPrediction] | None = None
-        # See comments in BasePrediction regarding not calling super().__init__() here
-        self._init_prediction(endpoint)
+        self._channel_cm: AsyncPredictionCM = channel_cm
+        self._channel: AsyncPredictionChannel | None = None
+        super().__init__(endpoint)
 
     @sdk_public_api_async()
     async def start(self) -> None:
@@ -976,7 +972,7 @@ class AsyncPredictionStream(PredictionStreamBase[TPrediction]):
             self._mark_finished()
 
     @sdk_public_api_async()
-    async def wait_for_result(self) -> PredictionResult[TPrediction]:
+    async def wait_for_result(self) -> PredictionResult:
         """Wait for the result of the prediction."""
         async for _ in self:
             pass
@@ -1011,34 +1007,6 @@ class AsyncSessionLlm(
         """Create a symbolic handle to the specified LLM model."""
         return AsyncLLM(model_identifier, self)
 
-    @overload
-    async def _complete_stream(
-        self,
-        model_specifier: AnyModelSpecifier,
-        prompt: str,
-        *,
-        response_format: Literal[None] = ...,
-        config: LlmPredictionConfig | LlmPredictionConfigDict | None = ...,
-        preset: str | None = ...,
-        on_message: PredictionMessageCallback | None = ...,
-        on_first_token: PredictionFirstTokenCallback | None = ...,
-        on_prediction_fragment: PredictionFragmentCallback | None = ...,
-        on_prompt_processing_progress: PromptProcessingCallback | None = ...,
-    ) -> AsyncPredictionStream[str]: ...
-    @overload
-    async def _complete_stream(
-        self,
-        model_specifier: AnyModelSpecifier,
-        prompt: str,
-        *,
-        response_format: ResponseSchema = ...,
-        config: LlmPredictionConfig | LlmPredictionConfigDict | None = ...,
-        preset: str | None = ...,
-        on_message: PredictionMessageCallback | None = ...,
-        on_first_token: PredictionFirstTokenCallback | None = ...,
-        on_prediction_fragment: PredictionFragmentCallback | None = ...,
-        on_prompt_processing_progress: PromptProcessingCallback | None = ...,
-    ) -> AsyncPredictionStream[DictObject]: ...
     async def _complete_stream(
         self,
         model_specifier: AnyModelSpecifier,
@@ -1051,7 +1019,7 @@ class AsyncSessionLlm(
         on_first_token: PredictionFirstTokenCallback | None = None,
         on_prediction_fragment: PredictionFragmentCallback | None = None,
         on_prompt_processing_progress: PromptProcessingCallback | None = None,
-    ) -> AsyncPredictionStream[str] | AsyncPredictionStream[DictObject]:
+    ) -> AsyncPredictionStream:
         """Request a one-off prediction without any context and stream the generated tokens.
 
         Note: details of configuration fields may change in SDK feature releases.
@@ -1071,34 +1039,6 @@ class AsyncSessionLlm(
         prediction_stream = AsyncPredictionStream(channel_cm, endpoint)
         return prediction_stream
 
-    @overload
-    async def _respond_stream(
-        self,
-        model_specifier: AnyModelSpecifier,
-        history: Chat | ChatHistoryDataDict | str,
-        *,
-        response_format: Literal[None] = ...,
-        config: LlmPredictionConfig | LlmPredictionConfigDict | None = ...,
-        preset: str | None = ...,
-        on_message: PredictionMessageCallback | None = ...,
-        on_first_token: PredictionFirstTokenCallback | None = ...,
-        on_prediction_fragment: PredictionFragmentCallback | None = ...,
-        on_prompt_processing_progress: PromptProcessingCallback | None = ...,
-    ) -> AsyncPredictionStream[str]: ...
-    @overload
-    async def _respond_stream(
-        self,
-        model_specifier: AnyModelSpecifier,
-        history: Chat | ChatHistoryDataDict | str,
-        *,
-        response_format: ResponseSchema = ...,
-        config: LlmPredictionConfig | LlmPredictionConfigDict | None = ...,
-        preset: str | None = ...,
-        on_message: PredictionMessageCallback | None = ...,
-        on_first_token: PredictionFirstTokenCallback | None = ...,
-        on_prediction_fragment: PredictionFragmentCallback | None = ...,
-        on_prompt_processing_progress: PromptProcessingCallback | None = ...,
-    ) -> AsyncPredictionStream[DictObject]: ...
     async def _respond_stream(
         self,
         model_specifier: AnyModelSpecifier,
@@ -1111,7 +1051,7 @@ class AsyncSessionLlm(
         on_first_token: PredictionFirstTokenCallback | None = None,
         on_prediction_fragment: PredictionFragmentCallback | None = None,
         on_prompt_processing_progress: PromptProcessingCallback | None = None,
-    ) -> AsyncPredictionStream[str] | AsyncPredictionStream[DictObject]:
+    ) -> AsyncPredictionStream:
         """Request a response in an ongoing assistant chat session and stream the generated tokens.
 
         Note: details of configuration fields may change in SDK feature releases.
@@ -1250,32 +1190,6 @@ AnyAsyncModel: TypeAlias = AsyncModelHandle[Any]
 class AsyncLLM(AsyncModelHandle[AsyncSessionLlm]):
     """Reference to a loaded LLM model."""
 
-    @overload
-    async def complete_stream(
-        self,
-        prompt: str,
-        *,
-        response_format: Literal[None] = ...,
-        config: LlmPredictionConfig | LlmPredictionConfigDict | None = ...,
-        preset: str | None = ...,
-        on_message: PredictionMessageCallback | None = ...,
-        on_first_token: PredictionFirstTokenCallback | None = ...,
-        on_prediction_fragment: PredictionFragmentCallback | None = ...,
-        on_prompt_processing_progress: PromptProcessingCallback | None = ...,
-    ) -> AsyncPredictionStream[str]: ...
-    @overload
-    async def complete_stream(
-        self,
-        prompt: str,
-        *,
-        response_format: ResponseSchema = ...,
-        config: LlmPredictionConfig | LlmPredictionConfigDict | None = ...,
-        preset: str | None = ...,
-        on_message: PredictionMessageCallback | None = ...,
-        on_first_token: PredictionFirstTokenCallback | None = ...,
-        on_prediction_fragment: PredictionFragmentCallback | None = ...,
-        on_prompt_processing_progress: PromptProcessingCallback | None = ...,
-    ) -> AsyncPredictionStream[DictObject]: ...
     @sdk_public_api_async()
     async def complete_stream(
         self,
@@ -1288,7 +1202,7 @@ class AsyncLLM(AsyncModelHandle[AsyncSessionLlm]):
         on_first_token: PredictionFirstTokenCallback | None = None,
         on_prediction_fragment: PredictionFragmentCallback | None = None,
         on_prompt_processing_progress: PromptProcessingCallback | None = None,
-    ) -> AsyncPredictionStream[str] | AsyncPredictionStream[DictObject]:
+    ) -> AsyncPredictionStream:
         """Request a one-off prediction without any context and stream the generated tokens.
 
         Note: details of configuration fields may change in SDK feature releases.
@@ -1305,32 +1219,6 @@ class AsyncLLM(AsyncModelHandle[AsyncSessionLlm]):
             on_prompt_processing_progress=on_prompt_processing_progress,
         )
 
-    @overload
-    async def complete(
-        self,
-        prompt: str,
-        *,
-        response_format: Literal[None] = ...,
-        config: LlmPredictionConfig | LlmPredictionConfigDict | None = ...,
-        preset: str | None = ...,
-        on_message: PredictionMessageCallback | None = ...,
-        on_first_token: PredictionFirstTokenCallback | None = ...,
-        on_prediction_fragment: PredictionFragmentCallback | None = ...,
-        on_prompt_processing_progress: PromptProcessingCallback | None = ...,
-    ) -> PredictionResult[str]: ...
-    @overload
-    async def complete(
-        self,
-        prompt: str,
-        *,
-        response_format: ResponseSchema = ...,
-        config: LlmPredictionConfig | LlmPredictionConfigDict | None = ...,
-        preset: str | None = ...,
-        on_message: PredictionMessageCallback | None = ...,
-        on_first_token: PredictionFirstTokenCallback | None = ...,
-        on_prediction_fragment: PredictionFragmentCallback | None = ...,
-        on_prompt_processing_progress: PromptProcessingCallback | None = ...,
-    ) -> PredictionResult[DictObject]: ...
     @sdk_public_api_async()
     async def complete(
         self,
@@ -1343,7 +1231,7 @@ class AsyncLLM(AsyncModelHandle[AsyncSessionLlm]):
         on_first_token: PredictionFirstTokenCallback | None = None,
         on_prediction_fragment: PredictionFragmentCallback | None = None,
         on_prompt_processing_progress: PromptProcessingCallback | None = None,
-    ) -> PredictionResult[str] | PredictionResult[DictObject]:
+    ) -> PredictionResult:
         """Request a one-off prediction without any context.
 
         Note: details of configuration fields may change in SDK feature releases.
@@ -1365,32 +1253,6 @@ class AsyncLLM(AsyncModelHandle[AsyncSessionLlm]):
             pass
         return prediction_stream.result()
 
-    @overload
-    async def respond_stream(
-        self,
-        history: Chat | ChatHistoryDataDict | str,
-        *,
-        response_format: Literal[None] = ...,
-        config: LlmPredictionConfig | LlmPredictionConfigDict | None = ...,
-        preset: str | None = ...,
-        on_message: PredictionMessageCallback | None = ...,
-        on_first_token: PredictionFirstTokenCallback | None = ...,
-        on_prediction_fragment: PredictionFragmentCallback | None = ...,
-        on_prompt_processing_progress: PromptProcessingCallback | None = ...,
-    ) -> AsyncPredictionStream[str]: ...
-    @overload
-    async def respond_stream(
-        self,
-        history: Chat | ChatHistoryDataDict | str,
-        *,
-        response_format: ResponseSchema = ...,
-        config: LlmPredictionConfig | LlmPredictionConfigDict | None = ...,
-        preset: str | None = ...,
-        on_message: PredictionMessageCallback | None = ...,
-        on_first_token: PredictionFirstTokenCallback | None = ...,
-        on_prediction_fragment: PredictionFragmentCallback | None = ...,
-        on_prompt_processing_progress: PromptProcessingCallback | None = ...,
-    ) -> AsyncPredictionStream[DictObject]: ...
     @sdk_public_api_async()
     async def respond_stream(
         self,
@@ -1403,7 +1265,7 @@ class AsyncLLM(AsyncModelHandle[AsyncSessionLlm]):
         on_first_token: PredictionFirstTokenCallback | None = None,
         on_prediction_fragment: PredictionFragmentCallback | None = None,
         on_prompt_processing_progress: PromptProcessingCallback | None = None,
-    ) -> AsyncPredictionStream[str] | AsyncPredictionStream[DictObject]:
+    ) -> AsyncPredictionStream:
         """Request a response in an ongoing assistant chat session and stream the generated tokens.
 
         Note: details of configuration fields may change in SDK feature releases.
@@ -1420,32 +1282,6 @@ class AsyncLLM(AsyncModelHandle[AsyncSessionLlm]):
             on_prompt_processing_progress=on_prompt_processing_progress,
         )
 
-    @overload
-    async def respond(
-        self,
-        history: Chat | ChatHistoryDataDict | str,
-        *,
-        response_format: Literal[None] = ...,
-        config: LlmPredictionConfig | LlmPredictionConfigDict | None = ...,
-        preset: str | None = ...,
-        on_message: PredictionMessageCallback | None = ...,
-        on_first_token: PredictionFirstTokenCallback | None = ...,
-        on_prediction_fragment: PredictionFragmentCallback | None = ...,
-        on_prompt_processing_progress: PromptProcessingCallback | None = ...,
-    ) -> PredictionResult[str]: ...
-    @overload
-    async def respond(
-        self,
-        history: Chat | ChatHistoryDataDict | str,
-        *,
-        response_format: ResponseSchema = ...,
-        config: LlmPredictionConfig | LlmPredictionConfigDict | None = ...,
-        preset: str | None = ...,
-        on_message: PredictionMessageCallback | None = ...,
-        on_first_token: PredictionFirstTokenCallback | None = ...,
-        on_prediction_fragment: PredictionFragmentCallback | None = ...,
-        on_prompt_processing_progress: PromptProcessingCallback | None = ...,
-    ) -> PredictionResult[DictObject]: ...
     @sdk_public_api_async()
     async def respond(
         self,
@@ -1458,7 +1294,7 @@ class AsyncLLM(AsyncModelHandle[AsyncSessionLlm]):
         on_first_token: PredictionFirstTokenCallback | None = None,
         on_prediction_fragment: PredictionFragmentCallback | None = None,
         on_prompt_processing_progress: PromptProcessingCallback | None = None,
-    ) -> PredictionResult[str] | PredictionResult[DictObject]:
+    ) -> PredictionResult:
         """Request a response in an ongoing assistant chat session.
 
         Note: details of configuration fields may change in SDK feature releases.

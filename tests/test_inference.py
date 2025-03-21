@@ -67,7 +67,7 @@ async def test_concurrent_predictions(caplog: LogCap, subtests: SubTests) -> Non
     async with AsyncClient() as client:
         session = client.llm
 
-        async def _request_response() -> PredictionResult[str]:
+        async def _request_response() -> PredictionResult:
             llm = await session.model(model_id)
             return await llm.respond(
                 history=history,
@@ -172,7 +172,7 @@ def test_tool_using_agent(caplog: LogCap) -> None:
         chat.add_user_message("What is the sum of 123 and 3210?")
         tools = [ADDITION_TOOL_SPEC]
         # Ensure ignoring the round index passes static type checks
-        predictions: list[PredictionResult[str]] = []
+        predictions: list[PredictionResult] = []
 
         act_result = llm.act(chat, tools, on_prediction_completed=predictions.append)
         assert len(predictions) > 1
