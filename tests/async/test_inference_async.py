@@ -21,6 +21,7 @@ from lmstudio import (
     LlmPredictionFragment,
     LlmPredictionStats,
     LMStudioModelNotFoundError,
+    LMStudioPresetNotFoundError,
     ModelSchema,
     PredictionResult,
     TextData,
@@ -307,6 +308,38 @@ async def test_invalid_model_request_stream_async(caplog: LogCap) -> None:
             prediction_stream = await model.complete_stream("Some text")
             async with prediction_stream:
                 with pytest.raises(LMStudioModelNotFoundError) as exc_info:
+                    await prediction_stream.wait_for_result()
+                check_sdk_error(exc_info, __file__)
+
+
+@pytest.mark.asyncio
+@pytest.mark.lmstudio
+async def test_invalid_preset_request_nostream_async(caplog: LogCap) -> None:
+    caplog.set_level(logging.DEBUG)
+    async with AsyncClient() as client:
+        model = await client.llm.model()
+        # This should error rather than timing out,
+        # but avoid any risk of the client hanging...
+        with anyio.fail_after(30):
+            with pytest.raises(LMStudioPresetNotFoundError) as exc_info:
+                await model.complete("Some text", preset="No such preset")
+            check_sdk_error(exc_info, __file__)
+
+
+@pytest.mark.asyncio
+@pytest.mark.lmstudio
+async def test_invalid_preset_request_stream_async(caplog: LogCap) -> None:
+    caplog.set_level(logging.DEBUG)
+    async with AsyncClient() as client:
+        model = await client.llm.model()
+        # This should error rather than timing out,
+        # but avoid any risk of the client hanging...
+        with anyio.fail_after(30):
+            prediction_stream = await model.complete_stream(
+                "Some text", preset="No such preset"
+            )
+            async with prediction_stream:
+                with pytest.raises(LMStudioPresetNotFoundError) as exc_info:
                     await prediction_stream.wait_for_result()
                 check_sdk_error(exc_info, __file__)
 
