@@ -96,6 +96,7 @@ from .json_api import (
 )
 from ._kv_config import TLoadConfig, TLoadConfigDict, parse_server_config
 from ._sdk_models import (
+    EmbeddingRpcCountTokensParameter,
     EmbeddingRpcEmbedStringParameter,
     EmbeddingRpcTokenizeParameter,
     LlmApplyPromptTemplateOpts,
@@ -733,6 +734,18 @@ class AsyncSessionModel(
         raw_model_info = await self._get_api_model_info(model_specifier)
         return int(raw_model_info.get("contextLength", -1))
 
+    async def _count_tokens(
+        self, model_specifier: AnyModelSpecifier, input: str
+    ) -> int:
+        params = EmbeddingRpcCountTokensParameter._from_api_dict(
+            {
+                "specifier": _model_spec_to_api_dict(model_specifier),
+                "inputString": input,
+            }
+        )
+        response = await self.remote_call("countTokens", params)
+        return int(response["tokenCount"])
+
     # Private helper method to allow the main API to easily accept iterables
     async def _tokenize_text(
         self, model_specifier: AnyModelSpecifier, input: str
@@ -748,7 +761,6 @@ class AsyncSessionModel(
 
     # Alas, type hints don't properly support distinguishing str vs Iterable[str]:
     #     https://github.com/python/typing/issues/256
-    @sdk_public_api_async()
     async def _tokenize(
         self, model_specifier: AnyModelSpecifier, input: str | Iterable[str]
     ) -> Sequence[int] | Sequence[Sequence[int]]:
@@ -1190,6 +1202,11 @@ class AsyncModelHandle(
     ) -> Sequence[int] | Sequence[Sequence[int]]:
         """Tokenize the input string(s) using this model."""
         return await self._session._tokenize(self.identifier, input)
+
+    @sdk_public_api_async()
+    async def count_tokens(self, input: str) -> int:
+        """Report the number of tokens needed for the input string using this model."""
+        return await self._session._count_tokens(self.identifier, input)
 
     @sdk_public_api_async()
     async def get_context_length(self) -> int:

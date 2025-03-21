@@ -2,12 +2,18 @@
 
 import logging
 
+import anyio
 import pytest
 from pytest import LogCaptureFixture as LogCap
 
-from lmstudio import AsyncClient, LlmLoadModelConfig, history
+from lmstudio import (
+    AsyncClient,
+    LlmLoadModelConfig,
+    LMStudioModelNotFoundError,
+    history,
+)
 
-from ..support import EXPECTED_LLM, EXPECTED_LLM_ID
+from ..support import EXPECTED_LLM, EXPECTED_LLM_ID, check_sdk_error
 
 
 @pytest.mark.asyncio
@@ -52,10 +58,14 @@ async def test_tokenize_async(model_id: str, caplog: LogCap) -> None:
 
     caplog.set_level(logging.DEBUG)
     async with AsyncClient() as client:
-        response = await client.llm._tokenize(model_id, input=text)
+        model = await client.llm.model(model_id)
+        num_tokens = await model.count_tokens(text)
+        response = await model.tokenize(text)
     logging.info(f"Tokenization response: {response}")
     assert response
     assert isinstance(response, list)
+    # Ensure token count and tokenization are consistent
+    assert len(response) == num_tokens
 
 
 @pytest.mark.asyncio
@@ -66,7 +76,8 @@ async def test_tokenize_list_async(model_id: str, caplog: LogCap) -> None:
 
     caplog.set_level(logging.DEBUG)
     async with AsyncClient() as client:
-        response = await client.llm._tokenize(model_id, input=text)
+        model = await client.llm.model(model_id)
+        response = await model.tokenize(text)
     logging.info(f"Tokenization response: {response}")
     assert response
     assert isinstance(response, list)
@@ -109,3 +120,33 @@ async def test_get_model_info_async(model_id: str, caplog: LogCap) -> None:
         response = await client.llm.get_model_info(model_id)
     logging.info(f"Model config response: {response}")
     assert response
+
+
+@pytest.mark.asyncio
+@pytest.mark.lmstudio
+async def test_invalid_model_request_async(caplog: LogCap) -> None:
+    caplog.set_level(logging.DEBUG)
+    async with AsyncClient() as client:
+        # Deliberately create an invalid model handle
+        model = client.llm._create_handle("No such model")
+        # This should error rather than timing out,
+        # but avoid any risk of the client hanging...
+        with anyio.fail_after(30):
+            with pytest.raises(LMStudioModelNotFoundError) as exc_info:
+                await model.complete("Some text")
+            check_sdk_error(exc_info, __file__)
+        with anyio.fail_after(30):
+            with pytest.raises(LMStudioModelNotFoundError) as exc_info:
+                await model.respond("Some text")
+            check_sdk_error(exc_info, __file__)
+        with anyio.fail_after(30):
+            with pytest.raises(LMStudioModelNotFoundError) as exc_info:
+                await model.count_tokens("Some text")
+        with anyio.fail_after(30):
+            with pytest.raises(LMStudioModelNotFoundError) as exc_info:
+                await model.tokenize("Some text")
+            check_sdk_error(exc_info, __file__)
+        with anyio.fail_after(30):
+            with pytest.raises(LMStudioModelNotFoundError) as exc_info:
+                await model.get_context_length()
+            check_sdk_error(exc_info, __file__)

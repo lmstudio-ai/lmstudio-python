@@ -67,11 +67,15 @@ def test_tokenize_sync(model_id: str, caplog: LogCap) -> None:
 
     caplog.set_level(logging.DEBUG)
     with Client() as client:
-        session = client.embedding
-        response = session._tokenize(model_id, input=text)
+        model = client.embedding.model(model_id)
+        num_tokens = model.count_tokens(text)
+        response = model.tokenize(text)
     logging.info(f"Tokenization response: {response}")
     assert response
     assert isinstance(response, list)
+    # Ensure token count and tokenization are consistent
+    # (embedding models add extra start/end markers during actual tokenization)
+    assert len(response) == num_tokens + 2
     # the response should be deterministic if we set constant seed
     # so we can also check the value if desired
 
@@ -83,8 +87,8 @@ def test_tokenize_list_sync(model_id: str, caplog: LogCap) -> None:
 
     caplog.set_level(logging.DEBUG)
     with Client() as client:
-        session = client.embedding
-        response = session._tokenize(model_id, input=text)
+        model = client.embedding.model(model_id)
+        response = model.tokenize(text)
     logging.info(f"Tokenization response: {response}")
     assert response
     assert isinstance(response, list)
@@ -140,6 +144,10 @@ def test_invalid_model_request_sync(caplog: LogCap) -> None:
         with nullcontext():
             with pytest.raises(LMStudioModelNotFoundError) as exc_info:
                 model.embed("Some text")
+            check_sdk_error(exc_info, __file__)
+        with nullcontext():
+            with pytest.raises(LMStudioModelNotFoundError) as exc_info:
+                model.count_tokens("Some text")
             check_sdk_error(exc_info, __file__)
         with nullcontext():
             with pytest.raises(LMStudioModelNotFoundError) as exc_info:

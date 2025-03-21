@@ -124,6 +124,7 @@ from .json_api import (
 )
 from ._kv_config import TLoadConfig, TLoadConfigDict, parse_server_config
 from ._sdk_models import (
+    EmbeddingRpcCountTokensParameter,
     EmbeddingRpcEmbedStringParameter,
     EmbeddingRpcTokenizeParameter,
     LlmApplyPromptTemplateOpts,
@@ -902,6 +903,16 @@ class SyncSessionModel(
         raw_model_info = self._get_api_model_info(model_specifier)
         return int(raw_model_info.get("contextLength", -1))
 
+    def _count_tokens(self, model_specifier: AnyModelSpecifier, input: str) -> int:
+        params = EmbeddingRpcCountTokensParameter._from_api_dict(
+            {
+                "specifier": _model_spec_to_api_dict(model_specifier),
+                "inputString": input,
+            }
+        )
+        response = self.remote_call("countTokens", params)
+        return int(response["tokenCount"])
+
     # Private helper method to allow the main API to easily accept iterables
     def _tokenize_text(
         self, model_specifier: AnyModelSpecifier, input: str
@@ -1352,6 +1363,11 @@ class SyncModelHandle(ModelHandleBase[TSyncSessionModel]):
     ) -> Sequence[int] | Sequence[Sequence[int]]:
         """Tokenize the input string(s) using this model."""
         return self._session._tokenize(self.identifier, input)
+
+    @sdk_public_api()
+    def count_tokens(self, input: str) -> int:
+        """Report the number of tokens needed for the input string using this model."""
+        return self._session._count_tokens(self.identifier, input)
 
     @sdk_public_api()
     def get_context_length(self) -> int:
