@@ -63,11 +63,15 @@ async def test_tokenize_async(model_id: str, caplog: LogCap) -> None:
 
     caplog.set_level(logging.DEBUG)
     async with AsyncClient() as client:
-        session = client.embedding
-        response = await session._tokenize(model_id, input=text)
+        model = await client.embedding.model(model_id)
+        num_tokens = await model.count_tokens(text)
+        response = await model.tokenize(text)
     logging.info(f"Tokenization response: {response}")
     assert response
     assert isinstance(response, list)
+    # Ensure token count and tokenization are consistent
+    # (embedding models add extra start/end markers during actual tokenization)
+    assert len(response) == num_tokens + 2
     # the response should be deterministic if we set constant seed
     # so we can also check the value if desired
 
@@ -80,8 +84,8 @@ async def test_tokenize_list_async(model_id: str, caplog: LogCap) -> None:
 
     caplog.set_level(logging.DEBUG)
     async with AsyncClient() as client:
-        session = client.embedding
-        response = await session._tokenize(model_id, input=text)
+        model = await client.embedding.model(model_id)
+        response = await model.tokenize(text)
     logging.info(f"Tokenization response: {response}")
     assert response
     assert isinstance(response, list)
@@ -141,6 +145,10 @@ async def test_invalid_model_request_async(caplog: LogCap) -> None:
         with anyio.fail_after(30):
             with pytest.raises(LMStudioModelNotFoundError) as exc_info:
                 await model.embed("Some text")
+            check_sdk_error(exc_info, __file__)
+        with anyio.fail_after(30):
+            with pytest.raises(LMStudioModelNotFoundError) as exc_info:
+                await model.count_tokens("Some text")
             check_sdk_error(exc_info, __file__)
         with anyio.fail_after(30):
             with pytest.raises(LMStudioModelNotFoundError) as exc_info:
