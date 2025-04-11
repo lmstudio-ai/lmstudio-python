@@ -1131,7 +1131,7 @@ class PredictionEndpoint(
         on_prompt_processing_progress: PromptProcessingCallback | None = None,
         # The remaining options are only relevant for multi-round tool actions
         handle_invalid_tool_request: Callable[
-            [LMStudioPredictionError, ToolCallRequest | None], str
+            [LMStudioPredictionError, ToolCallRequest | None], str | None
         ]
         | None = None,
         llm_tools: LlmToolUseSettingToolArray | None = None,
@@ -1336,12 +1336,14 @@ class PredictionEndpoint(
     def _handle_invalid_tool_request(
         self, err_msg: str, request: ToolCallRequest | None = None
     ) -> str:
-        exc = LMStudioPredictionError(err_msg)
         _on_handle_invalid_tool_request = self._on_handle_invalid_tool_request
         if _on_handle_invalid_tool_request is not None:
             # Allow users to override the error message, or force an exception
             self._logger.debug("Invoking on_handle_invalid_tool_request callback")
-            err_msg = _on_handle_invalid_tool_request(exc, request)
+            exc = LMStudioPredictionError(err_msg)
+            user_err_msg = _on_handle_invalid_tool_request(exc, request)
+            if user_err_msg is not None:
+                err_msg = user_err_msg
         if request is not None:
             return err_msg
         # We don't allow users to prevent the exception when there's no request

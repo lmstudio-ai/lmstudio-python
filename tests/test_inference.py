@@ -15,9 +15,11 @@ from lmstudio import (
     Client,
     LlmPredictionConfig,
     LlmPredictionFragment,
+    LMStudioPredictionError,
     LMStudioValueError,
     PredictionResult,
     PredictionRoundResult,
+    ToolCallRequest,
     ToolFunctionDef,
     ToolFunctionDefDict,
 )
@@ -162,7 +164,7 @@ def test_duplicate_tool_names_rejected() -> None:
 
 @pytest.mark.lmstudio
 def test_tool_using_agent(caplog: LogCap) -> None:
-    # This is currently a sync-only API (it will be refactored after 1.0.0)
+    # This is currently a sync-only API (it will be refactored in a future release)
 
     caplog.set_level(logging.DEBUG)
     model_id = TOOL_LLM_ID
@@ -192,7 +194,7 @@ def test_tool_using_agent(caplog: LogCap) -> None:
 
 @pytest.mark.lmstudio
 def test_tool_using_agent_callbacks(caplog: LogCap) -> None:
-    # This is currently a sync-only API (it will be refactored after 1.0.0)
+    # This is currently a sync-only API (it will be refactored in a future release)
 
     caplog.set_level(logging.DEBUG)
     model_id = TOOL_LLM_ID
@@ -241,3 +243,49 @@ def test_tool_using_agent_callbacks(caplog: LogCap) -> None:
 
         cloned_chat = chat.copy()
         assert cloned_chat._messages == chat._messages
+
+
+def divide(numerator: float, denominator: float) -> float | str:
+    """Divide the given numerator by the given denominator. Return the result."""
+    try:
+        return numerator / denominator
+    except Exception as exc:
+        # TODO: Perform this exception-to-response-string translation implicitly
+        return f"Unhandled Python exception: {exc!r}"
+
+
+@pytest.mark.lmstudio
+def test_tool_using_agent_error_handling(caplog: LogCap) -> None:
+    # This is currently a sync-only API (it will be refactored in a future release)
+
+    caplog.set_level(logging.DEBUG)
+    model_id = TOOL_LLM_ID
+    with Client() as client:
+        llm = client.llm.model(model_id)
+        chat = Chat()
+        chat.add_user_message(
+            "Attempt to divide 1 by 0 using the tool. Explain the result."
+        )
+        tools = [divide]
+        predictions: list[PredictionRoundResult] = []
+        invalid_requests: list[tuple[LMStudioPredictionError, ToolCallRequest]] = []
+
+        def _handle_invalid_request(
+            exc: LMStudioPredictionError, request: ToolCallRequest | None
+        ) -> None:
+            if request is not None:
+                invalid_requests.append((exc, request))
+
+        act_result = llm.act(
+            chat,
+            tools,
+            handle_invalid_tool_request=_handle_invalid_request,
+            on_prediction_completed=predictions.append,
+        )
+        assert len(predictions) > 1
+        assert act_result.rounds == len(predictions)
+        # Test case is currently suppressing exceptions inside the tool call
+        assert invalid_requests == []
+        # If the content checks prove flaky in practice, they can be dropped
+        assert "divide" in predictions[-1].content
+        assert "zero" in predictions[-1].content
