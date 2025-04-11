@@ -1334,20 +1334,34 @@ class PredictionEndpoint(
             self._on_prompt_processing_progress(progress)
 
     def _handle_invalid_tool_request(
-        self, err_msg: str, request: ToolCallRequest | None = None
+        self,
+        err_msg: str,
+        request: ToolCallRequest | None = None,
+        *,
+        exc: Exception | None = None,
     ) -> str:
         _on_handle_invalid_tool_request = self._on_handle_invalid_tool_request
         if _on_handle_invalid_tool_request is not None:
             # Allow users to override the error message, or force an exception
             self._logger.debug("Invoking on_handle_invalid_tool_request callback")
-            exc = LMStudioPredictionError(err_msg)
-            user_err_msg = _on_handle_invalid_tool_request(exc, request)
+            callback_exc = LMStudioPredictionError(err_msg)
+            if exc is not None:
+                callback_exc.__cause__ = exc
+            user_err_msg = _on_handle_invalid_tool_request(callback_exc, request)
             if user_err_msg is not None:
                 err_msg = user_err_msg
         if request is not None:
             return err_msg
         # We don't allow users to prevent the exception when there's no request
         raise LMStudioPredictionError(err_msg)
+
+    def _handle_failed_tool_request(
+        self, exc: Exception, request: ToolCallRequest
+    ) -> ToolCallResultData:
+        err_msg = self._handle_invalid_tool_request(
+            f"Unhandled Python exception: {exc!r}", request, exc=exc
+        )
+        return ToolCallResultData(content=json.dumps(err_msg), tool_call_id=request.id)
 
     def request_tool_call(
         self, request: ToolCallRequest

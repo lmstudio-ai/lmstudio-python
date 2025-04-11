@@ -1591,13 +1591,13 @@ class LLM(SyncModelHandle[SyncSessionLlm]):
                 channel_cm = self._session._create_channel(endpoint)
                 prediction_stream = PredictionStream(channel_cm, endpoint)
                 tool_call_requests: list[ToolCallRequest] = []
-                pending_tool_calls: list[SyncFuture[Any]] = []
+                pending_tool_calls: dict[SyncFuture[Any], ToolCallRequest] = {}
                 for event in prediction_stream._iter_events():
                     if isinstance(event, PredictionToolCallEvent):
                         tool_call_request = event.arg
                         tool_call_requests.append(tool_call_request)
                         tool_call = endpoint.request_tool_call(tool_call_request)
-                        pending_tool_calls.append(pool.submit(tool_call))
+                        pending_tool_calls[pool.submit(tool_call)] = tool_call_request
                 prediction = prediction_stream.result()
                 self._logger.debug(
                     "Completed .act() prediction round", round_index=round_index
@@ -1610,8 +1610,22 @@ class LLM(SyncModelHandle[SyncSessionLlm]):
                     with sdk_callback_invocation(err_msg, self._logger):
                         on_prediction_completed(round_result)
                 if pending_tool_calls:
+
+                    def _finish_tool_call(fut: SyncFuture[Any]) -> Any:
+                        exc = fut.exception()
+                        if exc is not None:
+                            if not isinstance(exc, Exception):
+                                # Don't allow base exceptions to be suppressed
+                                raise exc
+                            failed_request = pending_tool_calls[fut]
+                            return endpoint._handle_failed_tool_request(
+                                exc, failed_request
+                            )
+                        return fut.result()
+
                     tool_results = [
-                        fut.result() for fut in as_completed(pending_tool_calls)
+                        _finish_tool_call(fut)
+                        for fut in as_completed(pending_tool_calls)
                     ]
                     requests_message = agent_chat.add_assistant_response(
                         prediction, tool_call_requests
