@@ -247,11 +247,7 @@ def test_tool_using_agent_callbacks(caplog: LogCap) -> None:
 
 def divide(numerator: float, denominator: float) -> float | str:
     """Divide the given numerator by the given denominator. Return the result."""
-    try:
-        return numerator / denominator
-    except Exception as exc:
-        # TODO: Perform this exception-to-response-string translation implicitly
-        return f"Unhandled Python exception: {exc!r}"
+    return numerator / denominator
 
 
 @pytest.mark.lmstudio
@@ -268,13 +264,13 @@ def test_tool_using_agent_error_handling(caplog: LogCap) -> None:
         )
         tools = [divide]
         predictions: list[PredictionRoundResult] = []
-        invalid_requests: list[tuple[LMStudioPredictionError, ToolCallRequest]] = []
+        request_failures: list[LMStudioPredictionError] = []
 
         def _handle_invalid_request(
             exc: LMStudioPredictionError, request: ToolCallRequest | None
         ) -> None:
             if request is not None:
-                invalid_requests.append((exc, request))
+                request_failures.append(exc)
 
         act_result = llm.act(
             chat,
@@ -284,8 +280,11 @@ def test_tool_using_agent_error_handling(caplog: LogCap) -> None:
         )
         assert len(predictions) > 1
         assert act_result.rounds == len(predictions)
-        # Test case is currently suppressing exceptions inside the tool call
-        assert invalid_requests == []
+        # Ensure the tool call failure was reported to the user callback
+        assert len(request_failures) == 1
+        tool_failure_exc = request_failures[0]
+        assert isinstance(tool_failure_exc, LMStudioPredictionError)
+        assert isinstance(tool_failure_exc.__cause__, ZeroDivisionError)
         # If the content checks prove flaky in practice, they can be dropped
         assert "divide" in predictions[-1].content
         assert "zero" in predictions[-1].content
