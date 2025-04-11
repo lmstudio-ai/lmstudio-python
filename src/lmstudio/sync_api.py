@@ -1499,7 +1499,7 @@ class LLM(SyncModelHandle[SyncSessionLlm]):
         on_prediction_completed: Callable[[PredictionRoundResult], Any] | None = None,
         on_prompt_processing_progress: Callable[[float, int], Any] | None = None,
         handle_invalid_tool_request: Callable[
-            [LMStudioPredictionError, ToolCallRequest | None], str
+            [LMStudioPredictionError, ToolCallRequest | None], str | None
         ]
         | None = None,
     ) -> ActResult:
