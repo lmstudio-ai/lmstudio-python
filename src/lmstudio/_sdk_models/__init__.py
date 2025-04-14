@@ -150,7 +150,6 @@ __all__ = [
     "FilesRpcUploadFileBase64ReturnsDict",
     "Function",
     "FunctionDict",
-    "FunctionToolCallRequest",
     "GetModelOpts",
     "GetModelOptsDict",
     "GpuSetting",
@@ -572,6 +571,7 @@ __all__ = [
     "SystemRpcVersionReturnsDict",
     "TextData",
     "TextDataDict",
+    "ToolCallRequest",
     "ToolCallRequestData",
     "ToolCallRequestDataDict",
     "ToolCallRequestDict",
@@ -650,7 +650,7 @@ class ToolCallResultDataDict(TypedDict):
 ChatMessageRoleData = Literal["assistant", "user", "system", "tool"]
 
 
-class FunctionToolCallRequest(LMStudioStruct["ToolCallRequestDict"], kw_only=True):
+class ToolCallRequest(LMStudioStruct["ToolCallRequestDict"], kw_only=True):
     type: Annotated[Literal["function"], Meta(title="Type")]
     name: str
     id: str | None = None
@@ -670,7 +670,7 @@ class ToolCallRequestDict(TypedDict):
     arguments: NotRequired[Mapping[str, Any] | None]
 
 
-ToolCallRequest = FunctionToolCallRequest
+ToolCallRequest = ToolCallRequest
 PageNumber = Sequence[int]
 LineNumber = Sequence[int]
 
@@ -871,6 +871,7 @@ class LlmApplyPromptTemplateOptsDict(TypedDict):
 
 LlmLlamaAccelerationOffloadRatio1 = Annotated[float, Meta(ge=0.0, le=1.0)]
 LlmLlamaAccelerationOffloadRatio = LlmLlamaAccelerationOffloadRatio1 | str
+LlmLlamaAccelerationOffloadRatioDict = float | str
 LlmLlamaCacheQuantizationType = Literal[
     "f32", "f16", "q8_0", "q4_0", "q4_1", "iq4_nl", "q5_0", "q5_1"
 ]
@@ -3844,6 +3845,7 @@ ContextOverflowPolicy = LlmContextOverflowPolicy
 CpuThreads = int
 DraftModel = str
 MaxTokensModel = Any | MaxTokens | bool
+MaxTokensModelDict = bool | Any | int
 MinPSampling = Any | float | bool
 ReasoningParsing = LlmReasoningParsing
 RepeatPenalty = Any | float | bool
@@ -3944,7 +3946,7 @@ class DiagnosticsLogEventDict(TypedDict):
     """
 
     timestamp: float
-    data: DiagnosticsLogEventData
+    data: DiagnosticsLogEventDataLlmPredictionInputDict
 
 
 class EmbeddingModelInfo(
@@ -4024,6 +4026,9 @@ class EmbeddingModelInstanceInfoDict(TypedDict):
 
 
 ParsedFileIdentifier = ParsedFileIdentifierLocal | ParsedFileIdentifierBase64
+ParsedFileIdentifierDict = (
+    ParsedFileIdentifierLocalDict | ParsedFileIdentifierBase64Dict
+)
 
 
 class GpuSplitConfig(LMStudioStruct["GpuSplitConfigDict"], kw_only=True):
@@ -4049,7 +4054,15 @@ class GpuSplitConfigDict(TypedDict):
 ContentBlockStyle = (
     ContentBlockStyleDefault | ContentBlockStyleCustomLabel | ContentBlockStyleThinking
 )
+ContentBlockStyleDict = (
+    ContentBlockStyleThinkingDict
+    | ContentBlockStyleDefaultDict
+    | ContentBlockStyleCustomLabelDict
+)
 LlmContextReference = LlmContextReferenceJsonFile | LlmContextReferenceYamlFile
+LlmContextReferenceDict = (
+    LlmContextReferenceJsonFileDict | LlmContextReferenceYamlFileDict
+)
 
 
 class GpuSetting(LMStudioStruct["GpuSettingDict"], kw_only=True):
@@ -4066,7 +4079,7 @@ class GpuSettingDict(TypedDict):
     as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
     """
 
-    ratio: NotRequired[LlmLlamaAccelerationOffloadRatio | None]
+    ratio: NotRequired[LlmLlamaAccelerationOffloadRatioDict | None]
     mainGpu: NotRequired[int | None]
     splitStrategy: NotRequired[LlmSplitStrategy | None]
     disabledGpus: NotRequired[Sequence[int] | None]
@@ -4265,6 +4278,11 @@ LlmJinjaInputMessagesContentImagesConfig = (
     | LlmJinjaInputMessagesContentImagesConfigNumbered
     | LlmJinjaInputMessagesContentImagesConfigObject
 )
+LlmJinjaInputMessagesContentImagesConfigDict = (
+    LlmJinjaInputMessagesContentImagesConfigObjectDict
+    | LlmJinjaInputMessagesContentImagesConfigSimpleDict
+    | LlmJinjaInputMessagesContentImagesConfigNumberedDict
+)
 
 
 class LlmStructuredPredictionSetting(
@@ -4288,6 +4306,7 @@ class LlmStructuredPredictionSettingDict(TypedDict):
 
 
 BlockLocation = BlockLocationBeforeId | BlockLocationAfterId
+BlockLocationDict = BlockLocationBeforeIdDict | BlockLocationAfterIdDict
 
 
 class ProcessingUpdateContentBlockCreate(
@@ -4316,7 +4335,7 @@ class ProcessingUpdateContentBlockCreateDict(TypedDict):
     type: Literal["contentBlock.create"]
     id: str
     includeInContext: bool
-    style: NotRequired[ContentBlockStyle | None]
+    style: NotRequired[ContentBlockStyleDict | None]
     prefix: NotRequired[str | None]
     suffix: NotRequired[str | None]
 
@@ -4343,7 +4362,7 @@ class ProcessingUpdateContentBlockSetStyleDict(TypedDict):
 
     type: Literal["contentBlock.setStyle"]
     id: str
-    style: ContentBlockStyle
+    style: ContentBlockStyleDict
 
 
 class StatusStepState(LMStudioStruct["StatusStepStateDict"], kw_only=True):
@@ -4363,7 +4382,9 @@ class StatusStepStateDict(TypedDict):
 
 
 ModelInfo = LlmInfo | EmbeddingModelInfo
+ModelInfoDict = LlmInfoDict | EmbeddingModelInfoDict
 ModelInstanceInfo = LlmInstanceInfo | EmbeddingModelInstanceInfo
+ModelInstanceInfoDict = LlmInstanceInfoDict | EmbeddingModelInstanceInfoDict
 
 
 class ModelInfoBase(LMStudioStruct["ModelInfoBaseDict"], kw_only=True):
@@ -4520,6 +4541,9 @@ class PresetManifestDict(TypedDict):
 
 ModelSearchResultIdentifier = (
     ModelSearchResultIdentifierCatalog | ModelSearchResultIdentifierHf
+)
+ModelSearchResultIdentifierDict = (
+    ModelSearchResultIdentifierCatalogDict | ModelSearchResultIdentifierHfDict
 )
 RetrievalChunkingMethod = RetrievalChunkingMethodRecursiveV1
 
@@ -4695,6 +4719,17 @@ FilesChannelRetrieveToClientPacket = (
     | FilesChannelRetrieveToClientPacketOnSearchingEnd
     | FilesChannelRetrieveToClientPacketResult
 )
+FilesChannelRetrieveToClientPacketDict = (
+    FilesChannelRetrieveToClientPacketResultDict
+    | FilesChannelRetrieveToClientPacketOnSearchingEndDict
+    | FilesChannelRetrieveToClientPacketOnSearchingStartDict
+    | FilesChannelRetrieveToClientPacketOnFileProcessingStepEndDict
+    | FilesChannelRetrieveToClientPacketOnFileProcessingStepProgressDict
+    | FilesChannelRetrieveToClientPacketOnFileProcessingStepStartDict
+    | FilesChannelRetrieveToClientPacketOnFileProcessingEndDict
+    | FilesChannelRetrieveToClientPacketOnFileProcessListDict
+    | FilesChannelRetrieveToClientPacketOnFileProcessingStartDict
+)
 FilesChannelRetrieveToServerPacket = FilesChannelRetrieveToServerPacketStop
 
 
@@ -4716,8 +4751,8 @@ class PseudoFilesChannelRetrieveDict(TypedDict):
     """
 
     creationParameter: FilesChannelRetrieveCreationParameterDict
-    toClientPacket: FilesChannelRetrieveToClientPacket
-    toServerPacket: FilesChannelRetrieveToServerPacket
+    toClientPacket: FilesChannelRetrieveToClientPacketDict
+    toServerPacket: FilesChannelRetrieveToServerPacketStopDict
 
 
 class PseudoFiles(LMStudioStruct["PseudoFilesDict"], kw_only=True):
@@ -4863,14 +4898,19 @@ class PseudoPluginsChannelRegisterDevelopmentPluginDict(TypedDict):
     """
 
     creationParameter: PluginsChannelRegisterDevelopmentPluginCreationParameterDict
-    toClientPacket: PluginsChannelRegisterDevelopmentPluginToClientPacket
-    toServerPacket: PluginsChannelRegisterDevelopmentPluginToServerPacket
+    toClientPacket: PluginsChannelRegisterDevelopmentPluginToClientPacketReadyDict
+    toServerPacket: PluginsChannelRegisterDevelopmentPluginToServerPacketEndDict
 
 
 PluginsChannelSetGeneratorToServerPacket = (
     PluginsChannelSetGeneratorToServerPacketComplete
     | PluginsChannelSetGeneratorToServerPacketAborted
     | PluginsChannelSetGeneratorToServerPacketError
+)
+PluginsChannelSetGeneratorToServerPacketDict = (
+    PluginsChannelSetGeneratorToServerPacketErrorDict
+    | PluginsChannelSetGeneratorToServerPacketCompleteDict
+    | PluginsChannelSetGeneratorToServerPacketAbortedDict
 )
 
 
@@ -4889,7 +4929,7 @@ class RepositoryRpcGetModelDownloadOptionsParameterDict(TypedDict):
     as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
     """
 
-    modelSearchResultIdentifier: ModelSearchResultIdentifier
+    modelSearchResultIdentifier: ModelSearchResultIdentifierDict
 
 
 class PseudoRepositoryRpcGetModelDownloadOptions(
@@ -4914,6 +4954,11 @@ RepositoryChannelDownloadModelToClientPacket = (
     RepositoryChannelDownloadModelToClientPacketDownloadProgress
     | RepositoryChannelDownloadModelToClientPacketStartFinalizing
     | RepositoryChannelDownloadModelToClientPacketSuccess
+)
+RepositoryChannelDownloadModelToClientPacketDict = (
+    RepositoryChannelDownloadModelToClientPacketSuccessDict
+    | RepositoryChannelDownloadModelToClientPacketDownloadProgressDict
+    | RepositoryChannelDownloadModelToClientPacketStartFinalizingDict
 )
 RepositoryChannelDownloadModelToServerPacket = (
     RepositoryChannelDownloadModelToServerPacketCancel
@@ -4940,14 +4985,19 @@ class PseudoRepositoryChannelDownloadModelDict(TypedDict):
     """
 
     creationParameter: DownloadModelChannelRequestDict
-    toClientPacket: RepositoryChannelDownloadModelToClientPacket
-    toServerPacket: RepositoryChannelDownloadModelToServerPacket
+    toClientPacket: RepositoryChannelDownloadModelToClientPacketDict
+    toServerPacket: RepositoryChannelDownloadModelToServerPacketCancelDict
 
 
 RepositoryChannelDownloadArtifactToClientPacket = (
     RepositoryChannelDownloadArtifactToClientPacketDownloadProgress
     | RepositoryChannelDownloadArtifactToClientPacketStartFinalizing
     | RepositoryChannelDownloadArtifactToClientPacketSuccess
+)
+RepositoryChannelDownloadArtifactToClientPacketDict = (
+    RepositoryChannelDownloadArtifactToClientPacketSuccessDict
+    | RepositoryChannelDownloadArtifactToClientPacketDownloadProgressDict
+    | RepositoryChannelDownloadArtifactToClientPacketStartFinalizingDict
 )
 RepositoryChannelDownloadArtifactToServerPacket = (
     RepositoryChannelDownloadArtifactToServerPacketCancel
@@ -4976,8 +5026,8 @@ class PseudoRepositoryChannelDownloadArtifactDict(TypedDict):
     """
 
     creationParameter: RepositoryChannelDownloadArtifactCreationParameterDict
-    toClientPacket: RepositoryChannelDownloadArtifactToClientPacket
-    toServerPacket: RepositoryChannelDownloadArtifactToServerPacket
+    toClientPacket: RepositoryChannelDownloadArtifactToClientPacketDict
+    toServerPacket: RepositoryChannelDownloadArtifactToServerPacketCancelDict
 
 
 RepositoryChannelPushArtifactToClientPacket = (
@@ -5004,12 +5054,16 @@ class PseudoRepositoryChannelPushArtifactDict(TypedDict):
     """
 
     creationParameter: RepositoryChannelPushArtifactCreationParameterDict
-    toClientPacket: RepositoryChannelPushArtifactToClientPacket
+    toClientPacket: RepositoryChannelPushArtifactToClientPacketMessageDict
 
 
 RepositoryChannelEnsureAuthenticatedToClientPacket = (
     RepositoryChannelEnsureAuthenticatedToClientPacketAuthenticationUrl
     | RepositoryChannelEnsureAuthenticatedToClientPacketAuthenticated
+)
+RepositoryChannelEnsureAuthenticatedToClientPacketDict = (
+    RepositoryChannelEnsureAuthenticatedToClientPacketAuthenticationUrlDict
+    | RepositoryChannelEnsureAuthenticatedToClientPacketAuthenticatedDict
 )
 
 
@@ -5028,7 +5082,7 @@ class PseudoRepositoryChannelEnsureAuthenticatedDict(TypedDict):
     as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
     """
 
-    toClientPacket: RepositoryChannelEnsureAuthenticatedToClientPacket
+    toClientPacket: RepositoryChannelEnsureAuthenticatedToClientPacketDict
 
 
 SystemRpcListDownloadedModelsReturns = Sequence[ModelInfo]
@@ -5193,6 +5247,10 @@ class ErrorDisplayDataGenericNoModelMatchingQueryDict(TypedDict):
 KvConfigFieldDependencyCondition = (
     KvConfigFieldDependencyConditionEquals | KvConfigFieldDependencyConditionNotEquals
 )
+KvConfigFieldDependencyConditionDict = (
+    KvConfigFieldDependencyConditionEqualsDict
+    | KvConfigFieldDependencyConditionNotEqualsDict
+)
 
 
 class LlmJinjaInputMessagesContentConfigString(
@@ -5215,7 +5273,7 @@ class LlmJinjaInputMessagesContentConfigStringDict(TypedDict):
     """
 
     type: Literal["string"]
-    imagesConfig: NotRequired[LlmJinjaInputMessagesContentImagesConfig | None]
+    imagesConfig: NotRequired[LlmJinjaInputMessagesContentImagesConfigDict | None]
 
 
 class LlmJinjaInputMessagesContentConfigArray(
@@ -5242,7 +5300,7 @@ class LlmJinjaInputMessagesContentConfigArrayDict(TypedDict):
 
     type: Literal["array"]
     textFieldName: LlmJinjaInputMessagesContentConfigTextFieldName
-    imagesConfig: NotRequired[LlmJinjaInputMessagesContentImagesConfig | None]
+    imagesConfig: NotRequired[LlmJinjaInputMessagesContentImagesConfigDict | None]
 
 
 class LlmToolParametersObject(
@@ -5423,7 +5481,7 @@ class EmbeddingChannelGetOrLoadToClientPacketUnloadingOtherJITModelDict(TypedDic
     """
 
     type: Literal["unloadingOtherJITModel"]
-    info: ModelInstanceInfo
+    info: ModelInstanceInfoDict
 
 
 class EmbeddingChannelGetOrLoadToClientPacketLoadSuccess(
@@ -5564,7 +5622,7 @@ class LlmChannelGetOrLoadToClientPacketUnloadingOtherJITModelDict(TypedDict):
     """
 
     type: Literal["unloadingOtherJITModel"]
-    info: ModelInstanceInfo
+    info: ModelInstanceInfoDict
 
 
 class LlmChannelGetOrLoadToClientPacketLoadSuccess(
@@ -5647,11 +5705,15 @@ class PluginsChannelSetGeneratorToClientPacketGenerateDict(TypedDict):
 
 
 ArtifactManifest = PluginManifest | PresetManifest | ModelManifest
+ArtifactManifestDict = ModelManifestDict | PluginManifestDict | PresetManifestDict
 AnyChatMessage = AssistantResponse | UserMessage | SystemPrompt | ToolResultMessage
 AnyChatMessageDict = (
-    AssistantResponseDict | UserMessageDict | SystemPromptDict | ToolResultMessageDict
+    ToolResultMessageDict | SystemPromptDict | AssistantResponseDict | UserMessageDict
 )
 ChatMessagePartData = TextData | FileHandle | ToolCallRequestData | ToolCallResultData
+ChatMessagePartDataDict = (
+    ToolCallResultDataDict | ToolCallRequestDataDict | TextDataDict | FileHandleDict
+)
 
 
 class EmbeddingLoadModelConfig(
@@ -5691,6 +5753,15 @@ ErrorDisplayData = (
     | ErrorDisplayDataGenericEngineDoesNotSupportFeature
     | ErrorDisplayDataGenericPresetNotFound
 )
+ErrorDisplayDataDict = (
+    ErrorDisplayDataGenericPresetNotFoundDict
+    | ErrorDisplayDataGenericEngineDoesNotSupportFeatureDict
+    | ErrorDisplayDataGenericDomainMismatchDict
+    | ErrorDisplayDataGenericIdentifierNotFoundDict
+    | ErrorDisplayDataGenericPathNotFoundDict
+    | ErrorDisplayDataGenericSpecificModelUnloadedDict
+    | ErrorDisplayDataGenericNoModelMatchingQueryDict
+)
 
 
 class KvConfigFieldDependency(
@@ -5708,7 +5779,7 @@ class KvConfigFieldDependencyDict(TypedDict):
     """
 
     key: str
-    condition: KvConfigFieldDependencyCondition
+    condition: KvConfigFieldDependencyConditionDict
 
 
 class LlmGenInfo(LMStudioStruct["LlmGenInfoDict"], kw_only=True):
@@ -5735,6 +5806,10 @@ class LlmGenInfoDict(TypedDict):
 
 LlmJinjaInputMessagesContentConfig = (
     LlmJinjaInputMessagesContentConfigString | LlmJinjaInputMessagesContentConfigArray
+)
+LlmJinjaInputMessagesContentConfigDict = (
+    LlmJinjaInputMessagesContentConfigStringDict
+    | LlmJinjaInputMessagesContentConfigArrayDict
 )
 LlmToolParameters = LlmToolParametersObject
 
@@ -5789,7 +5864,7 @@ class ProcessingUpdateStatusCreateDict(TypedDict):
     type: Literal["status.create"]
     id: str
     state: StatusStepStateDict
-    location: NotRequired[BlockLocation | None]
+    location: NotRequired[BlockLocationDict | None]
     indentation: NotRequired[int | None]
 
 
@@ -5839,7 +5914,7 @@ class ModelSearchResultEntryDataDict(TypedDict):
     """
 
     name: str
-    identifier: ModelSearchResultIdentifier
+    identifier: ModelSearchResultIdentifierDict
     exact: NotRequired[bool | None]
     staffPick: NotRequired[bool | None]
 
@@ -5867,8 +5942,8 @@ class PseudoDiagnosticsChannelStreamLogsDict(TypedDict):
     as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
     """
 
-    toClientPacket: DiagnosticsChannelStreamLogsToClientPacket
-    toServerPacket: DiagnosticsChannelStreamLogsToServerPacket
+    toClientPacket: DiagnosticsChannelStreamLogsToClientPacketLogDict
+    toServerPacket: DiagnosticsChannelStreamLogsToServerPacketStopDict
 
 
 class PseudoDiagnostics(LMStudioStruct["PseudoDiagnosticsDict"], kw_only=True):
@@ -5906,6 +5981,7 @@ class EmbeddingRpcGetModelInfoParameterDict(TypedDict):
 
 
 EmbeddingRpcGetModelInfoReturns = EmbeddingRpcGetModelInfoReturnValue | None
+EmbeddingRpcGetModelInfoReturnsDict = EmbeddingModelInstanceInfoDict | None
 
 
 class PseudoEmbeddingRpcGetModelInfo(
@@ -5923,7 +5999,7 @@ class PseudoEmbeddingRpcGetModelInfoDict(TypedDict):
     """
 
     parameter: EmbeddingRpcGetModelInfoParameterDict
-    returns: NotRequired[EmbeddingRpcGetModelInfoReturns | None]
+    returns: NotRequired[EmbeddingRpcGetModelInfoReturnsDict | None]
 
 
 class EmbeddingRpcGetLoadConfigParameter(
@@ -6073,6 +6149,11 @@ EmbeddingChannelLoadModelToClientPacket = (
     | EmbeddingChannelLoadModelToClientPacketProgress
     | EmbeddingChannelLoadModelToClientPacketSuccess
 )
+EmbeddingChannelLoadModelToClientPacketDict = (
+    EmbeddingChannelLoadModelToClientPacketSuccessDict
+    | EmbeddingChannelLoadModelToClientPacketResolvedDict
+    | EmbeddingChannelLoadModelToClientPacketProgressDict
+)
 
 
 class PseudoEmbeddingChannelLoadModel(
@@ -6097,8 +6178,8 @@ class PseudoEmbeddingChannelLoadModelDict(TypedDict):
     """
 
     creationParameter: EmbeddingChannelLoadModelCreationParameterDict
-    toClientPacket: EmbeddingChannelLoadModelToClientPacket
-    toServerPacket: EmbeddingChannelLoadModelToServerPacket
+    toClientPacket: EmbeddingChannelLoadModelToClientPacketDict
+    toServerPacket: EmbeddingChannelLoadModelToServerPacketCancelDict
 
 
 EmbeddingChannelGetOrLoadToClientPacket = (
@@ -6107,6 +6188,13 @@ EmbeddingChannelGetOrLoadToClientPacket = (
     | EmbeddingChannelGetOrLoadToClientPacketUnloadingOtherJITModel
     | EmbeddingChannelGetOrLoadToClientPacketLoadProgress
     | EmbeddingChannelGetOrLoadToClientPacketLoadSuccess
+)
+EmbeddingChannelGetOrLoadToClientPacketDict = (
+    EmbeddingChannelGetOrLoadToClientPacketLoadSuccessDict
+    | EmbeddingChannelGetOrLoadToClientPacketLoadProgressDict
+    | EmbeddingChannelGetOrLoadToClientPacketUnloadingOtherJITModelDict
+    | EmbeddingChannelGetOrLoadToClientPacketAlreadyLoadedDict
+    | EmbeddingChannelGetOrLoadToClientPacketStartLoadingDict
 )
 
 
@@ -6132,8 +6220,8 @@ class PseudoEmbeddingChannelGetOrLoadDict(TypedDict):
     """
 
     creationParameter: EmbeddingChannelGetOrLoadCreationParameterDict
-    toClientPacket: EmbeddingChannelGetOrLoadToClientPacket
-    toServerPacket: EmbeddingChannelGetOrLoadToServerPacket
+    toClientPacket: EmbeddingChannelGetOrLoadToClientPacketDict
+    toServerPacket: EmbeddingChannelGetOrLoadToServerPacketCancelDict
 
 
 class PseudoEmbedding(LMStudioStruct["PseudoEmbeddingDict"], kw_only=True):
@@ -6189,6 +6277,7 @@ class LlmRpcGetModelInfoParameterDict(TypedDict):
 
 
 LlmRpcGetModelInfoReturns = LlmRpcGetModelInfoReturnValue | None
+LlmRpcGetModelInfoReturnsDict = LlmInstanceInfoDict | None
 
 
 class PseudoLlmRpcGetModelInfo(
@@ -6206,7 +6295,7 @@ class PseudoLlmRpcGetModelInfoDict(TypedDict):
     """
 
     parameter: LlmRpcGetModelInfoParameterDict
-    returns: NotRequired[LlmRpcGetModelInfoReturns | None]
+    returns: NotRequired[LlmRpcGetModelInfoReturnsDict | None]
 
 
 class LlmRpcGetLoadConfigParameter(
@@ -6352,6 +6441,11 @@ LlmChannelLoadModelToClientPacket = (
     | LlmChannelLoadModelToClientPacketProgress
     | LlmChannelLoadModelToClientPacketSuccess
 )
+LlmChannelLoadModelToClientPacketDict = (
+    LlmChannelLoadModelToClientPacketSuccessDict
+    | LlmChannelLoadModelToClientPacketResolvedDict
+    | LlmChannelLoadModelToClientPacketProgressDict
+)
 
 
 class PseudoLlmChannelLoadModel(
@@ -6372,8 +6466,8 @@ class PseudoLlmChannelLoadModelDict(TypedDict):
     """
 
     creationParameter: LlmChannelLoadModelCreationParameterDict
-    toClientPacket: LlmChannelLoadModelToClientPacket
-    toServerPacket: LlmChannelLoadModelToServerPacket
+    toClientPacket: LlmChannelLoadModelToClientPacketDict
+    toServerPacket: LlmChannelLoadModelToServerPacketCancelDict
 
 
 LlmChannelGetOrLoadToClientPacket = (
@@ -6382,6 +6476,13 @@ LlmChannelGetOrLoadToClientPacket = (
     | LlmChannelGetOrLoadToClientPacketUnloadingOtherJITModel
     | LlmChannelGetOrLoadToClientPacketLoadProgress
     | LlmChannelGetOrLoadToClientPacketLoadSuccess
+)
+LlmChannelGetOrLoadToClientPacketDict = (
+    LlmChannelGetOrLoadToClientPacketLoadSuccessDict
+    | LlmChannelGetOrLoadToClientPacketLoadProgressDict
+    | LlmChannelGetOrLoadToClientPacketUnloadingOtherJITModelDict
+    | LlmChannelGetOrLoadToClientPacketAlreadyLoadedDict
+    | LlmChannelGetOrLoadToClientPacketStartLoadingDict
 )
 
 
@@ -6403,8 +6504,8 @@ class PseudoLlmChannelGetOrLoadDict(TypedDict):
     """
 
     creationParameter: LlmChannelGetOrLoadCreationParameterDict
-    toClientPacket: LlmChannelGetOrLoadToClientPacket
-    toServerPacket: LlmChannelGetOrLoadToServerPacket
+    toClientPacket: LlmChannelGetOrLoadToClientPacketDict
+    toServerPacket: LlmChannelGetOrLoadToServerPacketCancelDict
 
 
 LlmChannelPredictToClientPacket = (
@@ -6415,9 +6516,21 @@ LlmChannelPredictToClientPacket = (
     | LlmChannelPredictToClientPacketToolCallGenerationFailed
     | LlmChannelPredictToClientPacketSuccess
 )
+LlmChannelPredictToClientPacketDict = (
+    LlmChannelPredictToClientPacketSuccessDict
+    | LlmChannelPredictToClientPacketToolCallGenerationFailedDict
+    | LlmChannelPredictToClientPacketToolCallGenerationEndDict
+    | LlmChannelPredictToClientPacketToolCallGenerationStartDict
+    | LlmChannelPredictToClientPacketFragmentDict
+    | LlmChannelPredictToClientPacketPromptProcessingProgressDict
+)
 PluginsChannelSetGeneratorToClientPacket = (
     PluginsChannelSetGeneratorToClientPacketGenerate
     | PluginsChannelSetGeneratorToClientPacketAbort
+)
+PluginsChannelSetGeneratorToClientPacketDict = (
+    PluginsChannelSetGeneratorToClientPacketGenerateDict
+    | PluginsChannelSetGeneratorToClientPacketAbortDict
 )
 
 
@@ -6439,8 +6552,8 @@ class PseudoPluginsChannelSetGeneratorDict(TypedDict):
     as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
     """
 
-    toClientPacket: PluginsChannelSetGeneratorToClientPacket
-    toServerPacket: PluginsChannelSetGeneratorToServerPacket
+    toClientPacket: PluginsChannelSetGeneratorToClientPacketDict
+    toServerPacket: PluginsChannelSetGeneratorToServerPacketDict
 
 
 class RepositoryRpcSearchModelsReturns(
@@ -6633,7 +6746,7 @@ class LlmJinjaInputMessagesConfigDict(TypedDict):
     as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
     """
 
-    contentConfig: LlmJinjaInputMessagesContentConfig
+    contentConfig: LlmJinjaInputMessagesContentConfigDict
 
 
 LlmTool = LlmToolFunction
@@ -6650,12 +6763,32 @@ GeneratorUpdate = (
     | ProcessingUpdateContentBlockSetStyle
     | ProcessingUpdateSetSenderName
 )
+GeneratorUpdateDict = (
+    ProcessingUpdateSetSenderNameDict
+    | ProcessingUpdateContentBlockSetStyleDict
+    | ProcessingUpdateContentBlockAttachGenInfoDict
+    | ProcessingUpdateContentBlockReplaceTextDict
+    | ProcessingUpdateContentBlockAppendTextDict
+    | ProcessingUpdateContentBlockCreateDict
+    | ProcessingUpdateDebugInfoBlockCreateDict
+    | ProcessingUpdateCitationBlockCreateDict
+    | ProcessingUpdateStatusRemoveDict
+    | ProcessingUpdateStatusCreateDict
+    | ProcessingUpdateStatusUpdateDict
+)
 PreprocessorUpdate = (
     ProcessingUpdateStatusCreate
     | ProcessingUpdateStatusUpdate
     | ProcessingUpdateStatusRemove
     | ProcessingUpdateCitationBlockCreate
     | ProcessingUpdateDebugInfoBlockCreate
+)
+PreprocessorUpdateDict = (
+    ProcessingUpdateDebugInfoBlockCreateDict
+    | ProcessingUpdateCitationBlockCreateDict
+    | ProcessingUpdateStatusRemoveDict
+    | ProcessingUpdateStatusCreateDict
+    | ProcessingUpdateStatusUpdateDict
 )
 ProcessingUpdate = (
     ProcessingUpdateStatusCreate
@@ -6671,6 +6804,21 @@ ProcessingUpdate = (
     | ProcessingUpdateContentBlockAttachGenInfo
     | ProcessingUpdateContentBlockSetStyle
     | ProcessingUpdateSetSenderName
+)
+ProcessingUpdateDict = (
+    ProcessingUpdateSetSenderNameDict
+    | ProcessingUpdateContentBlockSetStyleDict
+    | ProcessingUpdateContentBlockAttachGenInfoDict
+    | ProcessingUpdateContentBlockSetSuffixDict
+    | ProcessingUpdateContentBlockSetPrefixDict
+    | ProcessingUpdateContentBlockReplaceTextDict
+    | ProcessingUpdateContentBlockAppendTextDict
+    | ProcessingUpdateContentBlockCreateDict
+    | ProcessingUpdateDebugInfoBlockCreateDict
+    | ProcessingUpdateCitationBlockCreateDict
+    | ProcessingUpdateStatusRemoveDict
+    | ProcessingUpdateStatusCreateDict
+    | ProcessingUpdateStatusUpdateDict
 )
 
 
@@ -6758,8 +6906,8 @@ class PseudoLlmChannelPredictDict(TypedDict):
     """
 
     creationParameter: PredictionChannelRequestDict
-    toClientPacket: LlmChannelPredictToClientPacket
-    toServerPacket: LlmChannelPredictToServerPacket
+    toClientPacket: LlmChannelPredictToClientPacketDict
+    toServerPacket: LlmChannelPredictToServerPacketCancelDict
 
 
 class PseudoLlm(LMStudioStruct["PseudoLlmDict"], kw_only=True):
@@ -6817,7 +6965,7 @@ class PluginsRpcProcessingHandleUpdateParameterDict(TypedDict):
 
     pci: str
     token: str
-    update: ProcessingUpdate
+    update: ProcessingUpdateDict
 
 
 class PseudoPluginsRpcProcessingHandleUpdate(
@@ -6874,10 +7022,19 @@ PluginsChannelSetPreprocessorToClientPacket = (
     PluginsChannelSetPreprocessorToClientPacketPreprocess
     | PluginsChannelSetPreprocessorToClientPacketAbort
 )
+PluginsChannelSetPreprocessorToClientPacketDict = (
+    PluginsChannelSetPreprocessorToClientPacketPreprocessDict
+    | PluginsChannelSetPreprocessorToClientPacketAbortDict
+)
 PluginsChannelSetPreprocessorToServerPacket = (
     PluginsChannelSetPreprocessorToServerPacketComplete
     | PluginsChannelSetPreprocessorToServerPacketAborted
     | PluginsChannelSetPreprocessorToServerPacketError
+)
+PluginsChannelSetPreprocessorToServerPacketDict = (
+    PluginsChannelSetPreprocessorToServerPacketErrorDict
+    | PluginsChannelSetPreprocessorToServerPacketCompleteDict
+    | PluginsChannelSetPreprocessorToServerPacketAbortedDict
 )
 
 
@@ -6899,8 +7056,8 @@ class PseudoPluginsChannelSetPreprocessorDict(TypedDict):
     as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
     """
 
-    toClientPacket: PluginsChannelSetPreprocessorToClientPacket
-    toServerPacket: PluginsChannelSetPreprocessorToServerPacket
+    toClientPacket: PluginsChannelSetPreprocessorToClientPacketDict
+    toServerPacket: PluginsChannelSetPreprocessorToServerPacketDict
 
 
 class PseudoPlugins(LMStudioStruct["PseudoPluginsDict"], kw_only=True):
@@ -7193,7 +7350,7 @@ class LlmPredictionConfigDict(TypedDict):
     as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
     """
 
-    maxTokens: NotRequired[MaxTokensModel | None]
+    maxTokens: NotRequired[MaxTokensModelDict | None]
     temperature: NotRequired[float | None]
     stopStrings: NotRequired[StopStrings | None]
     toolCallStopStrings: NotRequired[ToolCallStopStrings | None]
