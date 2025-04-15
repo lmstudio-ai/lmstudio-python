@@ -109,7 +109,7 @@ from .json_api import (
     _model_spec_to_api_dict,
     _redact_json,
 )
-from ._ws_impl import AsyncWebsocketThread
+from ._ws_impl import AsyncWebsocketThread, SyncToAsyncWebsocketBridge
 from ._kv_config import TLoadConfig, TLoadConfigDict, parse_server_config
 from ._sdk_models import (
     EmbeddingRpcCountTokensParameter,
@@ -233,17 +233,21 @@ class SyncRemoteCall:
         return self._rpc.handle_rx_message(message)
 
 
-class SyncLMStudioWebsocket(LMStudioWebsocket[AsyncWebsocketThread, queue.Queue[Any]]):
+class SyncLMStudioWebsocket(
+    LMStudioWebsocket[SyncToAsyncWebsocketBridge, queue.Queue[Any]]
+):
     """Synchronous websocket client that handles demultiplexing of reply messages."""
 
     def __init__(
         self,
+        ws_thread: AsyncWebsocketThread,
         ws_url: str,
         auth_details: DictObject,
         log_context: LogEventContext | None = None,
     ) -> None:
         """Initialize synchronous websocket client."""
         super().__init__(ws_url, auth_details, log_context)
+        self._ws_thread = ws_thread
 
     @property
     def _httpx_ws(self) -> AsyncWebSocketSession | None:
@@ -266,7 +270,8 @@ class SyncLMStudioWebsocket(LMStudioWebsocket[AsyncWebsocketThread, queue.Queue[
     def connect(self) -> Self:
         """Connect to and authenticate with the LM Studio API."""
         self._fail_if_connected("Attempted to connect already connected websocket")
-        ws = AsyncWebsocketThread(
+        ws = SyncToAsyncWebsocketBridge(
+            self._ws_thread,
             self._ws_url,
             self._auth_details,
             self._enqueue_message,
@@ -409,7 +414,9 @@ class SyncSession(ClientSession["Client", SyncLMStudioWebsocket]):
         session_url = f"ws://{api_host}/{namespace}"
         resources = self._resources
         self._lmsws = lmsws = resources.enter_context(
-            SyncLMStudioWebsocket(session_url, self._client._auth_details)
+            SyncLMStudioWebsocket(
+                self._client._ws_thread, session_url, self._client._auth_details
+            )
         )
         return lmsws
 
@@ -1482,8 +1489,11 @@ class Client(ClientBase):
         """Initialize API client."""
         super().__init__(api_host)
         self._resources = rm = ExitStack()
+        self._ws_thread = ws_thread = AsyncWebsocketThread(dict(client=repr(self)))
+        ws_thread.start()
+        rm.callback(ws_thread.terminate)
         self._sessions: dict[str, SyncSession] = {}
-        # Suport GC-based resource management in the sync API by
+        # Support GC-based resource management in the sync API by
         # finalizing at the client layer, and letting its resource
         # manager handle clearing up everything else
         rm.callback(self._sessions.clear)

@@ -1,6 +1,7 @@
 """Test common client session behaviour."""
 
 import logging
+from typing import Generator
 
 import pytest
 from pytest import LogCaptureFixture as LogCap
@@ -11,15 +12,16 @@ from lmstudio import (
     LMStudioWebsocketError,
 )
 from lmstudio.async_api import (
+    AsyncLMStudioWebsocket,
     AsyncSession,
     AsyncSessionSystem,
 )
 from lmstudio.sync_api import (
+    SyncLMStudioWebsocket,
     SyncSession,
     SyncSessionSystem,
 )
-from lmstudio.async_api import AsyncLMStudioWebsocket
-from lmstudio.sync_api import SyncLMStudioWebsocket
+from lmstudio._ws_impl import AsyncWebsocketThread
 
 from .support import LOCAL_API_HOST
 
@@ -175,11 +177,23 @@ async def test_websocket_cm_async(caplog: LogCap) -> None:
         assert httpx_ws.connection.state.value in WS_CLOSING_STATES
 
 
+@pytest.fixture
+def ws_thread() -> Generator[AsyncWebsocketThread, None, None]:
+    ws_thread = AsyncWebsocketThread()
+    ws_thread.start()
+    try:
+        yield ws_thread
+    finally:
+        ws_thread.terminate()
+
+
 @pytest.mark.lmstudio
-def test_websocket_cm_sync(caplog: LogCap) -> None:
+def test_websocket_cm_sync(ws_thread: AsyncWebsocketThread, caplog: LogCap) -> None:
     caplog.set_level(logging.DEBUG)
     auth_details = Client._create_auth_message()
-    lmsws = SyncLMStudioWebsocket(f"http://{LOCAL_API_HOST}/system", auth_details)
+    lmsws = SyncLMStudioWebsocket(
+        ws_thread, f"http://{LOCAL_API_HOST}/system", auth_details
+    )
     # SDK client websockets start out disconnected
     assert not lmsws.connected
     # Entering the CM opens the websocket if it isn't already open
