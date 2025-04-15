@@ -1,33 +1,25 @@
 """Sync I/O protocol implementation for the LM Studio remote access API."""
 
-import asyncio
 import itertools
 import time
-import threading
 import queue
 import weakref
 
 from abc import abstractmethod
 from concurrent.futures import Future as SyncFuture, ThreadPoolExecutor, as_completed
 from contextlib import (
-    asynccontextmanager,
-    AsyncExitStack,
     contextmanager,
     ExitStack,
 )
 from types import TracebackType
 from typing import (
     Any,
-    AsyncGenerator,
-    Awaitable,
     ContextManager,
-    Coroutine,
     Generator,
     Iterable,
     Iterator,
     Callable,
     Generic,
-    NoReturn,
     Sequence,
     Type,
     TypeAlias,
@@ -41,9 +33,7 @@ from typing_extensions import (
 )
 
 # Synchronous API still uses an async websocket (just in a background thread)
-from anyio import create_task_group
-from exceptiongroup import BaseExceptionGroup, catch
-from httpx_ws import aconnect_ws, AsyncWebSocketSession, HTTPXWSException
+from httpx_ws import AsyncWebSocketSession
 
 from .sdk_api import (
     LMStudioRuntimeError,
@@ -91,7 +81,6 @@ from .json_api import (
     LMStudioClientError,
     LMStudioPredictionError,
     LMStudioWebsocket,
-    LMStudioWebsocketError,
     LoadModelEndpoint,
     ModelDownloadOptionBase,
     ModelHandleBase,
@@ -120,6 +109,7 @@ from .json_api import (
     _model_spec_to_api_dict,
     _redact_json,
 )
+from ._ws_impl import AsyncWebsocketThread
 from ._kv_config import TLoadConfig, TLoadConfigDict, parse_server_config
 from ._sdk_models import (
     EmbeddingRpcCountTokensParameter,
@@ -243,211 +233,7 @@ class SyncRemoteCall:
         return self._rpc.handle_rx_message(message)
 
 
-class _AsyncWebsocketThread(threading.Thread):
-    def __init__(
-        self,
-        ws_url: str,
-        auth_details: DictObject,
-        enqueue_message: Callable[[DictObject], bool],
-        log_context: LogEventContext,
-    ) -> None:
-        # Annoyingly, we have to mark the background thread as a daemon thread to
-        # prevent hanging at shutdown. Even checking `sys.is_finalizing()` is inadequate
-        # https://discuss.python.org/t/should-sys-is-finalizing-report-interpreter-finalization-instead-of-runtime-finalization/76695
-        super().__init__(daemon=True)
-        self._auth_details = auth_details
-        # Event usage:
-        #    threading.Event: set by background thread, checked by main thread
-        #    asyncio.Event: set by main thread, checked by background thread
-        self._connection_attempted = threading.Event()
-        self._connection_failure: Exception | None = None
-        self._auth_failure: Any | None = None
-        self._terminate = asyncio.Event()
-        self._ws_url = ws_url
-        self._ws: AsyncWebSocketSession | None = None
-        self._ws_loop: asyncio.AbstractEventLoop | None = None
-        self._rx_task: asyncio.Task[None] | None = None
-        self._queue_message = enqueue_message
-        self._logger = logger = get_logger(type(self).__name__)
-        logger.update_context(log_context, thread_id=self.name)
-
-    def connect(self) -> bool:
-        self.start()
-        self._connection_attempted.wait()  # Block until connection has been attempted
-        return self._ws is not None and self._ws_loop is not None
-
-    def disconnect(self) -> None:
-        if self._ws is not None:
-            self._call_in_background(self._terminate_main_task)
-        self.join()  # Block until thread has terminated
-
-    def run(self) -> None:
-        self._logger.info("Websocket thread started")
-        try:
-            asyncio.run(self._main_task())
-        except BaseException:
-            err_msg = "Terminating websocket thread due to exception"
-            self._logger.debug(err_msg, exc_info=True)
-        finally:
-            # Ensure the main thread is unblocked even if the
-            # background async task errors out completely
-            self._connection_attempted.set()
-        self._logger.info("Websocket thread terminated")
-
-    # TODO: Improve code sharing between this background thread async websocket
-    #       and the async-native AsyncLMStudioWebsocket implementation
-    async def _main_task(self) -> None:
-        resources = AsyncExitStack()
-        try:
-            ws: AsyncWebSocketSession = await resources.enter_async_context(
-                aconnect_ws(self._ws_url)
-            )
-        except Exception as exc:
-            self._connection_failure = exc
-            raise
-
-        def _clear_task_state() -> None:
-            # Break the reference cycle with the main thread
-            del self._queue_message
-            # Websocket is about to be disconnected
-            self._ws = None
-            # Event loop is about to shut down
-            self._ws_loop = None
-
-        resources.callback(_clear_task_state)
-        self._ws_loop = asyncio.get_running_loop()
-        async with resources:
-            self._logger.debug("Websocket connected")
-            self._ws = ws
-            if not await self._authenticate():
-                return
-            async with self._manage_demultiplexing():
-                self._connection_attempted.set()
-                self._logger.info(f"Websocket session established ({self._ws_url})")
-                # Keep the event loop alive until termination is requested
-                await self._terminate.wait()
-
-    async def _send_json(self, message: DictObject) -> None:
-        # This is only called if the websocket has been created
-        ws = self._ws
-        assert ws is not None
-        try:
-            await ws.send_json(message)
-        except Exception as exc:
-            err = LMStudioWebsocket._get_tx_error(message, exc)
-            # Log the underlying exception info, but simplify the raised traceback
-            self._logger.debug(str(err), exc_info=True)
-            raise err from None
-
-    async def _receive_json(self) -> Any:
-        # This is only called if the websocket has been created
-        ws = self._ws
-        assert ws is not None
-        try:
-            return await ws.receive_json()
-        except Exception as exc:
-            err = LMStudioWebsocket._get_rx_error(exc)
-            # Log the underlying exception info, but simplify the raised traceback
-            self._logger.debug(str(err), exc_info=True)
-            raise err from None
-
-    async def _authenticate(self) -> bool:
-        # This is only called if the websocket has been created
-        ws = self._ws
-        assert ws is not None
-        auth_message = self._auth_details
-        await self._send_json(auth_message)
-        auth_result = await self._receive_json()
-        self._logger.debug("Websocket authenticated", json=auth_result)
-        if not auth_result["success"]:
-            self._auth_failure = auth_result["error"]
-            return False
-        return True
-
-    @asynccontextmanager
-    async def _manage_demultiplexing(
-        self,
-    ) -> AsyncGenerator[asyncio.Task[None], None]:
-        self._rx_task = rx_task = asyncio.create_task(self._demultiplexing_task())
-        try:
-            yield rx_task
-        finally:
-            if rx_task.cancel():
-                try:
-                    await rx_task
-                except asyncio.CancelledError:
-                    pass
-
-    async def _process_next_message(self) -> bool:
-        """Process the next message received on the websocket.
-
-        Returns True if a message queue was updated.
-        """
-        # This is only called if the websocket has been created
-        ws = self._ws
-        assert ws is not None
-        message = await ws.receive_json()
-        return await asyncio.to_thread(self._queue_message, message)
-
-    def _raise_on_termination(
-        self,
-    ) -> tuple[Callable[[], Awaitable[NoReturn]], Type[Exception]]:
-        class TerminateTask(Exception):
-            pass
-
-        async def raise_on_termination() -> NoReturn:
-            await self._terminate.wait()
-            raise TerminateTask
-
-        return raise_on_termination, TerminateTask
-
-    async def _demultiplexing_task(self) -> None:
-        """Process received messages until connection is terminated."""
-        raise_on_termination, terminated_exc = self._raise_on_termination()
-
-        # Use exceptiongroup.catch to handle the lack of native task
-        # and exception groups prior to Python 3.11
-        def log_termination(_exceptiongroup: BaseExceptionGroup[Any]) -> None:
-            self._logger.info("Websocket closed, terminating demultiplexing task.")
-
-        with catch({terminated_exc: log_termination}):
-            async with create_task_group() as tg:
-                tg.start_soon(raise_on_termination)
-                tg.start_soon(self._receive_messages)
-
-    async def _receive_messages(self) -> None:
-        """Process received messages until task is cancelled."""
-        while True:
-            try:
-                await self._process_next_message()
-            except (LMStudioWebsocketError, HTTPXWSException):
-                if self._ws is not None:
-                    # Websocket failed unexpectedly (rather than due to client shutdown)
-                    self._logger.exception("Websocket failed, terminating session.")
-                    self._terminate.set()
-                break
-
-    def _terminate_main_task(self) -> None:
-        self._terminate.set()
-
-    def _run_background_task(self, coro: Coroutine[None, None, Any]) -> SyncFuture[Any]:
-        # Runtime state consistency checks are in SyncLMStudioWebsocket
-        loop = self._ws_loop
-        assert loop is not None
-        return asyncio.run_coroutine_threadsafe(coro, loop)
-
-    def _call_in_background(self, callback: Callable[[], Any]) -> None:
-        # Runtime state consistency checks are in SyncLMStudioWebsocket
-        loop = self._ws_loop
-        assert loop is not None
-        loop.call_soon_threadsafe(callback)
-
-    def send_json(self, message: DictObject) -> None:
-        future = self._run_background_task(self._send_json(message))
-        future.result()  # Block until message has been sent
-
-
-class SyncLMStudioWebsocket(LMStudioWebsocket[_AsyncWebsocketThread, queue.Queue[Any]]):
+class SyncLMStudioWebsocket(LMStudioWebsocket[AsyncWebsocketThread, queue.Queue[Any]]):
     """Synchronous websocket client that handles demultiplexing of reply messages."""
 
     def __init__(
@@ -480,7 +266,7 @@ class SyncLMStudioWebsocket(LMStudioWebsocket[_AsyncWebsocketThread, queue.Queue
     def connect(self) -> Self:
         """Connect to and authenticate with the LM Studio API."""
         self._fail_if_connected("Attempted to connect already connected websocket")
-        ws = _AsyncWebsocketThread(
+        ws = AsyncWebsocketThread(
             self._ws_url,
             self._auth_details,
             self._enqueue_message,
