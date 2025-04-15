@@ -245,13 +245,13 @@ class AsyncWebsocketHandler(_BackgroundTaskHandlerMixin):
         loop = ws_thread.wait_for_loop()  # Block until loop is available
         if loop is None:
             raise RuntimeError("Websocket handling thread has no event loop")
-        ws_thread.schedule_background_task(self._run_ws_handler())
+        ws_thread.schedule_background_task(self._run_until_terminated())
         asyncio.run_coroutine_threadsafe(
             self._connection_attempted.wait(), loop
         ).result()
         return self._ws is not None
 
-    async def _run_ws_handler(self) -> None:
+    async def _task_target(self) -> None:
         self._logger.info("Websocket handling task started")
         self._init_event_loop()
         try:
