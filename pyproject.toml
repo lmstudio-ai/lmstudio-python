@@ -23,7 +23,6 @@ dependencies = [
     "typing-extensions>=4.12.2",
     # Task group handling for versions prior to Python 3.11
     "anyio>=4.8.0",
-    "exceptiongroup>=1.2.2",
 ]
 
 # Keep this in sync with the target Python version in sync-sdk-schema.py
