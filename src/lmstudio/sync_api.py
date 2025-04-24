@@ -144,7 +144,6 @@ __all__ = [
     "list_downloaded_models",
     "list_loaded_models",
     "llm",
-    "prepare_file",
     "prepare_image",
 ]
 
@@ -586,8 +585,9 @@ class _SyncSessionFiles(SyncSession):
         handle["type"] = "file"
         return load_struct(handle, FileHandle)
 
-    @sdk_public_api()
-    def prepare_file(self, src: LocalFileInput, name: str | None = None) -> FileHandle:
+    # Not yet implemented (server API only supports the same file types as prepare_image)
+    # @sdk_public_api()
+    def _prepare_file(self, src: LocalFileInput, name: str | None = None) -> FileHandle:
         """Add a file to the server. Returns a file handle for use in prediction requests."""
         file_data = _LocalFileData(src, name)
         return self._fetch_file_handle(file_data)
@@ -1568,10 +1568,11 @@ class Client(ClientBase):
         return self._get_session(SyncSessionRepository)
 
     # Convenience methods
-    @sdk_public_api()
-    def prepare_file(self, src: LocalFileInput, name: str | None = None) -> FileHandle:
+    # Not yet implemented (server API only supports the same file types as prepare_image)
+    # @sdk_public_api()
+    def _prepare_file(self, src: LocalFileInput, name: str | None = None) -> FileHandle:
         """Add a file to the server. Returns a file handle for use in prediction requests."""
-        return self.files.prepare_file(src, name)
+        return self.files._prepare_file(src, name)
 
     @sdk_public_api()
     def prepare_image(self, src: LocalFileInput, name: str | None = None) -> FileHandle:
@@ -1653,10 +1654,11 @@ def embedding_model(
     return get_default_client().embedding.model(model_key, ttl=ttl, config=config)
 
 
-@sdk_public_api()
-def prepare_file(src: LocalFileInput, name: str | None = None) -> FileHandle:
+# Not yet implemented (server API only supports the same file types as prepare_image)
+# @sdk_public_api()
+def _prepare_file(src: LocalFileInput, name: str | None = None) -> FileHandle:
     """Add a file to the server using the default global client."""
-    return get_default_client().prepare_file(src, name)
+    return get_default_client()._prepare_file(src, name)
 
 
 @sdk_public_api()

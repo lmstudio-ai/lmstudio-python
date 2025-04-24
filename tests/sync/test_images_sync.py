@@ -30,7 +30,7 @@ def test_upload_from_pathlike_sync(caplog: LogCap) -> None:
     caplog.set_level(logging.DEBUG)
     with Client() as client:
         session = client.files
-        file = session.prepare_file(IMAGE_FILEPATH)
+        file = session._prepare_file(IMAGE_FILEPATH)
         assert file
         assert isinstance(file, FileHandle)
         logging.info(f"Uploaded file: {file}")
@@ -48,7 +48,7 @@ def test_upload_from_file_obj_sync(caplog: LogCap) -> None:
     with Client() as client:
         session = client.files
         with open(IMAGE_FILEPATH, "rb") as f:
-            file = session.prepare_file(f)
+            file = session._prepare_file(f)
         assert file
         assert isinstance(file, FileHandle)
         logging.info(f"Uploaded file: {file}")
@@ -66,7 +66,7 @@ def test_upload_from_bytesio_sync(caplog: LogCap) -> None:
     caplog.set_level(logging.DEBUG)
     with Client() as client:
         session = client.files
-        file = session.prepare_file(BytesIO(IMAGE_FILEPATH.read_bytes()))
+        file = session._prepare_file(BytesIO(IMAGE_FILEPATH.read_bytes()))
         assert file
         assert isinstance(file, FileHandle)
         logging.info(f"Uploaded file: {file}")

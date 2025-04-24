@@ -374,8 +374,9 @@ class Chat:
         self,
         content: UserMessageInput | Iterable[UserMessageInput],
         *,
-        files: Sequence[FileHandleInput] = (),
         images: Sequence[FileHandleInput] = (),
+        # Not yet implemented (server file preparation API only supports the image file types)
+        _files: Sequence[FileHandleInput] = (),
     ) -> UserMessage:
         """Add a new user message to the chat history."""
         # Accept both singular and multi-part user messages
@@ -385,8 +386,8 @@ class Chat:
         else:
             content_items = list(content)
         # Convert given local file information to file handles
-        if files:
-            content_items.extend(files)
+        if _files:
+            content_items.extend(_files)
         if images:
             content_items.extend(images)
         # Consecutive messages with the same role are not supported,

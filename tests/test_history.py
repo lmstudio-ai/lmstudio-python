@@ -624,7 +624,7 @@ def test_user_message_attachments() -> None:
     chat.add_user_message(
         "What do you make of this?",
         images=[INPUT_IMAGE_HANDLE],
-        files=[INPUT_FILE_HANDLE],
+        _files=[INPUT_FILE_HANDLE],
     )
     history = chat._get_history()
     assert history["messages"] == EXPECTED_USER_ATTACHMENT_MESSAGES
