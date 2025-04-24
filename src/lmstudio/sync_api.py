@@ -1637,9 +1637,9 @@ def get_default_client(api_host: str | None = None) -> Client:
 def _reset_default_client() -> None:
     # Allow the test suite to reset the client without
     # having to poke directly at the module's internals
-    global _default_client
+    global _default_api_host, _default_client
     previous_client = _default_client
-    _default_client = None
+    _default_api_host = _default_client = None
     if previous_client is not None:
         previous_client.close()
 
