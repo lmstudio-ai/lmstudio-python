@@ -1392,7 +1392,8 @@ class PredictionEndpoint(
         def _call_requested_tool() -> ToolCallResultData:
             call_result = implementation(**kwds)
             return ToolCallResultData(
-                content=json.dumps(call_result, ensure_ascii=False), tool_call_id=tool_call_id
+                content=json.dumps(call_result, ensure_ascii=False),
+                tool_call_id=tool_call_id,
             )
 
         return _call_requested_tool

@@ -139,6 +139,7 @@ __all__ = [
     "LLM",
     "SyncModelHandle",
     "PredictionStream",
+    "configure_default_client",
     "get_default_client",
     "embedding_model",
     "list_downloaded_models",
@@ -1606,20 +1607,41 @@ class Client(ClientBase):
 
 
 # Convenience API
+_default_api_host = None
 _default_client: Client | None = None
+
+
+@sdk_public_api()
+def configure_default_client(api_host: str) -> None:
+    """Set the server API host for the default global client (without creating the client)."""
+    global _default_api_host
+    if _default_client is not None:
+        raise LMStudioClientError(
+            "Default client is already created, cannot set its API host."
+        )
+    _default_api_host = api_host
 
 
 @sdk_public_api()
 def get_default_client(api_host: str | None = None) -> Client:
     """Get the default global client (creating it if necessary)."""
     global _default_client
+    if api_host is not None:
+        # This will raise an exception if the client already exists
+        configure_default_client(api_host)
     if _default_client is None:
-        _default_client = Client(api_host)
-    elif api_host is not None:
-        raise LMStudioClientError(
-            "Default session already connected, cannot set API host."
-        )
+        _default_client = Client(_default_api_host)
     return _default_client
+
+
+def _reset_default_client() -> None:
+    # Allow the test suite to reset the client without
+    # having to poke directly at the module's internals
+    global _default_client
+    previous_client = _default_client
+    _default_client = None
+    if previous_client is not None:
+        previous_client.close()
 
 
 @sdk_public_api()
