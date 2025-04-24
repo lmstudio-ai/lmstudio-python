@@ -24,7 +24,7 @@ async def test_upload_from_pathlike_async(caplog: LogCap) -> None:
     caplog.set_level(logging.DEBUG)
     async with AsyncClient() as client:
         session = client.files
-        file = await session.prepare_file(IMAGE_FILEPATH)
+        file = await session._prepare_file(IMAGE_FILEPATH)
         assert file
         assert isinstance(file, FileHandle)
         logging.info(f"Uploaded file: {file}")
@@ -43,7 +43,7 @@ async def test_upload_from_file_obj_async(caplog: LogCap) -> None:
     async with AsyncClient() as client:
         session = client.files
         with open(IMAGE_FILEPATH, "rb") as f:
-            file = await session.prepare_file(f)
+            file = await session._prepare_file(f)
         assert file
         assert isinstance(file, FileHandle)
         logging.info(f"Uploaded file: {file}")
@@ -62,7 +62,7 @@ async def test_upload_from_bytesio_async(caplog: LogCap) -> None:
     caplog.set_level(logging.DEBUG)
     async with AsyncClient() as client:
         session = client.files
-        file = await session.prepare_file(BytesIO(IMAGE_FILEPATH.read_bytes()))
+        file = await session._prepare_file(BytesIO(IMAGE_FILEPATH.read_bytes()))
         assert file
         assert isinstance(file, FileHandle)
         logging.info(f"Uploaded file: {file}")

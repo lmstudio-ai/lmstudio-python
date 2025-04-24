@@ -609,8 +609,9 @@ class _AsyncSessionFiles(AsyncSession):
         handle["type"] = "file"
         return load_struct(handle, FileHandle)
 
-    @sdk_public_api_async()
-    async def prepare_file(
+    # Not yet implemented (server API only supports the same file types as prepare_image)
+    # @sdk_public_api_async()
+    async def _prepare_file(
         self, src: LocalFileInput, name: str | None = None
     ) -> FileHandle:
         """Add a file to the server. Returns a file handle for use in prediction requests."""
@@ -1435,12 +1436,13 @@ class AsyncClient(ClientBase):
         return self._get_session(AsyncSessionRepository)
 
     # Convenience methods
-    @sdk_public_api_async()
-    async def prepare_file(
+    # Not yet implemented (server API only supports the same file types as prepare_image)
+    # @sdk_public_api_async()
+    async def _prepare_file(
         self, src: LocalFileInput, name: str | None = None
     ) -> FileHandle:
         """Add a file to the server. Returns a file handle for use in prediction requests."""
-        return await self.files.prepare_file(src, name)
+        return await self.files._prepare_file(src, name)
 
     @sdk_public_api_async()
     async def prepare_image(
