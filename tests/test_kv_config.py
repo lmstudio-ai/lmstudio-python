@@ -1,6 +1,7 @@
 """Test translation from flat dict configs to KvConfig layer stacks."""
 
-from typing import Any
+from copy import deepcopy
+from typing import Any, Iterator, cast, get_args
 
 import msgspec
 
@@ -14,6 +15,7 @@ from lmstudio._kv_config import (
     TO_SERVER_LOAD_LLM,
     TO_SERVER_PREDICTION,
     load_config_to_kv_config_stack,
+    parse_server_config,
     prediction_config_to_kv_config_stack,
 )
 from lmstudio._sdk_models import (
@@ -21,10 +23,13 @@ from lmstudio._sdk_models import (
     EmbeddingLoadModelConfigDict,
     GpuSetting,
     GpuSettingDict,
+    GpuSplitConfigDict,
+    KvConfigStackDict,
     LlmLoadModelConfig,
     LlmLoadModelConfigDict,
     LlmPredictionConfig,
     LlmPredictionConfigDict,
+    LlmSplitStrategy,
 )
 
 # Note: configurations below are just for data manipulation round-trip testing,
@@ -262,7 +267,7 @@ def test_kv_stack_field_coverage(
     assert not unknown_keys
 
 
-EXPECTED_KV_STACK_LOAD_EMBEDDING = {
+EXPECTED_KV_STACK_LOAD_EMBEDDING: KvConfigStackDict = {
     "layers": [
         {
             "config": {
@@ -275,9 +280,10 @@ EXPECTED_KV_STACK_LOAD_EMBEDDING = {
                     {
                         "key": "load.gpuSplitConfig",
                         "value": {
-                            "mainGpu": 0,
-                            "splitStrategy": "evenly",
                             "disabledGpus": [1, 2],
+                            "strategy": "evenly",
+                            "priority": [],
+                            "customRatio": [],
                         },
                     },
                     {"key": "embedding.load.llama.keepModelInMemory", "value": True},
@@ -297,7 +303,7 @@ EXPECTED_KV_STACK_LOAD_EMBEDDING = {
     ],
 }
 
-EXPECTED_KV_STACK_LOAD_LLM = {
+EXPECTED_KV_STACK_LOAD_LLM: KvConfigStackDict = {
     "layers": [
         {
             "layerName": "apiOverride",
@@ -308,9 +314,10 @@ EXPECTED_KV_STACK_LOAD_LLM = {
                     {
                         "key": "load.gpuSplitConfig",
                         "value": {
-                            "mainGpu": 0,
-                            "splitStrategy": "evenly",
                             "disabledGpus": [1, 2],
+                            "strategy": "evenly",
+                            "priority": [],
+                            "customRatio": [],
                         },
                     },
                     {"key": "llm.load.llama.evalBatchSize", "value": 42},
@@ -343,7 +350,7 @@ EXPECTED_KV_STACK_LOAD_LLM = {
     ]
 }
 
-EXPECTED_KV_STACK_PREDICTION = {
+EXPECTED_KV_STACK_PREDICTION: KvConfigStackDict = {
     "layers": [
         {
             "config": {
@@ -436,6 +443,64 @@ def test_kv_stack_load_config_embedding(config_dict: DictObject) -> None:
 def test_kv_stack_load_config_llm(config_dict: DictObject) -> None:
     kv_stack = load_config_to_kv_config_stack(config_dict, LlmLoadModelConfig)
     assert kv_stack.to_dict() == EXPECTED_KV_STACK_LOAD_LLM
+
+
+def test_parse_server_config_load_embedding() -> None:
+    server_config = EXPECTED_KV_STACK_LOAD_EMBEDDING["layers"][0]["config"]
+    expected_client_config = deepcopy(LOAD_CONFIG_EMBEDDING)
+    gpu_settings_dict = expected_client_config["gpu"]
+    assert gpu_settings_dict is not None
+    del gpu_settings_dict["mainGpu"]  # This is not reported with "evenly" strategy
+    assert parse_server_config(server_config) == expected_client_config
+
+
+def test_parse_server_config_load_llm() -> None:
+    server_config = EXPECTED_KV_STACK_LOAD_LLM["layers"][0]["config"]
+    expected_client_config = deepcopy(LOAD_CONFIG_LLM)
+    gpu_settings_dict = expected_client_config["gpu"]
+    assert gpu_settings_dict is not None
+    del gpu_settings_dict["mainGpu"]  # This is not reported with "evenly" strategy
+    assert parse_server_config(server_config) == expected_client_config
+
+
+def _other_gpu_split_strategies() -> Iterator[LlmSplitStrategy]:
+    # Ensure all GPU split strategies are checked (these aren't simple structural transforms,
+    # so the default test case doesn't provide adequate test coverage )
+    for split_strategy in get_args(LlmSplitStrategy):
+        if split_strategy == GPU_CONFIG["splitStrategy"]:
+            continue
+        yield split_strategy
+
+
+def _find_config_field(stack_dict: KvConfigStackDict, key: str) -> Any:
+    for field in stack_dict["layers"][0]["config"]["fields"]:
+        if field["key"] == key:
+            return field["value"]
+    raise KeyError(key)
+
+
+@pytest.mark.parametrize("split_strategy", _other_gpu_split_strategies())
+def test_other_gpu_split_strategy_config(split_strategy: LlmSplitStrategy) -> None:
+    expected_stack = deepcopy(EXPECTED_KV_STACK_LOAD_LLM)
+    if split_strategy == "favorMainGpu":
+        expected_split_config: GpuSplitConfigDict = _find_config_field(
+            expected_stack, "load.gpuSplitConfig"
+        )
+        expected_split_config["strategy"] = "priorityOrder"
+        main_gpu = GPU_CONFIG["mainGpu"]
+        assert main_gpu is not None
+        expected_split_config["priority"] = [main_gpu]
+    else:
+        assert split_strategy is None, "Unknown LLM GPU offset split strategy"
+    input_camelCase = deepcopy(LOAD_CONFIG_LLM)
+    input_snake_case = deepcopy(SC_LOAD_CONFIG_LLM)
+    gpu_camelCase: GpuSettingDict = cast(Any, input_camelCase["gpu"])
+    gpu_snake_case: dict[str, Any] = cast(Any, input_snake_case["gpu"])
+    gpu_camelCase["splitStrategy"] = gpu_snake_case["split_strategy"] = split_strategy
+    kv_stack = load_config_to_kv_config_stack(input_camelCase, LlmLoadModelConfig)
+    assert kv_stack.to_dict() == expected_stack
+    kv_stack = load_config_to_kv_config_stack(input_snake_case, LlmLoadModelConfig)
+    assert kv_stack.to_dict() == expected_stack
 
 
 @pytest.mark.parametrize("config_dict", (PREDICTION_CONFIG, SC_PREDICTION_CONFIG))
