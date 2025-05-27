@@ -3,13 +3,32 @@
 # Known KV config settings are defined in
 # https://github.com/lmstudio-ai/lmstudio-js/blob/main/packages/lms-kv-config/src/schema.ts
 from dataclasses import dataclass
-from typing import Any, Container, Iterable, Sequence, Type, TypeAlias, TypeVar, cast
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Container,
+    Iterable,
+    Sequence,
+    Type,
+    TypeAlias,
+    TypeVar,
+    cast,
+    get_args,
+)
+from typing_extensions import (
+    # Native in 3.11+
+    assert_never,
+)
 
 from .sdk_api import LMStudioValueError
 from .schemas import DictObject, DictSchema, ModelSchema, MutableDictObject
 from ._sdk_models import (
     EmbeddingLoadModelConfig,
     EmbeddingLoadModelConfigDict,
+    GpuSettingDict,
+    GpuSplitConfig,
+    GpuSplitConfigDict,
     KvConfig,
     KvConfigFieldDict,
     KvConfigStack,
@@ -18,6 +37,7 @@ from ._sdk_models import (
     LlmLoadModelConfigDict,
     LlmPredictionConfig,
     LlmPredictionConfigDict,
+    LlmSplitStrategy,
     LlmStructuredPredictionSetting,
     LlmStructuredPredictionSettingDict,
 )
@@ -54,7 +74,7 @@ class CheckboxField(ConfigField):
     def update_client_config(
         self, client_config: MutableDictObject, value: DictObject
     ) -> None:
-        if value.get("key", False):
+        if value.get("checked", False):
             client_config[self.client_key] = value["value"]
 
 
@@ -84,26 +104,24 @@ class NestedKeyField(ConfigField):
 @dataclass(frozen=True)
 class MultiPartField(ConfigField):
     nested_keys: tuple[str, ...]
+    client_to_server: Callable[..., Any]
+    server_to_client: Callable[[DictObject, MutableDictObject], None]
 
     def to_kv_field(
         self, server_key: str, client_config: DictObject
     ) -> KvConfigFieldDict | None:
-        containing_value = client_config[self.client_key]
-        value: dict[str, Any] = {}
-        for key in self.nested_keys:
-            value[key] = containing_value[key]
+        client_container: DictObject = client_config[self.client_key]
+        values = (client_container.get(key, None) for key in self.nested_keys)
         return {
             "key": server_key,
-            "value": value,
+            "value": self.client_to_server(*values),
         }
 
     def update_client_config(
-        self, client_config: MutableDictObject, value: DictObject
+        self, client_config: MutableDictObject, server_value: DictObject
     ) -> None:
-        containing_value = client_config.setdefault(self.client_key, {})
-        for key in self.nested_keys:
-            if key in value:
-                containing_value[key] = value[key]
+        client_container: MutableDictObject = client_config.setdefault(self.client_key, {})
+        self.server_to_client(server_value, client_container)
 
 
 # TODO: figure out a way to compare this module against the lmstudio-js mappings
@@ -125,10 +143,68 @@ _COMMON_MODEL_LOAD_KEYS: DictObject = {
     "contextLength": ConfigField("contextLength"),
 }
 
+
+def _gpu_settings_to_gpu_split_config(
+    main_gpu: int | None,
+    llm_split_strategy: LlmSplitStrategy | None,
+    disabledGpus: Sequence[int] | None,
+) -> GpuSplitConfigDict:
+    gpu_split_config: GpuSplitConfigDict = {
+        "disabledGpus": [*disabledGpus] if disabledGpus else [],
+        "strategy": "evenly",
+        "priority": [],
+        "customRatio": [],
+    }
+    match llm_split_strategy:
+        case "evenly" | None:
+            pass
+        case "favorMainGpu":
+            gpu_split_config["strategy"] = "priorityOrder"
+            if main_gpu is not None:
+                gpu_split_config["priority"] = [main_gpu]
+        case _:
+            if TYPE_CHECKING:
+                assert_never(llm_split_strategy)
+            err_msg = f"Unknown LLM GPU offload split strategy: {llm_split_strategy}"
+            hint = f"Known strategies: {get_args(LlmSplitStrategy)}"
+            raise LMStudioValueError(f"{err_msg} ({hint})")
+    return gpu_split_config
+
+
+def _gpu_split_config_to_gpu_settings(
+    server_dict: DictObject, client_dict: MutableDictObject
+) -> None:
+    gpu_settings_dict: GpuSettingDict = cast(GpuSettingDict, client_dict)
+    gpu_split_config = GpuSplitConfig._from_any_api_dict(server_dict)
+    disabled_gpus = gpu_split_config.disabled_gpus
+    if disabled_gpus is not None:
+        gpu_settings_dict["disabledGpus"] = disabled_gpus
+    match gpu_split_config.strategy:
+        case "evenly":
+            gpu_settings_dict["splitStrategy"] = "evenly"
+        case "priorityOrder":
+            # For now, this can only map to "favorMainGpu"
+            # Skip reporting the GPU offload details otherwise
+            priority = gpu_split_config.priority
+            if priority is not None and len(priority) == 1:
+                gpu_settings_dict["splitStrategy"] = "favorMainGpu"
+                gpu_settings_dict["mainGpu"] = priority[0]
+        case "custom":
+            # Currently no way to set up or report custom offload settings
+            pass
+        case _:
+            if TYPE_CHECKING:
+                assert_never(gpu_split_config.strategy)
+            # Simply don't report details for unknown server strategies
+
+
 SUPPORTED_SERVER_KEYS: dict[str, DictObject] = {
     "load": {
         "gpuSplitConfig": MultiPartField(
-            "gpu", ("mainGpu", "splitStrategy", "disabledGpus")
+            "gpu",
+            ("mainGpu", "splitStrategy", "disabledGpus"),
+            _gpu_settings_to_gpu_split_config,
+            _gpu_split_config_to_gpu_settings,
         ),
         "gpuStrictVramCap": ConfigField("gpuStrictVramCap"),
     },
