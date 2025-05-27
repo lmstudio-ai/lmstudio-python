@@ -121,7 +121,8 @@ jobs:
           # Use latest Python, so it understands all syntax.
           python-version: "3.13"
 
-      - uses: hynek/setup-cached-uv@v2
+      # https://github.com/hynek/setup-cached-uv/releases/tag/v2.3.0
+      - uses: hynek/setup-cached-uv@757bedc3f972eb7227a1aa657651f15a8527c817
 
       - uses: actions/download-artifact@v4
         with:

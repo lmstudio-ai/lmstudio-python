@@ -19,7 +19,8 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: pdm-project/setup-pdm@v4
+      # https://github.com/pdm-project/setup-pdm/releases/tag/v4.4
+      - uses: pdm-project/setup-pdm@94a823180e06fcde4ad29308721954a521c96ed0
         with:
           python-version: 3.12
           cache: true

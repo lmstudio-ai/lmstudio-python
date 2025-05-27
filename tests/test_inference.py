@@ -285,6 +285,7 @@ def test_tool_using_agent_error_handling(caplog: LogCap) -> None:
         tool_failure_exc = request_failures[0]
         assert isinstance(tool_failure_exc, LMStudioPredictionError)
         assert isinstance(tool_failure_exc.__cause__, ZeroDivisionError)
-        # If the content checks prove flaky in practice, they can be dropped
-        assert "divide" in predictions[-1].content
-        assert "zero" in predictions[-1].content
+        # If the content checks prove too flaky in practice, they can be dropped
+        completed_response = predictions[-1].content.lower()
+        assert "divid" in completed_response # Accepts both "divide" and "dividing"
+        assert "zero" in completed_response
