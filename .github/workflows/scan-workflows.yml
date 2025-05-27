@@ -27,10 +27,12 @@ jobs:
           persist-credentials: false
 
       - name: Install the latest version of uv
-        uses: astral-sh/setup-uv@v5
+        # https://github.com/astral-sh/setup-uv/releases/tag/v6.1.0
+        uses: astral-sh/setup-uv@f0ec1fc3b38f5e7cd731bb6ce540c5af426746bb
 
       - name: Run zizmor 🌈
-        run: uvx zizmor --format sarif . > results.sarif
+        # Only scan this repo's workflows, not anything in submodules
+        run: uvx zizmor==1.8.0 --format sarif .github > results.sarif
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
