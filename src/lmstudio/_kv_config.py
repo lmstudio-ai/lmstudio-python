@@ -110,8 +110,8 @@ class MultiPartField(ConfigField):
     def to_kv_field(
         self, server_key: str, client_config: DictObject
     ) -> KvConfigFieldDict | None:
-        containing_value = client_config[self.client_key]
-        values = (containing_value[key] for key in self.nested_keys)
+        client_container: DictObject = client_config[self.client_key]
+        values = (client_container.get(key, None) for key in self.nested_keys)
         return {
             "key": server_key,
             "value": self.client_to_server(*values),
@@ -120,7 +120,7 @@ class MultiPartField(ConfigField):
     def update_client_config(
         self, client_config: MutableDictObject, server_value: DictObject
     ) -> None:
-        client_container = client_config.setdefault(self.client_key, {})
+        client_container: MutableDictObject = client_config.setdefault(self.client_key, {})
         self.server_to_client(server_value, client_container)
 
 
