@@ -245,7 +245,7 @@ def test_tool_using_agent_callbacks(caplog: LogCap) -> None:
         assert cloned_chat._messages == chat._messages
 
 
-def divide(numerator: float, denominator: float) -> float | str:
+def divide(numerator: float, denominator: float) -> float:
     """Divide the given numerator by the given denominator. Return the result."""
     return numerator / denominator
 
