@@ -81,6 +81,78 @@
         "propertyName": "type"
       }
     },
+    "artifactType": {
+      "type": "string",
+      "enum": [
+        "plugin",
+        "preset",
+        "model"
+      ]
+    },
+    "artifactArtifactDependency": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "artifact",
+          "default": "artifact",
+          "title": "Type"
+        },
+        "purpose": {
+          "$ref": "#/definitions/artifactDependencyPurpose"
+        },
+        "owner": {
+          "$ref": "#/definitions/kebabCase"
+        },
+        "name": {
+          "$ref": "#/definitions/kebabCaseWithDots"
+        }
+      },
+      "required": [
+        "type",
+        "purpose",
+        "owner",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "artifactDependencyBase": {
+      "type": "object",
+      "properties": {
+        "purpose": {
+          "$ref": "#/definitions/artifactDependencyPurpose"
+        }
+      },
+      "required": [
+        "purpose"
+      ],
+      "additionalProperties": false
+    },
+    "artifactDependencyPurpose": {
+      "type": "string",
+      "enum": [
+        "baseModel",
+        "draftModel",
+        "custom"
+      ]
+    },
+    "artifactDependency": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/artifactModelDependency"
+        },
+        {
+          "$ref": "#/definitions/artifactArtifactDependency"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "model": "#/definitions/artifactModelDependency",
+          "artifact": "#/definitions/artifactArtifactDependency"
+        },
+        "propertyName": "type"
+      }
+    },
     "artifactManifestBase": {
       "type": "object",
       "properties": {
@@ -89,28 +161,65 @@
         },
         "name": {
           "type": "string",
-          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "pattern": "^[a-z0-9]+(?:[-.][a-z0-9]+)*$",
           "minLength": 1,
           "maxLength": 100
         },
-        "description": {
-          "type": "string",
-          "maxLength": 1000
-        },
         "revision": {
           "type": "integer"
+        },
+        "dependencies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/artifactDependency"
+          }
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       },
       "required": [
         "owner",
-        "name",
-        "description"
+        "name"
       ],
       "additionalProperties": false
     },
-    "kebabCase": {
-      "type": "string",
-      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    "artifactModelDependency": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "model",
+          "default": "model",
+          "title": "Type"
+        },
+        "purpose": {
+          "$ref": "#/definitions/artifactDependencyPurpose"
+        },
+        "modelKeys": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/modelDownloadSource"
+          }
+        }
+      },
+      "required": [
+        "type",
+        "purpose",
+        "modelKeys",
+        "sources"
+      ],
+      "additionalProperties": false
     },
     "backendNotification": {
       "type": "object",
@@ -309,7 +418,9 @@
         },
         "arguments": {
           "type": "object",
-          "additionalProperties": {}
+          "additionalProperties": {
+            "$ref": "#/definitions/jsonSerializable"
+          }
         },
         "name": {
           "type": "string"
@@ -633,6 +744,31 @@
       },
       "additionalProperties": false
     },
+    "documentParsingLibraryIdentifier": {
+      "type": "object",
+      "properties": {
+        "library": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "library",
+        "version"
+      ],
+      "additionalProperties": false
+    },
+    "documentParsingOpts": {
+      "type": "object",
+      "properties": {
+        "parserId": {
+          "$ref": "#/definitions/documentParsingLibraryIdentifier"
+        }
+      },
+      "additionalProperties": false
+    },
     "fileNamespace": {
       "type": "string",
       "enum": [
@@ -711,6 +847,15 @@
         "priorityOrder",
         "custom"
       ]
+    },
+    "jsonSerializable": {},
+    "kebabCase": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "kebabCaseWithDots": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:[-.][a-z0-9]+)*$"
     },
     "kvConfigFieldDependency": {
       "type": "object",
@@ -835,6 +980,12 @@
         },
         "omitEosToken": {
           "type": "boolean"
+        },
+        "toolDefinitions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/llmTool"
+          }
         }
       },
       "additionalProperties": false
@@ -914,6 +1065,9 @@
           "$ref": "#/definitions/gpuSetting"
         },
         "gpuStrictVramCap": {
+          "type": "boolean"
+        },
+        "offloadKVCacheToGpu": {
           "type": "boolean"
         },
         "contextLength": {
@@ -1386,6 +1540,9 @@
         },
         "reasoningParsing": {
           "$ref": "#/definitions/llmReasoningParsing"
+        },
+        "raw": {
+          "$ref": "#/definitions/kvConfig"
         }
       },
       "additionalProperties": false
@@ -1446,6 +1603,9 @@
         },
         "reasoningParsing": {
           "$ref": "#/definitions/llmPredictionConfigInput/properties/reasoningParsing"
+        },
+        "raw": {
+          "$ref": "#/definitions/llmPredictionConfigInput/properties/raw"
         }
       },
       "additionalProperties": false
@@ -1468,6 +1628,21 @@
         "startString",
         "endString"
       ],
+      "additionalProperties": false
+    },
+    "llmPredictionFragmentInputOpts": {
+      "type": "object",
+      "properties": {
+        "tokenCount": {
+          "type": "integer"
+        },
+        "containsDrafted": {
+          "type": "boolean"
+        },
+        "reasoningType": {
+          "$ref": "#/definitions/llmPredictionFragmentReasoningType"
+        }
+      },
       "additionalProperties": false
     },
     "llmPredictionFragmentReasoningType": {
@@ -1589,100 +1764,15 @@
         "contextLengthReached"
       ]
     },
-    "llmJinjaInputConfig": {
-      "type": "object",
-      "properties": {
-        "messagesConfig": {
-          "$ref": "#/definitions/llmJinjaInputMessagesConfig"
-        },
-        "useTools": {
-          "type": "boolean"
-        }
-      },
-      "required": [
-        "messagesConfig",
-        "useTools"
-      ],
-      "additionalProperties": false
-    },
-    "llmJinjaInputMessagesConfig": {
-      "type": "object",
-      "properties": {
-        "contentConfig": {
-          "$ref": "#/definitions/llmJinjaInputMessagesContentConfig"
-        }
-      },
-      "required": [
-        "contentConfig"
-      ],
-      "additionalProperties": false
-    },
-    "llmJinjaInputMessagesContentConfig": {
-      "anyOf": [
-        {
-          "$ref": "#/definitions/llmJinjaInputMessagesContentConfigString"
-        },
-        {
-          "$ref": "#/definitions/llmJinjaInputMessagesContentConfigArray"
-        }
-      ],
-      "discriminator": {
-        "mapping": {
-          "string": "#/definitions/llmJinjaInputMessagesContentConfigString",
-          "array": "#/definitions/llmJinjaInputMessagesContentConfigArray"
-        },
-        "propertyName": "type"
-      }
-    },
-    "llmJinjaInputMessagesContentConfigTextFieldName": {
-      "type": "string",
-      "enum": [
-        "content",
-        "text"
-      ]
-    },
-    "llmJinjaInputMessagesContentImagesConfig": {
-      "anyOf": [
-        {
-          "$ref": "#/definitions/llmJinjaInputMessagesContentImagesConfigSimple"
-        },
-        {
-          "$ref": "#/definitions/llmJinjaInputMessagesContentImagesConfigNumbered"
-        },
-        {
-          "$ref": "#/definitions/llmJinjaInputMessagesContentImagesConfigObject"
-        }
-      ],
-      "discriminator": {
-        "mapping": {
-          "simple": "#/definitions/llmJinjaInputMessagesContentImagesConfigSimple",
-          "numbered": "#/definitions/llmJinjaInputMessagesContentImagesConfigNumbered",
-          "object": "#/definitions/llmJinjaInputMessagesContentImagesConfigObject"
-        },
-        "propertyName": "type"
-      }
-    },
     "llmJinjaPromptTemplate": {
       "type": "object",
       "properties": {
         "template": {
           "type": "string"
-        },
-        "bosToken": {
-          "type": "string"
-        },
-        "eosToken": {
-          "type": "string"
-        },
-        "inputConfig": {
-          "$ref": "#/definitions/llmJinjaInputConfig"
         }
       },
       "required": [
-        "template",
-        "bosToken",
-        "eosToken",
-        "inputConfig"
+        "template"
       ],
       "additionalProperties": false
     },
@@ -1757,7 +1847,7 @@
           "$ref": "#/definitions/llmStructuredPredictionType"
         },
         "jsonSchema": {
-          "$ref": "#/definitions/functionToolCallRequest/properties/arguments/additionalProperties"
+          "$ref": "#/definitions/jsonSerializable"
         },
         "gbnfGrammar": {
           "type": "string"
@@ -1825,7 +1915,7 @@
         "propertyName": "type"
       }
     },
-    "generatorUpdate": {
+    "predictionLoopHandlerUpdate": {
       "anyOf": [
         {
           "$ref": "#/definitions/processingUpdateStatusCreate"
@@ -1852,10 +1942,28 @@
           "$ref": "#/definitions/processingUpdateContentBlockReplaceText"
         },
         {
+          "$ref": "#/definitions/processingUpdateContentBlockAppendToolRequest"
+        },
+        {
+          "$ref": "#/definitions/processingUpdateContentBlockReplaceToolRequest"
+        },
+        {
+          "$ref": "#/definitions/processingUpdateContentBlockAppendToolResult"
+        },
+        {
           "$ref": "#/definitions/processingUpdateContentBlockAttachGenInfo"
         },
         {
           "$ref": "#/definitions/processingUpdateContentBlockSetStyle"
+        },
+        {
+          "$ref": "#/definitions/processingUpdateToolStatusCreate"
+        },
+        {
+          "$ref": "#/definitions/processingUpdateToolStatusUpdate"
+        },
+        {
+          "$ref": "#/definitions/processingUpdateToolStatusArgumentFragment"
         },
         {
           "$ref": "#/definitions/processingUpdateSetSenderName"
@@ -1871,8 +1979,14 @@
           "contentBlock.create": "#/definitions/processingUpdateContentBlockCreate",
           "contentBlock.appendText": "#/definitions/processingUpdateContentBlockAppendText",
           "contentBlock.replaceText": "#/definitions/processingUpdateContentBlockReplaceText",
+          "contentBlock.appendToolRequest": "#/definitions/processingUpdateContentBlockAppendToolRequest",
+          "contentBlock.replaceToolRequest": "#/definitions/processingUpdateContentBlockReplaceToolRequest",
+          "contentBlock.appendToolResult": "#/definitions/processingUpdateContentBlockAppendToolResult",
           "contentBlock.attachGenInfo": "#/definitions/processingUpdateContentBlockAttachGenInfo",
           "contentBlock.setStyle": "#/definitions/processingUpdateContentBlockSetStyle",
+          "toolStatus.create": "#/definitions/processingUpdateToolStatusCreate",
+          "toolStatus.update": "#/definitions/processingUpdateToolStatusUpdate",
+          "toolStatus.argumentFragment": "#/definitions/processingUpdateToolStatusArgumentFragment",
           "setSenderName": "#/definitions/processingUpdateSetSenderName"
         },
         "propertyName": "type"
@@ -1906,6 +2020,128 @@
         },
         "propertyName": "type"
       }
+    },
+    "processingRequestConfirmToolCall": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "confirmToolCall",
+          "default": "confirmToolCall",
+          "title": "Type"
+        },
+        "callId": {
+          "type": "integer"
+        },
+        "pluginIdentifier": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "parameters": {
+          "type": "object",
+          "additionalProperties": {}
+        }
+      },
+      "required": [
+        "type",
+        "callId",
+        "name",
+        "parameters"
+      ],
+      "additionalProperties": false
+    },
+    "processingRequestResponseConfirmToolCall": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "confirmToolCall",
+          "default": "confirmToolCall",
+          "title": "Type"
+        },
+        "result": {
+          "$ref": "#/definitions/processingRequestResponseConfirmToolCallResult"
+        }
+      },
+      "required": [
+        "type",
+        "result"
+      ],
+      "additionalProperties": false
+    },
+    "processingRequestResponse": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/processingRequestResponseConfirmToolCall"
+        },
+        {
+          "$ref": "#/definitions/processingRequestResponseTextInput"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "confirmToolCall": "#/definitions/processingRequestResponseConfirmToolCall",
+          "textInput": "#/definitions/processingRequestResponseTextInput"
+        },
+        "propertyName": "type"
+      }
+    },
+    "processingRequestResponseTextInput": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "textInput",
+          "default": "textInput",
+          "title": "Type"
+        },
+        "result": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "result"
+      ],
+      "additionalProperties": false
+    },
+    "processingRequest": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/processingRequestConfirmToolCall"
+        },
+        {
+          "$ref": "#/definitions/processingRequestTextInput"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "confirmToolCall": "#/definitions/processingRequestConfirmToolCall",
+          "textInput": "#/definitions/processingRequestTextInput"
+        },
+        "propertyName": "type"
+      }
+    },
+    "processingRequestTextInput": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "textInput",
+          "default": "textInput",
+          "title": "Type"
+        },
+        "prompt": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "prompt"
+      ],
+      "additionalProperties": false
     },
     "blockLocation": {
       "anyOf": [
@@ -2024,6 +2260,74 @@
       ],
       "additionalProperties": false
     },
+    "processingUpdateContentBlockAppendToolRequest": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "contentBlock.appendToolRequest",
+          "default": "contentBlock.appendToolRequest",
+          "title": "Type"
+        },
+        "id": {
+          "type": "string"
+        },
+        "callId": {
+          "type": "integer"
+        },
+        "toolCallRequestId": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "parameters": {
+          "type": "object",
+          "additionalProperties": {}
+        },
+        "pluginIdentifier": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "callId",
+        "name",
+        "parameters"
+      ],
+      "additionalProperties": false
+    },
+    "processingUpdateContentBlockAppendToolResult": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "contentBlock.appendToolResult",
+          "default": "contentBlock.appendToolResult",
+          "title": "Type"
+        },
+        "id": {
+          "type": "string"
+        },
+        "callId": {
+          "type": "integer"
+        },
+        "toolCallRequestId": {
+          "type": "string"
+        },
+        "content": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "callId",
+        "content"
+      ],
+      "additionalProperties": false
+    },
     "processingUpdateContentBlockAttachGenInfo": {
       "type": "object",
       "properties": {
@@ -2062,6 +2366,15 @@
         "includeInContext": {
           "type": "boolean"
         },
+        "roleOverride": {
+          "type": "string",
+          "enum": [
+            "user",
+            "assistant",
+            "system",
+            "tool"
+          ]
+        },
         "style": {
           "$ref": "#/definitions/contentBlockStyle"
         },
@@ -2099,6 +2412,44 @@
         "type",
         "id",
         "text"
+      ],
+      "additionalProperties": false
+    },
+    "processingUpdateContentBlockReplaceToolRequest": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "contentBlock.replaceToolRequest",
+          "default": "contentBlock.replaceToolRequest",
+          "title": "Type"
+        },
+        "id": {
+          "type": "string"
+        },
+        "callId": {
+          "type": "integer"
+        },
+        "toolCallRequestId": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "parameters": {
+          "type": "object",
+          "additionalProperties": {}
+        },
+        "pluginIdentifier": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "callId",
+        "name",
+        "parameters"
       ],
       "additionalProperties": false
     },
@@ -2218,6 +2569,15 @@
           "$ref": "#/definitions/processingUpdateContentBlockAppendText"
         },
         {
+          "$ref": "#/definitions/processingUpdateContentBlockAppendToolRequest"
+        },
+        {
+          "$ref": "#/definitions/processingUpdateContentBlockReplaceToolRequest"
+        },
+        {
+          "$ref": "#/definitions/processingUpdateContentBlockAppendToolResult"
+        },
+        {
           "$ref": "#/definitions/processingUpdateContentBlockReplaceText"
         },
         {
@@ -2233,6 +2593,15 @@
           "$ref": "#/definitions/processingUpdateContentBlockSetStyle"
         },
         {
+          "$ref": "#/definitions/processingUpdateToolStatusCreate"
+        },
+        {
+          "$ref": "#/definitions/processingUpdateToolStatusUpdate"
+        },
+        {
+          "$ref": "#/definitions/processingUpdateToolStatusArgumentFragment"
+        },
+        {
           "$ref": "#/definitions/processingUpdateSetSenderName"
         }
       ],
@@ -2245,11 +2614,17 @@
           "debugInfoBlock.create": "#/definitions/processingUpdateDebugInfoBlockCreate",
           "contentBlock.create": "#/definitions/processingUpdateContentBlockCreate",
           "contentBlock.appendText": "#/definitions/processingUpdateContentBlockAppendText",
+          "contentBlock.appendToolRequest": "#/definitions/processingUpdateContentBlockAppendToolRequest",
+          "contentBlock.replaceToolRequest": "#/definitions/processingUpdateContentBlockReplaceToolRequest",
+          "contentBlock.appendToolResult": "#/definitions/processingUpdateContentBlockAppendToolResult",
           "contentBlock.replaceText": "#/definitions/processingUpdateContentBlockReplaceText",
           "contentBlock.setPrefix": "#/definitions/processingUpdateContentBlockSetPrefix",
           "contentBlock.setSuffix": "#/definitions/processingUpdateContentBlockSetSuffix",
           "contentBlock.attachGenInfo": "#/definitions/processingUpdateContentBlockAttachGenInfo",
           "contentBlock.setStyle": "#/definitions/processingUpdateContentBlockSetStyle",
+          "toolStatus.create": "#/definitions/processingUpdateToolStatusCreate",
+          "toolStatus.update": "#/definitions/processingUpdateToolStatusUpdate",
+          "toolStatus.argumentFragment": "#/definitions/processingUpdateToolStatusArgumentFragment",
           "setSenderName": "#/definitions/processingUpdateSetSenderName"
         },
         "propertyName": "type"
@@ -2345,6 +2720,79 @@
       ],
       "additionalProperties": false
     },
+    "processingUpdateToolStatusArgumentFragment": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "toolStatus.argumentFragment",
+          "default": "toolStatus.argumentFragment",
+          "title": "Type"
+        },
+        "id": {
+          "type": "string"
+        },
+        "content": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "content"
+      ],
+      "additionalProperties": false
+    },
+    "processingUpdateToolStatusCreate": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "toolStatus.create",
+          "default": "toolStatus.create",
+          "title": "Type"
+        },
+        "id": {
+          "type": "string"
+        },
+        "callId": {
+          "type": "integer"
+        },
+        "state": {
+          "$ref": "#/definitions/toolStatusStepState"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "callId",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "processingUpdateToolStatusUpdate": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "toolStatus.update",
+          "default": "toolStatus.update",
+          "title": "Type"
+        },
+        "id": {
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/definitions/toolStatusStepState"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "state"
+      ],
+      "additionalProperties": false
+    },
     "statusStepState": {
       "type": "object",
       "properties": {
@@ -2370,6 +2818,70 @@
         "error",
         "canceled"
       ]
+    },
+    "toolStatusStepState": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "$ref": "#/definitions/toolStatusStepStateStatus"
+        },
+        "customStatus": {
+          "type": "string"
+        },
+        "customWarnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "status",
+        "customStatus",
+        "customWarnings"
+      ],
+      "additionalProperties": false
+    },
+    "toolStatusStepStateStatus": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/toolStatusStepStateStatusGeneratingToolCall"
+        },
+        {
+          "$ref": "#/definitions/toolStatusStepStateStatusToolCallGenerationFailed"
+        },
+        {
+          "$ref": "#/definitions/toolStatusStepStateStatusToolCallQueued"
+        },
+        {
+          "$ref": "#/definitions/toolStatusStepStateStatusConfirmingToolCall"
+        },
+        {
+          "$ref": "#/definitions/toolStatusStepStateStatusToolCallDenied"
+        },
+        {
+          "$ref": "#/definitions/toolStatusStepStateStatusCallingTool"
+        },
+        {
+          "$ref": "#/definitions/toolStatusStepStateStatusToolCallFailed"
+        },
+        {
+          "$ref": "#/definitions/toolStatusStepStateStatusToolCallSucceeded"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "generatingToolCall": "#/definitions/toolStatusStepStateStatusGeneratingToolCall",
+          "toolCallGenerationFailed": "#/definitions/toolStatusStepStateStatusToolCallGenerationFailed",
+          "toolCallQueued": "#/definitions/toolStatusStepStateStatusToolCallQueued",
+          "confirmingToolCall": "#/definitions/toolStatusStepStateStatusConfirmingToolCall",
+          "toolCallDenied": "#/definitions/toolStatusStepStateStatusToolCallDenied",
+          "callingTool": "#/definitions/toolStatusStepStateStatusCallingTool",
+          "toolCallFailed": "#/definitions/toolStatusStepStateStatusToolCallFailed",
+          "toolCallSucceeded": "#/definitions/toolStatusStepStateStatusToolCallSucceeded"
+        },
+        "propertyName": "type"
+      }
     },
     "getModelOpts": {
       "type": "object",
@@ -2403,6 +2915,42 @@
         "transcription",
         "tts"
       ]
+    },
+    "huggingFaceModelDownloadSource": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "huggingface",
+          "default": "huggingface",
+          "title": "Type"
+        },
+        "user": {
+          "$ref": "#/definitions/fileName"
+        },
+        "repo": {
+          "$ref": "#/definitions/fileName"
+        }
+      },
+      "required": [
+        "type",
+        "user",
+        "repo"
+      ],
+      "additionalProperties": false
+    },
+    "modelDownloadSource": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/huggingFaceModelDownloadSource"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "huggingface": "#/definitions/huggingFaceModelDownloadSource"
+        },
+        "propertyName": "type"
+      }
     },
     "modelInfo": {
       "anyOf": [
@@ -2523,29 +3071,26 @@
           "default": "model",
           "title": "Type"
         },
-        "virtual": {
-          "type": "boolean",
-          "const": true
-        },
         "owner": {
           "$ref": "#/definitions/kebabCase"
         },
         "name": {
           "$ref": "#/definitions/artifactManifestBase/properties/name"
         },
-        "description": {
-          "$ref": "#/definitions/artifactManifestBase/properties/description"
-        },
         "revision": {
           "$ref": "#/definitions/artifactManifestBase/properties/revision"
+        },
+        "dependencies": {
+          "$ref": "#/definitions/artifactManifestBase/properties/dependencies"
+        },
+        "tags": {
+          "$ref": "#/definitions/artifactManifestBase/properties/tags"
         }
       },
       "required": [
         "type",
-        "virtual",
         "owner",
-        "name",
-        "description"
+        "name"
       ],
       "additionalProperties": false
     },
@@ -2584,6 +3129,14 @@
         "propertyName": "type"
       }
     },
+    "fileName": {
+      "type": "string",
+      "pattern": "^[\\p{L}\\p{N}!@#$%^&()\\-_+=,.;'[\\]{}~`][\\p{L}\\p{N}!@#$%^&()\\-_+=,.;'[\\]{}~` ]*(?<![. ])$"
+    },
+    "relativePathNoLeadingDotSlash": {
+      "type": "string",
+      "pattern": "^[\\p{L}\\p{N}!@#$%^&()\\-_+=,.;'[\\]{}~`][\\p{L}\\p{N}!@#$%^&()\\-_+=,.;'[\\]{}~` ]*(?<![. ])(?:\\/[\\p{L}\\p{N}!@#$%^&()\\-_+=,.;'[\\]{}~`][\\p{L}\\p{N}!@#$%^&()\\-_+=,.;'[\\]{}~` ]*(?<![. ]))*$"
+    },
     "pluginManifest": {
       "type": "object",
       "properties": {
@@ -2602,26 +3155,30 @@
         "name": {
           "$ref": "#/definitions/artifactManifestBase/properties/name"
         },
-        "description": {
-          "$ref": "#/definitions/artifactManifestBase/properties/description"
-        },
         "revision": {
           "$ref": "#/definitions/artifactManifestBase/properties/revision"
+        },
+        "dependencies": {
+          "$ref": "#/definitions/artifactManifestBase/properties/dependencies"
+        },
+        "tags": {
+          "$ref": "#/definitions/artifactManifestBase/properties/tags"
         }
       },
       "required": [
         "type",
         "runner",
         "owner",
-        "name",
-        "description"
+        "name"
       ],
       "additionalProperties": false
     },
     "pluginRunnerType": {
       "type": "string",
       "enum": [
-        "ecmascript"
+        "ecmascript",
+        "node",
+        "mcpBridge"
       ]
     },
     "presetManifest": {
@@ -2639,18 +3196,20 @@
         "name": {
           "$ref": "#/definitions/artifactManifestBase/properties/name"
         },
-        "description": {
-          "$ref": "#/definitions/artifactManifestBase/properties/description"
-        },
         "revision": {
           "$ref": "#/definitions/artifactManifestBase/properties/revision"
+        },
+        "dependencies": {
+          "$ref": "#/definitions/artifactManifestBase/properties/dependencies"
+        },
+        "tags": {
+          "$ref": "#/definitions/artifactManifestBase/properties/tags"
         }
       },
       "required": [
         "type",
         "owner",
-        "name",
-        "description"
+        "name"
       ],
       "additionalProperties": false
     },
@@ -2658,6 +3217,112 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 1024
+    },
+    "artifactDownloadPlanModelInfo": {
+      "type": "object",
+      "properties": {
+        "displayName": {
+          "type": "string"
+        },
+        "sizeBytes": {
+          "type": "number"
+        },
+        "quantName": {
+          "type": "string"
+        },
+        "compatibilityType": {
+          "$ref": "#/definitions/modelCompatibilityType"
+        }
+      },
+      "required": [
+        "displayName",
+        "sizeBytes",
+        "compatibilityType"
+      ],
+      "additionalProperties": false
+    },
+    "artifactDownloadPlanNode": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/artifactDownloadPlanNodeArtifact"
+        },
+        {
+          "$ref": "#/definitions/artifactDownloadPlanNodeModel"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "artifact": "#/definitions/artifactDownloadPlanNodeArtifact",
+          "model": "#/definitions/artifactDownloadPlanNodeModel"
+        },
+        "propertyName": "type"
+      }
+    },
+    "artifactDownloadPlanNodeState": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "fetching",
+        "satisfied",
+        "completed"
+      ]
+    },
+    "artifactDownloadPlan": {
+      "type": "object",
+      "properties": {
+        "nodes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/artifactDownloadPlanNode"
+          }
+        },
+        "downloadSizeBytes": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "nodes",
+        "downloadSizeBytes"
+      ],
+      "additionalProperties": false
+    },
+    "localArtifactFileEntry": {
+      "type": "object",
+      "properties": {
+        "relativePath": {
+          "type": "string"
+        },
+        "sizeBytes": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "relativePath",
+        "sizeBytes"
+      ],
+      "additionalProperties": false
+    },
+    "localArtifactFileList": {
+      "type": "object",
+      "properties": {
+        "files": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/localArtifactFileEntry"
+          }
+        },
+        "usedIgnoreFile": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "files",
+        "usedIgnoreFile"
+      ],
+      "additionalProperties": false
     },
     "downloadProgressUpdate": {
       "type": "object",
@@ -2956,7 +3621,7 @@
           "type": "string"
         },
         "error": {
-          "$ref": "#/definitions/functionToolCallRequest/properties/arguments/additionalProperties"
+          "$ref": "#/definitions/jsonSerializable"
         }
       },
       "required": [
@@ -2978,10 +3643,10 @@
           "type": "string"
         },
         "typeParams": {
-          "$ref": "#/definitions/functionToolCallRequest/properties/arguments/additionalProperties"
+          "$ref": "#/definitions/jsonSerializable"
         },
         "defaultValue": {
-          "$ref": "#/definitions/functionToolCallRequest/properties/arguments/additionalProperties"
+          "$ref": "#/definitions/jsonSerializable"
         }
       },
       "required": [
@@ -3001,6 +3666,12 @@
           "items": {
             "$ref": "#/definitions/serializedKVConfigSchematicsField"
           }
+        },
+        "extensionPrefixes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       },
       "required": [
@@ -3008,7 +3679,253 @@
       ],
       "additionalProperties": false
     },
-    "virtualModelManifest": {
+    "booleanOrMixed": {
+      "type": [
+        "boolean",
+        "string"
+      ],
+      "enum": [
+        true,
+        false,
+        "mixed"
+      ]
+    },
+    "virtualModelBooleanCustomFieldDefinition": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "const": "boolean",
+          "default": "boolean",
+          "title": "Type"
+        },
+        "defaultValue": {
+          "type": "boolean"
+        },
+        "effects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/virtualModelBooleanCustomFieldDefinitionEffectsItem"
+          }
+        }
+      },
+      "required": [
+        "key",
+        "displayName",
+        "description",
+        "type",
+        "defaultValue",
+        "effects"
+      ],
+      "additionalProperties": false
+    },
+    "virtualModelConditionEquals": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "equals",
+          "default": "equals",
+          "title": "Type"
+        },
+        "key": {
+          "type": "string"
+        },
+        "value": {
+          "$ref": "#/definitions/jsonSerializable"
+        }
+      },
+      "required": [
+        "type",
+        "key",
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    "virtualModelCondition": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/virtualModelConditionEquals"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "equals": "#/definitions/virtualModelConditionEquals"
+        },
+        "propertyName": "type"
+      }
+    },
+    "virtualModelCustomFieldAppendSystemPromptEffect": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "appendSystemPrompt",
+          "default": "appendSystemPrompt",
+          "title": "Type"
+        },
+        "content": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "content"
+      ],
+      "additionalProperties": false
+    },
+    "virtualModelCustomFieldDefinitionBase": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "$ref": "#/definitions/virtualModelBooleanCustomFieldDefinition/properties/key"
+        },
+        "displayName": {
+          "$ref": "#/definitions/virtualModelBooleanCustomFieldDefinition/properties/displayName"
+        },
+        "description": {
+          "$ref": "#/definitions/virtualModelBooleanCustomFieldDefinition/properties/description"
+        }
+      },
+      "required": [
+        "key",
+        "displayName",
+        "description"
+      ],
+      "additionalProperties": false
+    },
+    "virtualModelCustomFieldDefinition": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/virtualModelBooleanCustomFieldDefinition"
+        },
+        {
+          "$ref": "#/definitions/virtualModelStringCustomFieldDefinition"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "boolean": "#/definitions/virtualModelBooleanCustomFieldDefinition",
+          "string": "#/definitions/virtualModelStringCustomFieldDefinition"
+        },
+        "propertyName": "type"
+      }
+    },
+    "virtualModelCustomFieldPrependSystemPromptEffect": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "prependSystemPrompt",
+          "default": "prependSystemPrompt",
+          "title": "Type"
+        },
+        "content": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "content"
+      ],
+      "additionalProperties": false
+    },
+    "virtualModelCustomFieldSetJinjaVariableEffect": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "setJinjaVariable",
+          "default": "setJinjaVariable",
+          "title": "Type"
+        },
+        "variable": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "variable"
+      ],
+      "additionalProperties": false
+    },
+    "virtualModelDefinitionConcreteModelBase": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/modelDownloadSource"
+          }
+        }
+      },
+      "required": [
+        "key",
+        "sources"
+      ],
+      "additionalProperties": false
+    },
+    "virtualModelDefinitionMetadataOverrides": {
+      "type": "object",
+      "properties": {
+        "domain": {
+          "$ref": "#/definitions/modelDomainType"
+        },
+        "architectures": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "compatibilityTypes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/modelCompatibilityType"
+          }
+        },
+        "paramsStrings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "minMemoryUsageBytes": {
+          "type": "number"
+        },
+        "contextLengths": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
+        "trainedForToolUse": {
+          "$ref": "#/definitions/booleanOrMixed"
+        },
+        "vision": {
+          "$ref": "#/definitions/booleanOrMixed"
+        },
+        "reasoning": {
+          "$ref": "#/definitions/booleanOrMixed"
+        },
+        "fim": {
+          "$ref": "#/definitions/booleanOrMixed"
+        }
+      },
+      "additionalProperties": false
+    },
+    "virtualModelDefinition": {
       "type": "object",
       "properties": {
         "model": {
@@ -3016,7 +3933,24 @@
           "pattern": "^[^/]+\\/[^/]+$"
         },
         "base": {
-          "type": "string"
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/virtualModelDefinitionConcreteModelBase"
+              }
+            }
+          ]
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 100
+          }
         },
         "config": {
           "type": "object",
@@ -3029,11 +3963,89 @@
             }
           },
           "additionalProperties": false
+        },
+        "metadataOverrides": {
+          "$ref": "#/definitions/virtualModelDefinitionMetadataOverrides"
+        },
+        "customFields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/virtualModelCustomFieldDefinition"
+          }
+        },
+        "suggestions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/virtualModelSuggestion"
+          }
         }
       },
       "required": [
         "model",
         "base"
+      ],
+      "additionalProperties": false
+    },
+    "virtualModelStringCustomFieldDefinition": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "$ref": "#/definitions/virtualModelBooleanCustomFieldDefinition/properties/key"
+        },
+        "displayName": {
+          "$ref": "#/definitions/virtualModelBooleanCustomFieldDefinition/properties/displayName"
+        },
+        "description": {
+          "$ref": "#/definitions/virtualModelBooleanCustomFieldDefinition/properties/description"
+        },
+        "type": {
+          "type": "string",
+          "const": "string",
+          "default": "string",
+          "title": "Type"
+        },
+        "defaultValue": {
+          "type": "string"
+        },
+        "effects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/virtualModelStringCustomFieldDefinitionEffectsItem"
+          }
+        }
+      },
+      "required": [
+        "key",
+        "displayName",
+        "description",
+        "type",
+        "defaultValue",
+        "effects"
+      ],
+      "additionalProperties": false
+    },
+    "virtualModelSuggestion": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string"
+        },
+        "conditions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/virtualModelCondition"
+          }
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/kvConfigField"
+          }
+        }
+      },
+      "required": [
+        "message",
+        "conditions"
       ],
       "additionalProperties": false
     },
@@ -3655,6 +4667,50 @@
       ],
       "additionalProperties": false
     },
+    "files/rpc/getDocumentParsingLibrary/parameter": {
+      "type": "object",
+      "properties": {
+        "fileIdentifier": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "fileIdentifier"
+      ],
+      "additionalProperties": false
+    },
+    "files/rpc/getDocumentParsingLibrary/returns": {
+      "type": "object",
+      "properties": {
+        "library": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "library",
+        "version"
+      ],
+      "additionalProperties": false
+    },
+    "pseudo/files/rpc/getDocumentParsingLibrary": {
+      "type": "object",
+      "properties": {
+        "parameter": {
+          "$ref": "#/definitions/files/rpc/getDocumentParsingLibrary/parameter"
+        },
+        "returns": {
+          "$ref": "#/definitions/files/rpc/getDocumentParsingLibrary/returns"
+        }
+      },
+      "required": [
+        "parameter",
+        "returns"
+      ],
+      "additionalProperties": false
+    },
     "files/channel/retrieve/creationParameter": {
       "type": "object",
       "properties": {
@@ -3756,6 +4812,76 @@
       ],
       "additionalProperties": false
     },
+    "files/channel/parseDocument/creationParameter": {
+      "type": "object",
+      "properties": {
+        "fileIdentifier": {
+          "type": "string"
+        },
+        "parseOpts": {
+          "$ref": "#/definitions/documentParsingOpts"
+        }
+      },
+      "required": [
+        "fileIdentifier",
+        "parseOpts"
+      ],
+      "additionalProperties": false
+    },
+    "files/channel/parseDocument/toClientPacket": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/files/channel/parseDocument/toClientPacketParserLoaded"
+        },
+        {
+          "$ref": "#/definitions/files/channel/parseDocument/toClientPacketProgress"
+        },
+        {
+          "$ref": "#/definitions/files/channel/parseDocument/toClientPacketResult"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "parserLoaded": "#/definitions/files/channel/parseDocument/toClientPacketParserLoaded",
+          "progress": "#/definitions/files/channel/parseDocument/toClientPacketProgress",
+          "result": "#/definitions/files/channel/parseDocument/toClientPacketResult"
+        },
+        "propertyName": "type"
+      }
+    },
+    "files/channel/parseDocument/toServerPacket": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/files/channel/parseDocument/toServerPacketCancel"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "cancel": "#/definitions/files/channel/parseDocument/toServerPacketCancel"
+        },
+        "propertyName": "type"
+      }
+    },
+    "pseudo/files/channel/parseDocument": {
+      "type": "object",
+      "properties": {
+        "creationParameter": {
+          "$ref": "#/definitions/files/channel/parseDocument/creationParameter"
+        },
+        "toClientPacket": {
+          "$ref": "#/definitions/files/channel/parseDocument/toClientPacket"
+        },
+        "toServerPacket": {
+          "$ref": "#/definitions/files/channel/parseDocument/toServerPacket"
+        }
+      },
+      "required": [
+        "creationParameter",
+        "toClientPacket",
+        "toServerPacket"
+      ],
+      "additionalProperties": false
+    },
     "pseudo/files": {
       "type": "object",
       "properties": {
@@ -3765,14 +4891,22 @@
         "rpcUploadFileBase64": {
           "$ref": "#/definitions/pseudo/files/rpc/uploadFileBase64"
         },
+        "rpcGetDocumentParsingLibrary": {
+          "$ref": "#/definitions/pseudo/files/rpc/getDocumentParsingLibrary"
+        },
         "channelRetrieve": {
           "$ref": "#/definitions/pseudo/files/channel/retrieve"
+        },
+        "channelParseDocument": {
+          "$ref": "#/definitions/pseudo/files/channel/parseDocument"
         }
       },
       "required": [
         "rpcGetLocalFileAbsolutePath",
         "rpcUploadFileBase64",
-        "channelRetrieve"
+        "rpcGetDocumentParsingLibrary",
+        "channelRetrieve",
+        "channelParseDocument"
       ],
       "additionalProperties": false
     },
@@ -4275,6 +5409,12 @@
           "$ref": "#/definitions/llm/channel/predict/toClientPacketToolCallGenerationStart"
         },
         {
+          "$ref": "#/definitions/llm/channel/predict/toClientPacketToolCallGenerationNameReceived"
+        },
+        {
+          "$ref": "#/definitions/llm/channel/predict/toClientPacketToolCallGenerationArgumentFragmentGenerated"
+        },
+        {
           "$ref": "#/definitions/llm/channel/predict/toClientPacketToolCallGenerationEnd"
         },
         {
@@ -4289,6 +5429,8 @@
           "fragment": "#/definitions/llm/channel/predict/toClientPacketFragment",
           "promptProcessingProgress": "#/definitions/llm/channel/predict/toClientPacketPromptProcessingProgress",
           "toolCallGenerationStart": "#/definitions/llm/channel/predict/toClientPacketToolCallGenerationStart",
+          "toolCallGenerationNameReceived": "#/definitions/llm/channel/predict/toClientPacketToolCallGenerationNameReceived",
+          "toolCallGenerationArgumentFragmentGenerated": "#/definitions/llm/channel/predict/toClientPacketToolCallGenerationArgumentFragmentGenerated",
           "toolCallGenerationEnd": "#/definitions/llm/channel/predict/toClientPacketToolCallGenerationEnd",
           "toolCallGenerationFailed": "#/definitions/llm/channel/predict/toClientPacketToolCallGenerationFailed",
           "success": "#/definitions/llm/channel/predict/toClientPacketSuccess"
@@ -4320,6 +5462,114 @@
         },
         "toServerPacket": {
           "$ref": "#/definitions/llm/channel/predict/toServerPacket"
+        }
+      },
+      "required": [
+        "creationParameter",
+        "toClientPacket",
+        "toServerPacket"
+      ],
+      "additionalProperties": false
+    },
+    "llm/channel/generateWithGenerator/creationParameter": {
+      "type": "object",
+      "properties": {
+        "pluginIdentifier": {
+          "type": "string"
+        },
+        "pluginConfigStack": {
+          "$ref": "#/definitions/kvConfigStack"
+        },
+        "tools": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/llmTool"
+          }
+        },
+        "workingDirectoryPath": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "history": {
+          "$ref": "#/definitions/chatHistoryData"
+        }
+      },
+      "required": [
+        "pluginIdentifier",
+        "pluginConfigStack",
+        "tools",
+        "workingDirectoryPath",
+        "history"
+      ],
+      "additionalProperties": false
+    },
+    "llm/channel/generateWithGenerator/toClientPacket": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/llm/channel/generateWithGenerator/toClientPacketFragment"
+        },
+        {
+          "$ref": "#/definitions/llm/channel/generateWithGenerator/toClientPacketPromptProcessingProgress"
+        },
+        {
+          "$ref": "#/definitions/llm/channel/generateWithGenerator/toClientPacketToolCallGenerationStart"
+        },
+        {
+          "$ref": "#/definitions/llm/channel/generateWithGenerator/toClientPacketToolCallGenerationNameReceived"
+        },
+        {
+          "$ref": "#/definitions/llm/channel/generateWithGenerator/toClientPacketToolCallGenerationArgumentFragmentGenerated"
+        },
+        {
+          "$ref": "#/definitions/llm/channel/generateWithGenerator/toClientPacketToolCallGenerationEnd"
+        },
+        {
+          "$ref": "#/definitions/llm/channel/generateWithGenerator/toClientPacketToolCallGenerationFailed"
+        },
+        {
+          "$ref": "#/definitions/llm/channel/generateWithGenerator/toClientPacketSuccess"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "fragment": "#/definitions/llm/channel/generateWithGenerator/toClientPacketFragment",
+          "promptProcessingProgress": "#/definitions/llm/channel/generateWithGenerator/toClientPacketPromptProcessingProgress",
+          "toolCallGenerationStart": "#/definitions/llm/channel/generateWithGenerator/toClientPacketToolCallGenerationStart",
+          "toolCallGenerationNameReceived": "#/definitions/llm/channel/generateWithGenerator/toClientPacketToolCallGenerationNameReceived",
+          "toolCallGenerationArgumentFragmentGenerated": "#/definitions/llm/channel/generateWithGenerator/toClientPacketToolCallGenerationArgumentFragmentGenerated",
+          "toolCallGenerationEnd": "#/definitions/llm/channel/generateWithGenerator/toClientPacketToolCallGenerationEnd",
+          "toolCallGenerationFailed": "#/definitions/llm/channel/generateWithGenerator/toClientPacketToolCallGenerationFailed",
+          "success": "#/definitions/llm/channel/generateWithGenerator/toClientPacketSuccess"
+        },
+        "propertyName": "type"
+      }
+    },
+    "llm/channel/generateWithGenerator/toServerPacket": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/llm/channel/generateWithGenerator/toServerPacketCancel"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "cancel": "#/definitions/llm/channel/generateWithGenerator/toServerPacketCancel"
+        },
+        "propertyName": "type"
+      }
+    },
+    "pseudo/llm/channel/generateWithGenerator": {
+      "type": "object",
+      "properties": {
+        "creationParameter": {
+          "$ref": "#/definitions/llm/channel/generateWithGenerator/creationParameter"
+        },
+        "toClientPacket": {
+          "$ref": "#/definitions/llm/channel/generateWithGenerator/toClientPacket"
+        },
+        "toServerPacket": {
+          "$ref": "#/definitions/llm/channel/generateWithGenerator/toServerPacket"
         }
       },
       "required": [
@@ -4364,6 +5614,9 @@
         },
         "channelPredict": {
           "$ref": "#/definitions/pseudo/llm/channel/predict"
+        },
+        "channelGenerateWithGenerator": {
+          "$ref": "#/definitions/pseudo/llm/channel/generateWithGenerator"
         }
       },
       "required": [
@@ -4377,7 +5630,8 @@
         "rpcPreloadDraftModel",
         "channelLoadModel",
         "channelGetOrLoad",
-        "channelPredict"
+        "channelPredict",
+        "channelGenerateWithGenerator"
       ],
       "additionalProperties": false
     },
@@ -4417,6 +5671,54 @@
       },
       "required": [
         "parameter"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/rpc/processingHandleRequest/parameter": {
+      "type": "object",
+      "properties": {
+        "pci": {
+          "type": "string"
+        },
+        "token": {
+          "type": "string"
+        },
+        "request": {
+          "$ref": "#/definitions/processingRequest"
+        }
+      },
+      "required": [
+        "pci",
+        "token",
+        "request"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/rpc/processingHandleRequest/returns": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/processingRequestResponse"
+        }
+      },
+      "required": [
+        "response"
+      ],
+      "additionalProperties": false
+    },
+    "pseudo/plugins/rpc/processingHandleRequest": {
+      "type": "object",
+      "properties": {
+        "parameter": {
+          "$ref": "#/definitions/plugins/rpc/processingHandleRequest/parameter"
+        },
+        "returns": {
+          "$ref": "#/definitions/plugins/rpc/processingHandleRequest/returns"
+        }
+      },
+      "required": [
+        "parameter",
+        "returns"
       ],
       "additionalProperties": false
     },
@@ -4673,6 +5975,31 @@
       ],
       "additionalProperties": false
     },
+    "plugins/rpc/setGlobalConfigSchematics/parameter": {
+      "type": "object",
+      "properties": {
+        "schematics": {
+          "$ref": "#/definitions/serializedKVConfigSchematics"
+        }
+      },
+      "required": [
+        "schematics"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/rpc/setGlobalConfigSchematics/returns": {},
+    "pseudo/plugins/rpc/setGlobalConfigSchematics": {
+      "type": "object",
+      "properties": {
+        "parameter": {
+          "$ref": "#/definitions/plugins/rpc/setGlobalConfigSchematics/parameter"
+        }
+      },
+      "required": [
+        "parameter"
+      ],
+      "additionalProperties": false
+    },
     "plugins/rpc/pluginInitCompleted/returns": {},
     "pseudo/plugins/rpc/pluginInitCompleted": {
       "type": "object",
@@ -4791,6 +6118,134 @@
       ],
       "additionalProperties": false
     },
+    "plugins/channel/setPredictionLoopHandler/toClientPacket": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/plugins/channel/setPredictionLoopHandler/toClientPacketHandlePredictionLoop"
+        },
+        {
+          "$ref": "#/definitions/plugins/channel/setPredictionLoopHandler/toClientPacketAbort"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "handlePredictionLoop": "#/definitions/plugins/channel/setPredictionLoopHandler/toClientPacketHandlePredictionLoop",
+          "abort": "#/definitions/plugins/channel/setPredictionLoopHandler/toClientPacketAbort"
+        },
+        "propertyName": "type"
+      }
+    },
+    "plugins/channel/setPredictionLoopHandler/toServerPacket": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/plugins/channel/setPredictionLoopHandler/toServerPacketComplete"
+        },
+        {
+          "$ref": "#/definitions/plugins/channel/setPredictionLoopHandler/toServerPacketAborted"
+        },
+        {
+          "$ref": "#/definitions/plugins/channel/setPredictionLoopHandler/toServerPacketError"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "complete": "#/definitions/plugins/channel/setPredictionLoopHandler/toServerPacketComplete",
+          "aborted": "#/definitions/plugins/channel/setPredictionLoopHandler/toServerPacketAborted",
+          "error": "#/definitions/plugins/channel/setPredictionLoopHandler/toServerPacketError"
+        },
+        "propertyName": "type"
+      }
+    },
+    "pseudo/plugins/channel/setPredictionLoopHandler": {
+      "type": "object",
+      "properties": {
+        "toClientPacket": {
+          "$ref": "#/definitions/plugins/channel/setPredictionLoopHandler/toClientPacket"
+        },
+        "toServerPacket": {
+          "$ref": "#/definitions/plugins/channel/setPredictionLoopHandler/toServerPacket"
+        }
+      },
+      "required": [
+        "toClientPacket",
+        "toServerPacket"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/channel/setToolsProvider/toClientPacket": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/plugins/channel/setToolsProvider/toClientPacketInitSession"
+        },
+        {
+          "$ref": "#/definitions/plugins/channel/setToolsProvider/toClientPacketDiscardSession"
+        },
+        {
+          "$ref": "#/definitions/plugins/channel/setToolsProvider/toClientPacketCallTool"
+        },
+        {
+          "$ref": "#/definitions/plugins/channel/setToolsProvider/toClientPacketAbortToolCall"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "initSession": "#/definitions/plugins/channel/setToolsProvider/toClientPacketInitSession",
+          "discardSession": "#/definitions/plugins/channel/setToolsProvider/toClientPacketDiscardSession",
+          "callTool": "#/definitions/plugins/channel/setToolsProvider/toClientPacketCallTool",
+          "abortToolCall": "#/definitions/plugins/channel/setToolsProvider/toClientPacketAbortToolCall"
+        },
+        "propertyName": "type"
+      }
+    },
+    "plugins/channel/setToolsProvider/toServerPacket": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/plugins/channel/setToolsProvider/toServerPacketSessionInitialized"
+        },
+        {
+          "$ref": "#/definitions/plugins/channel/setToolsProvider/toServerPacketSessionInitializationFailed"
+        },
+        {
+          "$ref": "#/definitions/plugins/channel/setToolsProvider/toServerPacketToolCallComplete"
+        },
+        {
+          "$ref": "#/definitions/plugins/channel/setToolsProvider/toServerPacketToolCallError"
+        },
+        {
+          "$ref": "#/definitions/plugins/channel/setToolsProvider/toServerPacketToolCallStatus"
+        },
+        {
+          "$ref": "#/definitions/plugins/channel/setToolsProvider/toServerPacketToolCallWarn"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "sessionInitialized": "#/definitions/plugins/channel/setToolsProvider/toServerPacketSessionInitialized",
+          "sessionInitializationFailed": "#/definitions/plugins/channel/setToolsProvider/toServerPacketSessionInitializationFailed",
+          "toolCallComplete": "#/definitions/plugins/channel/setToolsProvider/toServerPacketToolCallComplete",
+          "toolCallError": "#/definitions/plugins/channel/setToolsProvider/toServerPacketToolCallError",
+          "toolCallStatus": "#/definitions/plugins/channel/setToolsProvider/toServerPacketToolCallStatus",
+          "toolCallWarn": "#/definitions/plugins/channel/setToolsProvider/toServerPacketToolCallWarn"
+        },
+        "propertyName": "type"
+      }
+    },
+    "pseudo/plugins/channel/setToolsProvider": {
+      "type": "object",
+      "properties": {
+        "toClientPacket": {
+          "$ref": "#/definitions/plugins/channel/setToolsProvider/toClientPacket"
+        },
+        "toServerPacket": {
+          "$ref": "#/definitions/plugins/channel/setToolsProvider/toServerPacket"
+        }
+      },
+      "required": [
+        "toClientPacket",
+        "toServerPacket"
+      ],
+      "additionalProperties": false
+    },
     "plugins/channel/setGenerator/toClientPacket": {
       "anyOf": [
         {
@@ -4818,13 +6273,37 @@
         },
         {
           "$ref": "#/definitions/plugins/channel/setGenerator/toServerPacketError"
+        },
+        {
+          "$ref": "#/definitions/plugins/channel/setGenerator/toServerPacketFragmentGenerated"
+        },
+        {
+          "$ref": "#/definitions/plugins/channel/setGenerator/toServerPacketToolCallGenerationStarted"
+        },
+        {
+          "$ref": "#/definitions/plugins/channel/setGenerator/toServerPacketToolCallGenerationNameReceived"
+        },
+        {
+          "$ref": "#/definitions/plugins/channel/setGenerator/toServerPacketToolCallGenerationArgumentFragmentGenerated"
+        },
+        {
+          "$ref": "#/definitions/plugins/channel/setGenerator/toServerPacketToolCallGenerationEnded"
+        },
+        {
+          "$ref": "#/definitions/plugins/channel/setGenerator/toServerPacketToolCallGenerationFailed"
         }
       ],
       "discriminator": {
         "mapping": {
           "complete": "#/definitions/plugins/channel/setGenerator/toServerPacketComplete",
           "aborted": "#/definitions/plugins/channel/setGenerator/toServerPacketAborted",
-          "error": "#/definitions/plugins/channel/setGenerator/toServerPacketError"
+          "error": "#/definitions/plugins/channel/setGenerator/toServerPacketError",
+          "fragmentGenerated": "#/definitions/plugins/channel/setGenerator/toServerPacketFragmentGenerated",
+          "toolCallGenerationStarted": "#/definitions/plugins/channel/setGenerator/toServerPacketToolCallGenerationStarted",
+          "toolCallGenerationNameReceived": "#/definitions/plugins/channel/setGenerator/toServerPacketToolCallGenerationNameReceived",
+          "toolCallGenerationArgumentFragmentGenerated": "#/definitions/plugins/channel/setGenerator/toServerPacketToolCallGenerationArgumentFragmentGenerated",
+          "toolCallGenerationEnded": "#/definitions/plugins/channel/setGenerator/toServerPacketToolCallGenerationEnded",
+          "toolCallGenerationFailed": "#/definitions/plugins/channel/setGenerator/toServerPacketToolCallGenerationFailed"
         },
         "propertyName": "type"
       }
@@ -4854,6 +6333,9 @@
         "rpcProcessingHandleUpdate": {
           "$ref": "#/definitions/pseudo/plugins/rpc/processingHandleUpdate"
         },
+        "rpcProcessingHandleRequest": {
+          "$ref": "#/definitions/pseudo/plugins/rpc/processingHandleRequest"
+        },
         "rpcProcessingPullHistory": {
           "$ref": "#/definitions/pseudo/plugins/rpc/processingPullHistory"
         },
@@ -4875,6 +6357,9 @@
         "rpcSetConfigSchematics": {
           "$ref": "#/definitions/pseudo/plugins/rpc/setConfigSchematics"
         },
+        "rpcSetGlobalConfigSchematics": {
+          "$ref": "#/definitions/pseudo/plugins/rpc/setGlobalConfigSchematics"
+        },
         "rpcPluginInitCompleted": {
           "$ref": "#/definitions/pseudo/plugins/rpc/pluginInitCompleted"
         },
@@ -4884,6 +6369,12 @@
         "channelSetPreprocessor": {
           "$ref": "#/definitions/pseudo/plugins/channel/setPreprocessor"
         },
+        "channelSetPredictionLoopHandler": {
+          "$ref": "#/definitions/pseudo/plugins/channel/setPredictionLoopHandler"
+        },
+        "channelSetToolsProvider": {
+          "$ref": "#/definitions/pseudo/plugins/channel/setToolsProvider"
+        },
         "channelSetGenerator": {
           "$ref": "#/definitions/pseudo/plugins/channel/setGenerator"
         }
@@ -4891,6 +6382,7 @@
       "required": [
         "rpcReindexPlugins",
         "rpcProcessingHandleUpdate",
+        "rpcProcessingHandleRequest",
         "rpcProcessingPullHistory",
         "rpcProcessingGetOrLoadModel",
         "rpcProcessingHasStatus",
@@ -4898,9 +6390,12 @@
         "rpcProcessingSuggestName",
         "rpcProcessingSetSenderName",
         "rpcSetConfigSchematics",
+        "rpcSetGlobalConfigSchematics",
         "rpcPluginInitCompleted",
         "channelRegisterDevelopmentPlugin",
         "channelSetPreprocessor",
+        "channelSetPredictionLoopHandler",
+        "channelSetToolsProvider",
         "channelSetGenerator"
       ],
       "additionalProperties": false
@@ -5016,6 +6511,94 @@
       ],
       "additionalProperties": false
     },
+    "repository/rpc/getLocalArtifactFiles/parameter": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "additionalProperties": false
+    },
+    "repository/rpc/getLocalArtifactFiles/returns": {
+      "type": "object",
+      "properties": {
+        "fileList": {
+          "$ref": "#/definitions/localArtifactFileList"
+        }
+      },
+      "required": [
+        "fileList"
+      ],
+      "additionalProperties": false
+    },
+    "pseudo/repository/rpc/getLocalArtifactFiles": {
+      "type": "object",
+      "properties": {
+        "parameter": {
+          "$ref": "#/definitions/repository/rpc/getLocalArtifactFiles/parameter"
+        },
+        "returns": {
+          "$ref": "#/definitions/repository/rpc/getLocalArtifactFiles/returns"
+        }
+      },
+      "required": [
+        "parameter",
+        "returns"
+      ],
+      "additionalProperties": false
+    },
+    "repository/rpc/loginWithPreAuthenticatedKeys/parameter": {
+      "type": "object",
+      "properties": {
+        "keyId": {
+          "type": "string"
+        },
+        "publicKey": {
+          "type": "string"
+        },
+        "privateKey": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "keyId",
+        "publicKey",
+        "privateKey"
+      ],
+      "additionalProperties": false
+    },
+    "repository/rpc/loginWithPreAuthenticatedKeys/returns": {
+      "type": "object",
+      "properties": {
+        "userName": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "userName"
+      ],
+      "additionalProperties": false
+    },
+    "pseudo/repository/rpc/loginWithPreAuthenticatedKeys": {
+      "type": "object",
+      "properties": {
+        "parameter": {
+          "$ref": "#/definitions/repository/rpc/loginWithPreAuthenticatedKeys/parameter"
+        },
+        "returns": {
+          "$ref": "#/definitions/repository/rpc/loginWithPreAuthenticatedKeys/returns"
+        }
+      },
+      "required": [
+        "parameter",
+        "returns"
+      ],
+      "additionalProperties": false
+    },
     "repository/channel/downloadModel/creationParameter": {
       "type": "object",
       "properties": {
@@ -5089,7 +6672,7 @@
           "$ref": "#/definitions/kebabCase"
         },
         "artifactName": {
-          "$ref": "#/definitions/kebabCase"
+          "$ref": "#/definitions/kebabCaseWithDots"
         },
         "revisionNumber": {
           "anyOf": [
@@ -5172,6 +6755,19 @@
       "properties": {
         "path": {
           "type": "string"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "makePrivate": {
+          "type": "boolean"
+        },
+        "writeRevision": {
+          "type": "boolean"
+        },
+        "overrides": {
+          "$ref": "#/definitions/jsonSerializable"
         }
       },
       "required": [
@@ -5237,6 +6833,88 @@
       ],
       "additionalProperties": false
     },
+    "repository/channel/createArtifactDownloadPlan/creationParameter": {
+      "type": "object",
+      "properties": {
+        "owner": {
+          "$ref": "#/definitions/kebabCase"
+        },
+        "name": {
+          "$ref": "#/definitions/kebabCaseWithDots"
+        }
+      },
+      "required": [
+        "owner",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "repository/channel/createArtifactDownloadPlan/toClientPacket": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/repository/channel/createArtifactDownloadPlan/toClientPacketPlanUpdated"
+        },
+        {
+          "$ref": "#/definitions/repository/channel/createArtifactDownloadPlan/toClientPacketPlanReady"
+        },
+        {
+          "$ref": "#/definitions/repository/channel/createArtifactDownloadPlan/toClientPacketDownloadProgress"
+        },
+        {
+          "$ref": "#/definitions/repository/channel/createArtifactDownloadPlan/toClientPacketStartFinalizing"
+        },
+        {
+          "$ref": "#/definitions/repository/channel/createArtifactDownloadPlan/toClientPacketSuccess"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "planUpdated": "#/definitions/repository/channel/createArtifactDownloadPlan/toClientPacketPlanUpdated",
+          "planReady": "#/definitions/repository/channel/createArtifactDownloadPlan/toClientPacketPlanReady",
+          "downloadProgress": "#/definitions/repository/channel/createArtifactDownloadPlan/toClientPacketDownloadProgress",
+          "startFinalizing": "#/definitions/repository/channel/createArtifactDownloadPlan/toClientPacketStartFinalizing",
+          "success": "#/definitions/repository/channel/createArtifactDownloadPlan/toClientPacketSuccess"
+        },
+        "propertyName": "type"
+      }
+    },
+    "repository/channel/createArtifactDownloadPlan/toServerPacket": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/repository/channel/createArtifactDownloadPlan/toServerPacketCancel"
+        },
+        {
+          "$ref": "#/definitions/repository/channel/createArtifactDownloadPlan/toServerPacketCommit"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "cancel": "#/definitions/repository/channel/createArtifactDownloadPlan/toServerPacketCancel",
+          "commit": "#/definitions/repository/channel/createArtifactDownloadPlan/toServerPacketCommit"
+        },
+        "propertyName": "type"
+      }
+    },
+    "pseudo/repository/channel/createArtifactDownloadPlan": {
+      "type": "object",
+      "properties": {
+        "creationParameter": {
+          "$ref": "#/definitions/repository/channel/createArtifactDownloadPlan/creationParameter"
+        },
+        "toClientPacket": {
+          "$ref": "#/definitions/repository/channel/createArtifactDownloadPlan/toClientPacket"
+        },
+        "toServerPacket": {
+          "$ref": "#/definitions/repository/channel/createArtifactDownloadPlan/toServerPacket"
+        }
+      },
+      "required": [
+        "creationParameter",
+        "toClientPacket",
+        "toServerPacket"
+      ],
+      "additionalProperties": false
+    },
     "pseudo/repository": {
       "type": "object",
       "properties": {
@@ -5249,6 +6927,12 @@
         "rpcInstallPluginDependencies": {
           "$ref": "#/definitions/pseudo/repository/rpc/installPluginDependencies"
         },
+        "rpcGetLocalArtifactFiles": {
+          "$ref": "#/definitions/pseudo/repository/rpc/getLocalArtifactFiles"
+        },
+        "rpcLoginWithPreAuthenticatedKeys": {
+          "$ref": "#/definitions/pseudo/repository/rpc/loginWithPreAuthenticatedKeys"
+        },
         "channelDownloadModel": {
           "$ref": "#/definitions/pseudo/repository/channel/downloadModel"
         },
@@ -5260,16 +6944,22 @@
         },
         "channelEnsureAuthenticated": {
           "$ref": "#/definitions/pseudo/repository/channel/ensureAuthenticated"
+        },
+        "channelCreateArtifactDownloadPlan": {
+          "$ref": "#/definitions/pseudo/repository/channel/createArtifactDownloadPlan"
         }
       },
       "required": [
         "rpcSearchModels",
         "rpcGetModelDownloadOptions",
         "rpcInstallPluginDependencies",
+        "rpcGetLocalArtifactFiles",
+        "rpcLoginWithPreAuthenticatedKeys",
         "channelDownloadModel",
         "channelDownloadArtifact",
         "channelPushArtifact",
-        "channelEnsureAuthenticated"
+        "channelEnsureAuthenticated",
+        "channelCreateArtifactDownloadPlan"
       ],
       "additionalProperties": false
     },
@@ -5350,6 +7040,53 @@
       ],
       "additionalProperties": false
     },
+    "system/rpc/setExperimentFlag/parameter": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "value": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "code",
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    "system/rpc/setExperimentFlag/returns": {},
+    "pseudo/system/rpc/setExperimentFlag": {
+      "type": "object",
+      "properties": {
+        "parameter": {
+          "$ref": "#/definitions/system/rpc/setExperimentFlag/parameter"
+        }
+      },
+      "required": [
+        "parameter"
+      ],
+      "additionalProperties": false
+    },
+    "system/rpc/getExperimentFlags/returns": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "pseudo/system/rpc/getExperimentFlags": {
+      "type": "object",
+      "properties": {
+        "returns": {
+          "$ref": "#/definitions/system/rpc/getExperimentFlags/returns"
+        }
+      },
+      "required": [
+        "returns"
+      ],
+      "additionalProperties": false
+    },
     "pseudo/system/channel/alive": {
       "type": "object",
       "properties": {},
@@ -5367,6 +7104,12 @@
         "rpcVersion": {
           "$ref": "#/definitions/pseudo/system/rpc/version"
         },
+        "rpcSetExperimentFlag": {
+          "$ref": "#/definitions/pseudo/system/rpc/setExperimentFlag"
+        },
+        "rpcGetExperimentFlags": {
+          "$ref": "#/definitions/pseudo/system/rpc/getExperimentFlags"
+        },
         "channelAlive": {
           "$ref": "#/definitions/pseudo/system/channel/alive"
         }
@@ -5375,6 +7118,8 @@
         "rpcListDownloadedModels",
         "rpcNotify",
         "rpcVersion",
+        "rpcSetExperimentFlag",
+        "rpcGetExperimentFlags",
         "channelAlive"
       ],
       "additionalProperties": false
@@ -5914,103 +7659,6 @@
       ],
       "additionalProperties": false
     },
-    "llmJinjaInputMessagesContentConfigString": {
-      "type": "object",
-      "properties": {
-        "type": {
-          "type": "string",
-          "const": "string",
-          "default": "string",
-          "title": "Type"
-        },
-        "imagesConfig": {
-          "$ref": "#/definitions/llmJinjaInputMessagesContentImagesConfig"
-        }
-      },
-      "required": [
-        "type"
-      ],
-      "additionalProperties": false
-    },
-    "llmJinjaInputMessagesContentConfigArray": {
-      "type": "object",
-      "properties": {
-        "type": {
-          "type": "string",
-          "const": "array",
-          "default": "array",
-          "title": "Type"
-        },
-        "textFieldName": {
-          "$ref": "#/definitions/llmJinjaInputMessagesContentConfigTextFieldName"
-        },
-        "imagesConfig": {
-          "$ref": "#/definitions/llmJinjaInputMessagesContentImagesConfig"
-        }
-      },
-      "required": [
-        "type",
-        "textFieldName"
-      ],
-      "additionalProperties": false
-    },
-    "llmJinjaInputMessagesContentImagesConfigSimple": {
-      "type": "object",
-      "properties": {
-        "type": {
-          "type": "string",
-          "const": "simple",
-          "default": "simple",
-          "title": "Type"
-        },
-        "value": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "type",
-        "value"
-      ],
-      "additionalProperties": false
-    },
-    "llmJinjaInputMessagesContentImagesConfigNumbered": {
-      "type": "object",
-      "properties": {
-        "type": {
-          "type": "string",
-          "const": "numbered",
-          "default": "numbered",
-          "title": "Type"
-        },
-        "prefix": {
-          "type": "string"
-        },
-        "suffix": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "type",
-        "prefix",
-        "suffix"
-      ],
-      "additionalProperties": false
-    },
-    "llmJinjaInputMessagesContentImagesConfigObject": {
-      "type": "object",
-      "properties": {
-        "type": {
-          "type": "string",
-          "const": "object",
-          "default": "object",
-          "title": "Type"
-        }
-      },
-      "required": [
-        "type"
-      ],
-      "additionalProperties": false
-    },
     "llmToolParametersObject": {
       "type": "object",
       "properties": {
@@ -6023,7 +7671,7 @@
         "properties": {
           "type": "object",
           "additionalProperties": {
-            "$ref": "#/definitions/functionToolCallRequest/properties/arguments/additionalProperties"
+            "$ref": "#/definitions/jsonSerializable"
           }
         },
         "required": {
@@ -6105,6 +7753,63 @@
           "items": {
             "$ref": "#/definitions/llmTool"
           }
+        },
+        "force": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "processingRequestResponseConfirmToolCallResult": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/processingRequestResponseConfirmToolCallResultAllow"
+        },
+        {
+          "$ref": "#/definitions/processingRequestResponseConfirmToolCallResultDeny"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "allow": "#/definitions/processingRequestResponseConfirmToolCallResultAllow",
+          "deny": "#/definitions/processingRequestResponseConfirmToolCallResultDeny"
+        },
+        "propertyName": "type"
+      }
+    },
+    "processingRequestResponseConfirmToolCallResultAllow": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "allow",
+          "default": "allow",
+          "title": "Type"
+        },
+        "toolArgsOverride": {
+          "type": "object",
+          "additionalProperties": {}
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "processingRequestResponseConfirmToolCallResultDeny": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "deny",
+          "default": "deny",
+          "title": "Type"
+        },
+        "denyReason": {
+          "type": "string"
         }
       },
       "required": [
@@ -6150,6 +7855,153 @@
       ],
       "additionalProperties": false
     },
+    "toolStatusStepStateStatusGeneratingToolCall": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "generatingToolCall",
+          "default": "generatingToolCall",
+          "title": "Type"
+        },
+        "name": {
+          "type": "string"
+        },
+        "pluginIdentifier": {
+          "type": "string"
+        },
+        "argumentsString": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "toolStatusStepStateStatusToolCallGenerationFailed": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "toolCallGenerationFailed",
+          "default": "toolCallGenerationFailed",
+          "title": "Type"
+        },
+        "error": {
+          "type": "string"
+        },
+        "rawContent": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "error"
+      ],
+      "additionalProperties": false
+    },
+    "toolStatusStepStateStatusToolCallQueued": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "toolCallQueued",
+          "default": "toolCallQueued",
+          "title": "Type"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "toolStatusStepStateStatusConfirmingToolCall": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "confirmingToolCall",
+          "default": "confirmingToolCall",
+          "title": "Type"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "toolStatusStepStateStatusToolCallDenied": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "toolCallDenied",
+          "default": "toolCallDenied",
+          "title": "Type"
+        },
+        "denyReason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "toolStatusStepStateStatusCallingTool": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "callingTool",
+          "default": "callingTool",
+          "title": "Type"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "toolStatusStepStateStatusToolCallFailed": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "toolCallFailed",
+          "default": "toolCallFailed",
+          "title": "Type"
+        },
+        "error": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "error"
+      ],
+      "additionalProperties": false
+    },
+    "toolStatusStepStateStatusToolCallSucceeded": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "toolCallSucceeded",
+          "default": "toolCallSucceeded",
+          "title": "Type"
+        },
+        "timeMs": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "type",
+        "timeMs"
+      ],
+      "additionalProperties": false
+    },
     "modelSpecifierQuery": {
       "type": "object",
       "properties": {
@@ -6185,6 +8037,77 @@
       "required": [
         "type",
         "instanceReference"
+      ],
+      "additionalProperties": false
+    },
+    "artifactDownloadPlanNodeArtifact": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "artifact",
+          "default": "artifact",
+          "title": "Type"
+        },
+        "owner": {
+          "$ref": "#/definitions/kebabCase"
+        },
+        "name": {
+          "$ref": "#/definitions/kebabCaseWithDots"
+        },
+        "state": {
+          "$ref": "#/definitions/artifactDownloadPlanNodeState"
+        },
+        "artifactType": {
+          "$ref": "#/definitions/artifactType"
+        },
+        "sizeBytes": {
+          "type": "integer"
+        },
+        "dependencyNodes": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        }
+      },
+      "required": [
+        "type",
+        "owner",
+        "name",
+        "state",
+        "dependencyNodes"
+      ],
+      "additionalProperties": false
+    },
+    "artifactDownloadPlanNodeModel": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "model",
+          "default": "model",
+          "title": "Type"
+        },
+        "state": {
+          "$ref": "#/definitions/artifactDownloadPlanNodeState"
+        },
+        "resolvedSources": {
+          "type": "integer"
+        },
+        "totalSources": {
+          "type": "integer"
+        },
+        "alreadyOwned": {
+          "$ref": "#/definitions/artifactDownloadPlanModelInfo"
+        },
+        "selected": {
+          "$ref": "#/definitions/artifactDownloadPlanModelInfo"
+        }
+      },
+      "required": [
+        "type",
+        "state"
       ],
       "additionalProperties": false
     },
@@ -6248,6 +8171,40 @@
         "chunkOverlap"
       ],
       "additionalProperties": false
+    },
+    "virtualModelBooleanCustomFieldDefinitionEffectsItem": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/virtualModelCustomFieldSetJinjaVariableEffect"
+        },
+        {
+          "$ref": "#/definitions/virtualModelCustomFieldPrependSystemPromptEffect"
+        },
+        {
+          "$ref": "#/definitions/virtualModelCustomFieldAppendSystemPromptEffect"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "setJinjaVariable": "#/definitions/virtualModelCustomFieldSetJinjaVariableEffect",
+          "prependSystemPrompt": "#/definitions/virtualModelCustomFieldPrependSystemPromptEffect",
+          "appendSystemPrompt": "#/definitions/virtualModelCustomFieldAppendSystemPromptEffect"
+        },
+        "propertyName": "type"
+      }
+    },
+    "virtualModelStringCustomFieldDefinitionEffectsItem": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/virtualModelCustomFieldSetJinjaVariableEffect"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "setJinjaVariable": "#/definitions/virtualModelCustomFieldSetJinjaVariableEffect"
+        },
+        "propertyName": "type"
+      }
     },
     "diagnostics/channel/streamLogs/toClientPacketLog": {
       "type": "object",
@@ -6675,6 +8632,82 @@
       ],
       "additionalProperties": false
     },
+    "files/channel/parseDocument/toClientPacketParserLoaded": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "parserLoaded",
+          "default": "parserLoaded",
+          "title": "Type"
+        },
+        "parser": {
+          "$ref": "#/definitions/documentParsingLibraryIdentifier"
+        }
+      },
+      "required": [
+        "type",
+        "parser"
+      ],
+      "additionalProperties": false
+    },
+    "files/channel/parseDocument/toClientPacketProgress": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "progress",
+          "default": "progress",
+          "title": "Type"
+        },
+        "progress": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "type",
+        "progress"
+      ],
+      "additionalProperties": false
+    },
+    "files/channel/parseDocument/toClientPacketResult": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "result",
+          "default": "result",
+          "title": "Type"
+        },
+        "content": {
+          "type": "string"
+        },
+        "parser": {
+          "$ref": "#/definitions/documentParsingLibraryIdentifier"
+        }
+      },
+      "required": [
+        "type",
+        "content",
+        "parser"
+      ],
+      "additionalProperties": false
+    },
+    "files/channel/parseDocument/toServerPacketCancel": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "cancel",
+          "default": "cancel",
+          "title": "Type"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
     "llm/rpc/getModelInfoReturnValue": {
       "$ref": "#/definitions/llmInstanceInfo"
     },
@@ -6945,6 +8978,44 @@
       ],
       "additionalProperties": false
     },
+    "llm/channel/predict/toClientPacketToolCallGenerationNameReceived": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "toolCallGenerationNameReceived",
+          "default": "toolCallGenerationNameReceived",
+          "title": "Type"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "llm/channel/predict/toClientPacketToolCallGenerationArgumentFragmentGenerated": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "toolCallGenerationArgumentFragmentGenerated",
+          "default": "toolCallGenerationArgumentFragmentGenerated",
+          "title": "Type"
+        },
+        "content": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "content"
+      ],
+      "additionalProperties": false
+    },
     "llm/channel/predict/toClientPacketToolCallGenerationEnd": {
       "type": "object",
       "properties": {
@@ -6956,6 +9027,9 @@
         },
         "toolCallRequest": {
           "$ref": "#/definitions/toolCallRequest"
+        },
+        "rawContent": {
+          "type": "string"
         }
       },
       "required": [
@@ -6972,10 +9046,17 @@
           "const": "toolCallGenerationFailed",
           "default": "toolCallGenerationFailed",
           "title": "Type"
+        },
+        "error": {
+          "$ref": "#/definitions/serializedLMSExtendedError"
+        },
+        "rawContent": {
+          "type": "string"
         }
       },
       "required": [
-        "type"
+        "type",
+        "error"
       ],
       "additionalProperties": false
     },
@@ -7011,6 +9092,161 @@
       "additionalProperties": false
     },
     "llm/channel/predict/toServerPacketCancel": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "cancel",
+          "default": "cancel",
+          "title": "Type"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "llm/channel/generateWithGenerator/toClientPacketFragment": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "fragment",
+          "default": "fragment",
+          "title": "Type"
+        },
+        "fragment": {
+          "$ref": "#/definitions/llmPredictionFragment"
+        }
+      },
+      "required": [
+        "type",
+        "fragment"
+      ],
+      "additionalProperties": false
+    },
+    "llm/channel/generateWithGenerator/toClientPacketPromptProcessingProgress": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "promptProcessingProgress",
+          "default": "promptProcessingProgress",
+          "title": "Type"
+        },
+        "progress": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "type",
+        "progress"
+      ],
+      "additionalProperties": false
+    },
+    "llm/channel/generateWithGenerator/toClientPacketToolCallGenerationStart": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "toolCallGenerationStart",
+          "default": "toolCallGenerationStart",
+          "title": "Type"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "llm/channel/generateWithGenerator/toClientPacketToolCallGenerationNameReceived": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "toolCallGenerationNameReceived",
+          "default": "toolCallGenerationNameReceived",
+          "title": "Type"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "llm/channel/generateWithGenerator/toClientPacketToolCallGenerationArgumentFragmentGenerated": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "toolCallGenerationArgumentFragmentGenerated",
+          "default": "toolCallGenerationArgumentFragmentGenerated",
+          "title": "Type"
+        },
+        "content": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "content"
+      ],
+      "additionalProperties": false
+    },
+    "llm/channel/generateWithGenerator/toClientPacketToolCallGenerationEnd": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "toolCallGenerationEnd",
+          "default": "toolCallGenerationEnd",
+          "title": "Type"
+        },
+        "toolCallRequest": {
+          "$ref": "#/definitions/toolCallRequest"
+        }
+      },
+      "required": [
+        "type",
+        "toolCallRequest"
+      ],
+      "additionalProperties": false
+    },
+    "llm/channel/generateWithGenerator/toClientPacketToolCallGenerationFailed": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "toolCallGenerationFailed",
+          "default": "toolCallGenerationFailed",
+          "title": "Type"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "llm/channel/generateWithGenerator/toClientPacketSuccess": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "success",
+          "default": "success",
+          "title": "Type"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "llm/channel/generateWithGenerator/toServerPacketCancel": {
       "type": "object",
       "properties": {
         "type": {
@@ -7084,6 +9320,15 @@
         "pluginConfig": {
           "$ref": "#/definitions/llm/rpc/getLoadConfig/returns"
         },
+        "globalPluginConfig": {
+          "$ref": "#/definitions/llm/rpc/getLoadConfig/returns"
+        },
+        "workingDirectoryPath": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "pci": {
           "type": "string"
         },
@@ -7097,6 +9342,8 @@
         "input",
         "config",
         "pluginConfig",
+        "globalPluginConfig",
+        "workingDirectoryPath",
         "pci",
         "token"
       ],
@@ -7186,13 +9433,13 @@
       ],
       "additionalProperties": false
     },
-    "plugins/channel/setGenerator/toClientPacketGenerate": {
+    "plugins/channel/setPredictionLoopHandler/toClientPacketHandlePredictionLoop": {
       "type": "object",
       "properties": {
         "type": {
           "type": "string",
-          "const": "generate",
-          "default": "generate",
+          "const": "handlePredictionLoop",
+          "default": "handlePredictionLoop",
           "title": "Type"
         },
         "taskId": {
@@ -7203,6 +9450,15 @@
         },
         "pluginConfig": {
           "$ref": "#/definitions/llm/rpc/getLoadConfig/returns"
+        },
+        "globalPluginConfig": {
+          "$ref": "#/definitions/llm/rpc/getLoadConfig/returns"
+        },
+        "workingDirectoryPath": {
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "pci": {
           "type": "string"
@@ -7216,8 +9472,399 @@
         "taskId",
         "config",
         "pluginConfig",
+        "globalPluginConfig",
+        "workingDirectoryPath",
         "pci",
         "token"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/channel/setPredictionLoopHandler/toClientPacketAbort": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "abort",
+          "default": "abort",
+          "title": "Type"
+        },
+        "taskId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "taskId"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/channel/setPredictionLoopHandler/toServerPacketComplete": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "complete",
+          "default": "complete",
+          "title": "Type"
+        },
+        "taskId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "taskId"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/channel/setPredictionLoopHandler/toServerPacketAborted": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "aborted",
+          "default": "aborted",
+          "title": "Type"
+        },
+        "taskId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "taskId"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/channel/setPredictionLoopHandler/toServerPacketError": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "error",
+          "default": "error",
+          "title": "Type"
+        },
+        "taskId": {
+          "type": "string"
+        },
+        "error": {
+          "$ref": "#/definitions/serializedLMSExtendedError"
+        }
+      },
+      "required": [
+        "type",
+        "taskId",
+        "error"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/channel/setToolsProvider/toClientPacketInitSession": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "initSession",
+          "default": "initSession",
+          "title": "Type"
+        },
+        "pluginConfig": {
+          "$ref": "#/definitions/llm/rpc/getLoadConfig/returns"
+        },
+        "globalPluginConfig": {
+          "$ref": "#/definitions/llm/rpc/getLoadConfig/returns"
+        },
+        "workingDirectoryPath": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sessionId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "pluginConfig",
+        "globalPluginConfig",
+        "workingDirectoryPath",
+        "sessionId"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/channel/setToolsProvider/toClientPacketDiscardSession": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "discardSession",
+          "default": "discardSession",
+          "title": "Type"
+        },
+        "sessionId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "sessionId"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/channel/setToolsProvider/toClientPacketCallTool": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "callTool",
+          "default": "callTool",
+          "title": "Type"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "callId": {
+          "type": "string"
+        },
+        "toolName": {
+          "type": "string"
+        },
+        "parameters": {
+          "$ref": "#/definitions/jsonSerializable"
+        }
+      },
+      "required": [
+        "type",
+        "sessionId",
+        "callId",
+        "toolName",
+        "parameters"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/channel/setToolsProvider/toClientPacketAbortToolCall": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "abortToolCall",
+          "default": "abortToolCall",
+          "title": "Type"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "callId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "sessionId",
+        "callId"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/channel/setToolsProvider/toServerPacketSessionInitialized": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "sessionInitialized",
+          "default": "sessionInitialized",
+          "title": "Type"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "toolDefinitions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/llmTool"
+          }
+        }
+      },
+      "required": [
+        "type",
+        "sessionId",
+        "toolDefinitions"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/channel/setToolsProvider/toServerPacketSessionInitializationFailed": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "sessionInitializationFailed",
+          "default": "sessionInitializationFailed",
+          "title": "Type"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "error": {
+          "$ref": "#/definitions/serializedLMSExtendedError"
+        }
+      },
+      "required": [
+        "type",
+        "sessionId",
+        "error"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/channel/setToolsProvider/toServerPacketToolCallComplete": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "toolCallComplete",
+          "default": "toolCallComplete",
+          "title": "Type"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "callId": {
+          "type": "string"
+        },
+        "result": {
+          "$ref": "#/definitions/jsonSerializable"
+        }
+      },
+      "required": [
+        "type",
+        "sessionId",
+        "callId",
+        "result"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/channel/setToolsProvider/toServerPacketToolCallError": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "toolCallError",
+          "default": "toolCallError",
+          "title": "Type"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "callId": {
+          "type": "string"
+        },
+        "error": {
+          "$ref": "#/definitions/serializedLMSExtendedError"
+        }
+      },
+      "required": [
+        "type",
+        "sessionId",
+        "callId",
+        "error"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/channel/setToolsProvider/toServerPacketToolCallStatus": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "toolCallStatus",
+          "default": "toolCallStatus",
+          "title": "Type"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "callId": {
+          "type": "string"
+        },
+        "statusText": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "sessionId",
+        "callId",
+        "statusText"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/channel/setToolsProvider/toServerPacketToolCallWarn": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "toolCallWarn",
+          "default": "toolCallWarn",
+          "title": "Type"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "callId": {
+          "type": "string"
+        },
+        "warnText": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "sessionId",
+        "callId",
+        "warnText"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/channel/setGenerator/toClientPacketGenerate": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "generate",
+          "default": "generate",
+          "title": "Type"
+        },
+        "taskId": {
+          "type": "string"
+        },
+        "input": {
+          "$ref": "#/definitions/plugins/rpc/processingPullHistory/returns"
+        },
+        "pluginConfig": {
+          "$ref": "#/definitions/llm/rpc/getLoadConfig/returns"
+        },
+        "globalPluginConfig": {
+          "$ref": "#/definitions/llm/rpc/getLoadConfig/returns"
+        },
+        "toolDefinitions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/llmTool"
+          }
+        },
+        "workingDirectoryPath": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "type",
+        "taskId",
+        "input",
+        "pluginConfig",
+        "globalPluginConfig",
+        "toolDefinitions",
+        "workingDirectoryPath"
       ],
       "additionalProperties": false
     },
@@ -7285,6 +9932,144 @@
           "type": "string",
           "const": "error",
           "default": "error",
+          "title": "Type"
+        },
+        "taskId": {
+          "type": "string"
+        },
+        "error": {
+          "$ref": "#/definitions/serializedLMSExtendedError"
+        }
+      },
+      "required": [
+        "type",
+        "taskId",
+        "error"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/channel/setGenerator/toServerPacketFragmentGenerated": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "fragmentGenerated",
+          "default": "fragmentGenerated",
+          "title": "Type"
+        },
+        "taskId": {
+          "type": "string"
+        },
+        "content": {
+          "type": "string"
+        },
+        "opts": {
+          "$ref": "#/definitions/llmPredictionFragmentInputOpts"
+        }
+      },
+      "required": [
+        "type",
+        "taskId",
+        "content",
+        "opts"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/channel/setGenerator/toServerPacketToolCallGenerationStarted": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "toolCallGenerationStarted",
+          "default": "toolCallGenerationStarted",
+          "title": "Type"
+        },
+        "taskId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "taskId"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/channel/setGenerator/toServerPacketToolCallGenerationNameReceived": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "toolCallGenerationNameReceived",
+          "default": "toolCallGenerationNameReceived",
+          "title": "Type"
+        },
+        "taskId": {
+          "type": "string"
+        },
+        "toolName": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "taskId",
+        "toolName"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/channel/setGenerator/toServerPacketToolCallGenerationArgumentFragmentGenerated": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "toolCallGenerationArgumentFragmentGenerated",
+          "default": "toolCallGenerationArgumentFragmentGenerated",
+          "title": "Type"
+        },
+        "taskId": {
+          "type": "string"
+        },
+        "content": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "taskId",
+        "content"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/channel/setGenerator/toServerPacketToolCallGenerationEnded": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "toolCallGenerationEnded",
+          "default": "toolCallGenerationEnded",
+          "title": "Type"
+        },
+        "taskId": {
+          "type": "string"
+        },
+        "toolCallRequest": {
+          "$ref": "#/definitions/toolCallRequest"
+        }
+      },
+      "required": [
+        "type",
+        "taskId",
+        "toolCallRequest"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/channel/setGenerator/toServerPacketToolCallGenerationFailed": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "toolCallGenerationFailed",
+          "default": "toolCallGenerationFailed",
           "title": "Type"
         },
         "taskId": {
@@ -7478,6 +10263,123 @@
           "type": "string",
           "const": "authenticated",
           "default": "authenticated",
+          "title": "Type"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "repository/channel/createArtifactDownloadPlan/toClientPacketPlanUpdated": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "planUpdated",
+          "default": "planUpdated",
+          "title": "Type"
+        },
+        "plan": {
+          "$ref": "#/definitions/artifactDownloadPlan"
+        }
+      },
+      "required": [
+        "type",
+        "plan"
+      ],
+      "additionalProperties": false
+    },
+    "repository/channel/createArtifactDownloadPlan/toClientPacketPlanReady": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "planReady",
+          "default": "planReady",
+          "title": "Type"
+        },
+        "plan": {
+          "$ref": "#/definitions/artifactDownloadPlan"
+        }
+      },
+      "required": [
+        "type",
+        "plan"
+      ],
+      "additionalProperties": false
+    },
+    "repository/channel/createArtifactDownloadPlan/toClientPacketDownloadProgress": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "downloadProgress",
+          "default": "downloadProgress",
+          "title": "Type"
+        },
+        "update": {
+          "$ref": "#/definitions/downloadProgressUpdate"
+        }
+      },
+      "required": [
+        "type",
+        "update"
+      ],
+      "additionalProperties": false
+    },
+    "repository/channel/createArtifactDownloadPlan/toClientPacketStartFinalizing": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "startFinalizing",
+          "default": "startFinalizing",
+          "title": "Type"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "repository/channel/createArtifactDownloadPlan/toClientPacketSuccess": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "success",
+          "default": "success",
+          "title": "Type"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "repository/channel/createArtifactDownloadPlan/toServerPacketCancel": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "cancel",
+          "default": "cancel",
+          "title": "Type"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "repository/channel/createArtifactDownloadPlan/toServerPacketCommit": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "commit",
+          "default": "commit",
           "title": "Type"
         }
       },

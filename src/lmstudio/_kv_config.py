@@ -120,7 +120,9 @@ class MultiPartField(ConfigField):
     def update_client_config(
         self, client_config: MutableDictObject, server_value: DictObject
     ) -> None:
-        client_container: MutableDictObject = client_config.setdefault(self.client_key, {})
+        client_container: MutableDictObject = client_config.setdefault(
+            self.client_key, {}
+        )
         self.server_to_client(server_value, client_container)
 
 
@@ -216,6 +218,7 @@ SUPPORTED_SERVER_KEYS: dict[str, DictObject] = {
         **_COMMON_MODEL_LOAD_KEYS,
         "numExperts": ConfigField("numExperts"),
         "seed": CheckboxField("seed"),
+        "offloadKVCacheToGpu": ConfigField("offloadKVCacheToGpu"),
         "llama": {
             **_COMMON_LLAMA_LOAD_KEYS,
             "evalBatchSize": ConfigField("evalBatchSize"),

@@ -7,13 +7,29 @@ from ..schemas import LMStudioStruct
 LogLevel = Literal["debug", "info", "warn", "error"]
 AllowableEnvVarKeys = Literal["HSA_OVERRIDE_GFX_VERSION"]
 AllowableEnvVars = Mapping[str, str] | None
-KebabCase = Annotated[str, Meta(pattern="^[a-z0-9]+(?:-[a-z0-9]+)*$")]
+ArtifactType = Literal["plugin", "preset", "model"]
+ArtifactDependencyPurpose = Literal["baseModel", "draftModel", "custom"]
+ModelKey = Annotated[str, Meta(min_length=1)]
 
 __all__ = [
     "Accelerator",
     "AcceleratorDict",
+    "ArtifactArtifactDependency",
+    "ArtifactArtifactDependencyDict",
+    "ArtifactDependencyBase",
+    "ArtifactDependencyBaseDict",
+    "ArtifactDownloadPlan",
+    "ArtifactDownloadPlanDict",
+    "ArtifactDownloadPlanModelInfo",
+    "ArtifactDownloadPlanModelInfoDict",
+    "ArtifactDownloadPlanNodeArtifact",
+    "ArtifactDownloadPlanNodeArtifactDict",
+    "ArtifactDownloadPlanNodeModel",
+    "ArtifactDownloadPlanNodeModelDict",
     "ArtifactManifestBase",
     "ArtifactManifestBaseDict",
+    "ArtifactModelDependency",
+    "ArtifactModelDependencyDict",
     "AssistantResponse",
     "AssistantResponseDict",
     "AvailablePresetsSampleItem",
@@ -44,6 +60,10 @@ __all__ = [
     "DiagnosticsLogEventDataLlmPredictionInput",
     "DiagnosticsLogEventDataLlmPredictionInputDict",
     "DiagnosticsLogEventDict",
+    "DocumentParsingLibraryIdentifier",
+    "DocumentParsingLibraryIdentifierDict",
+    "DocumentParsingOpts",
+    "DocumentParsingOptsDict",
     "DownloadModelChannelRequest",
     "DownloadModelChannelRequestDict",
     "DownloadProgressUpdate",
@@ -118,6 +138,16 @@ __all__ = [
     "ErrorDisplayDataGenericSpecificModelUnloadedDict",
     "FileHandle",
     "FileHandleDict",
+    "FilesChannelParseDocumentCreationParameter",
+    "FilesChannelParseDocumentCreationParameterDict",
+    "FilesChannelParseDocumentToClientPacketParserLoaded",
+    "FilesChannelParseDocumentToClientPacketParserLoadedDict",
+    "FilesChannelParseDocumentToClientPacketProgress",
+    "FilesChannelParseDocumentToClientPacketProgressDict",
+    "FilesChannelParseDocumentToClientPacketResult",
+    "FilesChannelParseDocumentToClientPacketResultDict",
+    "FilesChannelParseDocumentToServerPacketCancel",
+    "FilesChannelParseDocumentToServerPacketCancelDict",
     "FilesChannelRetrieveCreationParameter",
     "FilesChannelRetrieveCreationParameterDict",
     "FilesChannelRetrieveToClientPacketOnFileProcessList",
@@ -140,6 +170,10 @@ __all__ = [
     "FilesChannelRetrieveToClientPacketResultDict",
     "FilesChannelRetrieveToServerPacketStop",
     "FilesChannelRetrieveToServerPacketStopDict",
+    "FilesRpcGetDocumentParsingLibraryParameter",
+    "FilesRpcGetDocumentParsingLibraryParameterDict",
+    "FilesRpcGetDocumentParsingLibraryReturns",
+    "FilesRpcGetDocumentParsingLibraryReturnsDict",
     "FilesRpcGetLocalFileAbsolutePathParameter",
     "FilesRpcGetLocalFileAbsolutePathParameterDict",
     "FilesRpcGetLocalFileAbsolutePathReturns",
@@ -156,6 +190,8 @@ __all__ = [
     "GpuSettingDict",
     "GpuSplitConfig",
     "GpuSplitConfigDict",
+    "HuggingFaceModelDownloadSource",
+    "HuggingFaceModelDownloadSourceDict",
     "InternalRetrievalResult",
     "InternalRetrievalResultDict",
     "InternalRetrievalResultEntry",
@@ -180,6 +216,26 @@ __all__ = [
     "LlmAdditionalInfoDict",
     "LlmApplyPromptTemplateOpts",
     "LlmApplyPromptTemplateOptsDict",
+    "LlmChannelGenerateWithGeneratorCreationParameter",
+    "LlmChannelGenerateWithGeneratorCreationParameterDict",
+    "LlmChannelGenerateWithGeneratorToClientPacketFragment",
+    "LlmChannelGenerateWithGeneratorToClientPacketFragmentDict",
+    "LlmChannelGenerateWithGeneratorToClientPacketPromptProcessingProgress",
+    "LlmChannelGenerateWithGeneratorToClientPacketPromptProcessingProgressDict",
+    "LlmChannelGenerateWithGeneratorToClientPacketSuccess",
+    "LlmChannelGenerateWithGeneratorToClientPacketSuccessDict",
+    "LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationArgumentFragmentGenerated",
+    "LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationArgumentFragmentGeneratedDict",
+    "LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationEnd",
+    "LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationEndDict",
+    "LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationFailed",
+    "LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationFailedDict",
+    "LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationNameReceived",
+    "LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationNameReceivedDict",
+    "LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationStart",
+    "LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationStartDict",
+    "LlmChannelGenerateWithGeneratorToServerPacketCancel",
+    "LlmChannelGenerateWithGeneratorToServerPacketCancelDict",
     "LlmChannelGetOrLoadCreationParameter",
     "LlmChannelGetOrLoadCreationParameterDict",
     "LlmChannelGetOrLoadToClientPacketAlreadyLoaded",
@@ -210,10 +266,14 @@ __all__ = [
     "LlmChannelPredictToClientPacketPromptProcessingProgressDict",
     "LlmChannelPredictToClientPacketSuccess",
     "LlmChannelPredictToClientPacketSuccessDict",
+    "LlmChannelPredictToClientPacketToolCallGenerationArgumentFragmentGenerated",
+    "LlmChannelPredictToClientPacketToolCallGenerationArgumentFragmentGeneratedDict",
     "LlmChannelPredictToClientPacketToolCallGenerationEnd",
     "LlmChannelPredictToClientPacketToolCallGenerationEndDict",
     "LlmChannelPredictToClientPacketToolCallGenerationFailed",
     "LlmChannelPredictToClientPacketToolCallGenerationFailedDict",
+    "LlmChannelPredictToClientPacketToolCallGenerationNameReceived",
+    "LlmChannelPredictToClientPacketToolCallGenerationNameReceivedDict",
     "LlmChannelPredictToClientPacketToolCallGenerationStart",
     "LlmChannelPredictToClientPacketToolCallGenerationStartDict",
     "LlmChannelPredictToServerPacketCancel",
@@ -230,20 +290,6 @@ __all__ = [
     "LlmInstanceAdditionalInfoDict",
     "LlmInstanceInfo",
     "LlmInstanceInfoDict",
-    "LlmJinjaInputConfig",
-    "LlmJinjaInputConfigDict",
-    "LlmJinjaInputMessagesConfig",
-    "LlmJinjaInputMessagesConfigDict",
-    "LlmJinjaInputMessagesContentConfigArray",
-    "LlmJinjaInputMessagesContentConfigArrayDict",
-    "LlmJinjaInputMessagesContentConfigString",
-    "LlmJinjaInputMessagesContentConfigStringDict",
-    "LlmJinjaInputMessagesContentImagesConfigNumbered",
-    "LlmJinjaInputMessagesContentImagesConfigNumberedDict",
-    "LlmJinjaInputMessagesContentImagesConfigObject",
-    "LlmJinjaInputMessagesContentImagesConfigObjectDict",
-    "LlmJinjaInputMessagesContentImagesConfigSimple",
-    "LlmJinjaInputMessagesContentImagesConfigSimpleDict",
     "LlmJinjaPromptTemplate",
     "LlmJinjaPromptTemplateDict",
     "LlmLlamaMirostatSamplingConfig",
@@ -260,6 +306,8 @@ __all__ = [
     "LlmPredictionConfigInputDict",
     "LlmPredictionFragment",
     "LlmPredictionFragmentDict",
+    "LlmPredictionFragmentInputOpts",
+    "LlmPredictionFragmentInputOptsDict",
     "LlmPredictionStats",
     "LlmPredictionStatsDict",
     "LlmPromptTemplate",
@@ -298,6 +346,10 @@ __all__ = [
     "LlmToolUseSettingNoneDict",
     "LlmToolUseSettingToolArray",
     "LlmToolUseSettingToolArrayDict",
+    "LocalArtifactFileEntry",
+    "LocalArtifactFileEntryDict",
+    "LocalArtifactFileList",
+    "LocalArtifactFileListDict",
     "Logprob",
     "LogprobDict",
     "Model",
@@ -346,6 +398,28 @@ __all__ = [
     "PluginsChannelSetGeneratorToServerPacketCompleteDict",
     "PluginsChannelSetGeneratorToServerPacketError",
     "PluginsChannelSetGeneratorToServerPacketErrorDict",
+    "PluginsChannelSetGeneratorToServerPacketFragmentGenerated",
+    "PluginsChannelSetGeneratorToServerPacketFragmentGeneratedDict",
+    "PluginsChannelSetGeneratorToServerPacketToolCallGenerationArgumentFragmentGenerated",
+    "PluginsChannelSetGeneratorToServerPacketToolCallGenerationArgumentFragmentGeneratedDict",
+    "PluginsChannelSetGeneratorToServerPacketToolCallGenerationEnded",
+    "PluginsChannelSetGeneratorToServerPacketToolCallGenerationEndedDict",
+    "PluginsChannelSetGeneratorToServerPacketToolCallGenerationFailed",
+    "PluginsChannelSetGeneratorToServerPacketToolCallGenerationFailedDict",
+    "PluginsChannelSetGeneratorToServerPacketToolCallGenerationNameReceived",
+    "PluginsChannelSetGeneratorToServerPacketToolCallGenerationNameReceivedDict",
+    "PluginsChannelSetGeneratorToServerPacketToolCallGenerationStarted",
+    "PluginsChannelSetGeneratorToServerPacketToolCallGenerationStartedDict",
+    "PluginsChannelSetPredictionLoopHandlerToClientPacketAbort",
+    "PluginsChannelSetPredictionLoopHandlerToClientPacketAbortDict",
+    "PluginsChannelSetPredictionLoopHandlerToClientPacketHandlePredictionLoop",
+    "PluginsChannelSetPredictionLoopHandlerToClientPacketHandlePredictionLoopDict",
+    "PluginsChannelSetPredictionLoopHandlerToServerPacketAborted",
+    "PluginsChannelSetPredictionLoopHandlerToServerPacketAbortedDict",
+    "PluginsChannelSetPredictionLoopHandlerToServerPacketComplete",
+    "PluginsChannelSetPredictionLoopHandlerToServerPacketCompleteDict",
+    "PluginsChannelSetPredictionLoopHandlerToServerPacketError",
+    "PluginsChannelSetPredictionLoopHandlerToServerPacketErrorDict",
     "PluginsChannelSetPreprocessorToClientPacketAbort",
     "PluginsChannelSetPreprocessorToClientPacketAbortDict",
     "PluginsChannelSetPreprocessorToClientPacketPreprocess",
@@ -356,10 +430,34 @@ __all__ = [
     "PluginsChannelSetPreprocessorToServerPacketCompleteDict",
     "PluginsChannelSetPreprocessorToServerPacketError",
     "PluginsChannelSetPreprocessorToServerPacketErrorDict",
+    "PluginsChannelSetToolsProviderToClientPacketAbortToolCall",
+    "PluginsChannelSetToolsProviderToClientPacketAbortToolCallDict",
+    "PluginsChannelSetToolsProviderToClientPacketCallTool",
+    "PluginsChannelSetToolsProviderToClientPacketCallToolDict",
+    "PluginsChannelSetToolsProviderToClientPacketDiscardSession",
+    "PluginsChannelSetToolsProviderToClientPacketDiscardSessionDict",
+    "PluginsChannelSetToolsProviderToClientPacketInitSession",
+    "PluginsChannelSetToolsProviderToClientPacketInitSessionDict",
+    "PluginsChannelSetToolsProviderToServerPacketSessionInitializationFailed",
+    "PluginsChannelSetToolsProviderToServerPacketSessionInitializationFailedDict",
+    "PluginsChannelSetToolsProviderToServerPacketSessionInitialized",
+    "PluginsChannelSetToolsProviderToServerPacketSessionInitializedDict",
+    "PluginsChannelSetToolsProviderToServerPacketToolCallComplete",
+    "PluginsChannelSetToolsProviderToServerPacketToolCallCompleteDict",
+    "PluginsChannelSetToolsProviderToServerPacketToolCallError",
+    "PluginsChannelSetToolsProviderToServerPacketToolCallErrorDict",
+    "PluginsChannelSetToolsProviderToServerPacketToolCallStatus",
+    "PluginsChannelSetToolsProviderToServerPacketToolCallStatusDict",
+    "PluginsChannelSetToolsProviderToServerPacketToolCallWarn",
+    "PluginsChannelSetToolsProviderToServerPacketToolCallWarnDict",
     "PluginsRpcProcessingGetOrLoadModelParameter",
     "PluginsRpcProcessingGetOrLoadModelParameterDict",
     "PluginsRpcProcessingGetOrLoadModelReturns",
     "PluginsRpcProcessingGetOrLoadModelReturnsDict",
+    "PluginsRpcProcessingHandleRequestParameter",
+    "PluginsRpcProcessingHandleRequestParameterDict",
+    "PluginsRpcProcessingHandleRequestReturns",
+    "PluginsRpcProcessingHandleRequestReturnsDict",
     "PluginsRpcProcessingHandleUpdateParameter",
     "PluginsRpcProcessingHandleUpdateParameterDict",
     "PluginsRpcProcessingHasStatusParameter",
@@ -376,20 +474,40 @@ __all__ = [
     "PluginsRpcProcessingSuggestNameParameterDict",
     "PluginsRpcSetConfigSchematicsParameter",
     "PluginsRpcSetConfigSchematicsParameterDict",
+    "PluginsRpcSetGlobalConfigSchematicsParameter",
+    "PluginsRpcSetGlobalConfigSchematicsParameterDict",
     "PredictionChannelRequest",
     "PredictionChannelRequestDict",
     "PresetManifest",
     "PresetManifestDict",
+    "ProcessingRequestConfirmToolCall",
+    "ProcessingRequestConfirmToolCallDict",
+    "ProcessingRequestResponseConfirmToolCall",
+    "ProcessingRequestResponseConfirmToolCallDict",
+    "ProcessingRequestResponseConfirmToolCallResultAllow",
+    "ProcessingRequestResponseConfirmToolCallResultAllowDict",
+    "ProcessingRequestResponseConfirmToolCallResultDeny",
+    "ProcessingRequestResponseConfirmToolCallResultDenyDict",
+    "ProcessingRequestResponseTextInput",
+    "ProcessingRequestResponseTextInputDict",
+    "ProcessingRequestTextInput",
+    "ProcessingRequestTextInputDict",
     "ProcessingUpdateCitationBlockCreate",
     "ProcessingUpdateCitationBlockCreateDict",
     "ProcessingUpdateContentBlockAppendText",
     "ProcessingUpdateContentBlockAppendTextDict",
+    "ProcessingUpdateContentBlockAppendToolRequest",
+    "ProcessingUpdateContentBlockAppendToolRequestDict",
+    "ProcessingUpdateContentBlockAppendToolResult",
+    "ProcessingUpdateContentBlockAppendToolResultDict",
     "ProcessingUpdateContentBlockAttachGenInfo",
     "ProcessingUpdateContentBlockAttachGenInfoDict",
     "ProcessingUpdateContentBlockCreate",
     "ProcessingUpdateContentBlockCreateDict",
     "ProcessingUpdateContentBlockReplaceText",
     "ProcessingUpdateContentBlockReplaceTextDict",
+    "ProcessingUpdateContentBlockReplaceToolRequest",
+    "ProcessingUpdateContentBlockReplaceToolRequestDict",
     "ProcessingUpdateContentBlockSetPrefix",
     "ProcessingUpdateContentBlockSetPrefixDict",
     "ProcessingUpdateContentBlockSetStyle",
@@ -406,6 +524,12 @@ __all__ = [
     "ProcessingUpdateStatusRemoveDict",
     "ProcessingUpdateStatusUpdate",
     "ProcessingUpdateStatusUpdateDict",
+    "ProcessingUpdateToolStatusArgumentFragment",
+    "ProcessingUpdateToolStatusArgumentFragmentDict",
+    "ProcessingUpdateToolStatusCreate",
+    "ProcessingUpdateToolStatusCreateDict",
+    "ProcessingUpdateToolStatusUpdate",
+    "ProcessingUpdateToolStatusUpdateDict",
     "PseudoDiagnostics",
     "PseudoDiagnosticsChannelStreamLogs",
     "PseudoDiagnosticsChannelStreamLogsDict",
@@ -431,14 +555,20 @@ __all__ = [
     "PseudoEmbeddingRpcUnloadModel",
     "PseudoEmbeddingRpcUnloadModelDict",
     "PseudoFiles",
+    "PseudoFilesChannelParseDocument",
+    "PseudoFilesChannelParseDocumentDict",
     "PseudoFilesChannelRetrieve",
     "PseudoFilesChannelRetrieveDict",
     "PseudoFilesDict",
+    "PseudoFilesRpcGetDocumentParsingLibrary",
+    "PseudoFilesRpcGetDocumentParsingLibraryDict",
     "PseudoFilesRpcGetLocalFileAbsolutePath",
     "PseudoFilesRpcGetLocalFileAbsolutePathDict",
     "PseudoFilesRpcUploadFileBase64",
     "PseudoFilesRpcUploadFileBase64Dict",
     "PseudoLlm",
+    "PseudoLlmChannelGenerateWithGenerator",
+    "PseudoLlmChannelGenerateWithGeneratorDict",
     "PseudoLlmChannelGetOrLoad",
     "PseudoLlmChannelGetOrLoadDict",
     "PseudoLlmChannelLoadModel",
@@ -467,12 +597,18 @@ __all__ = [
     "PseudoPluginsChannelRegisterDevelopmentPluginDict",
     "PseudoPluginsChannelSetGenerator",
     "PseudoPluginsChannelSetGeneratorDict",
+    "PseudoPluginsChannelSetPredictionLoopHandler",
+    "PseudoPluginsChannelSetPredictionLoopHandlerDict",
     "PseudoPluginsChannelSetPreprocessor",
     "PseudoPluginsChannelSetPreprocessorDict",
+    "PseudoPluginsChannelSetToolsProvider",
+    "PseudoPluginsChannelSetToolsProviderDict",
     "PseudoPluginsDict",
     "PseudoPluginsRpcPluginInitCompleted",
     "PseudoPluginsRpcProcessingGetOrLoadModel",
     "PseudoPluginsRpcProcessingGetOrLoadModelDict",
+    "PseudoPluginsRpcProcessingHandleRequest",
+    "PseudoPluginsRpcProcessingHandleRequestDict",
     "PseudoPluginsRpcProcessingHandleUpdate",
     "PseudoPluginsRpcProcessingHandleUpdateDict",
     "PseudoPluginsRpcProcessingHasStatus",
@@ -488,7 +624,11 @@ __all__ = [
     "PseudoPluginsRpcReindexPlugins",
     "PseudoPluginsRpcSetConfigSchematics",
     "PseudoPluginsRpcSetConfigSchematicsDict",
+    "PseudoPluginsRpcSetGlobalConfigSchematics",
+    "PseudoPluginsRpcSetGlobalConfigSchematicsDict",
     "PseudoRepository",
+    "PseudoRepositoryChannelCreateArtifactDownloadPlan",
+    "PseudoRepositoryChannelCreateArtifactDownloadPlanDict",
     "PseudoRepositoryChannelDownloadArtifact",
     "PseudoRepositoryChannelDownloadArtifactDict",
     "PseudoRepositoryChannelDownloadModel",
@@ -498,21 +638,45 @@ __all__ = [
     "PseudoRepositoryChannelPushArtifact",
     "PseudoRepositoryChannelPushArtifactDict",
     "PseudoRepositoryDict",
+    "PseudoRepositoryRpcGetLocalArtifactFiles",
+    "PseudoRepositoryRpcGetLocalArtifactFilesDict",
     "PseudoRepositoryRpcGetModelDownloadOptions",
     "PseudoRepositoryRpcGetModelDownloadOptionsDict",
     "PseudoRepositoryRpcInstallPluginDependencies",
     "PseudoRepositoryRpcInstallPluginDependenciesDict",
+    "PseudoRepositoryRpcLoginWithPreAuthenticatedKeys",
+    "PseudoRepositoryRpcLoginWithPreAuthenticatedKeysDict",
     "PseudoRepositoryRpcSearchModels",
     "PseudoRepositoryRpcSearchModelsDict",
     "PseudoSystem",
     "PseudoSystemChannelAlive",
     "PseudoSystemDict",
+    "PseudoSystemRpcGetExperimentFlags",
+    "PseudoSystemRpcGetExperimentFlagsDict",
     "PseudoSystemRpcListDownloadedModels",
     "PseudoSystemRpcListDownloadedModelsDict",
     "PseudoSystemRpcNotify",
     "PseudoSystemRpcNotifyDict",
+    "PseudoSystemRpcSetExperimentFlag",
+    "PseudoSystemRpcSetExperimentFlagDict",
     "PseudoSystemRpcVersion",
     "PseudoSystemRpcVersionDict",
+    "RepositoryChannelCreateArtifactDownloadPlanCreationParameter",
+    "RepositoryChannelCreateArtifactDownloadPlanCreationParameterDict",
+    "RepositoryChannelCreateArtifactDownloadPlanToClientPacketDownloadProgress",
+    "RepositoryChannelCreateArtifactDownloadPlanToClientPacketDownloadProgressDict",
+    "RepositoryChannelCreateArtifactDownloadPlanToClientPacketPlanReady",
+    "RepositoryChannelCreateArtifactDownloadPlanToClientPacketPlanReadyDict",
+    "RepositoryChannelCreateArtifactDownloadPlanToClientPacketPlanUpdated",
+    "RepositoryChannelCreateArtifactDownloadPlanToClientPacketPlanUpdatedDict",
+    "RepositoryChannelCreateArtifactDownloadPlanToClientPacketStartFinalizing",
+    "RepositoryChannelCreateArtifactDownloadPlanToClientPacketStartFinalizingDict",
+    "RepositoryChannelCreateArtifactDownloadPlanToClientPacketSuccess",
+    "RepositoryChannelCreateArtifactDownloadPlanToClientPacketSuccessDict",
+    "RepositoryChannelCreateArtifactDownloadPlanToServerPacketCancel",
+    "RepositoryChannelCreateArtifactDownloadPlanToServerPacketCancelDict",
+    "RepositoryChannelCreateArtifactDownloadPlanToServerPacketCommit",
+    "RepositoryChannelCreateArtifactDownloadPlanToServerPacketCommitDict",
     "RepositoryChannelDownloadArtifactCreationParameter",
     "RepositoryChannelDownloadArtifactCreationParameterDict",
     "RepositoryChannelDownloadArtifactToClientPacketDownloadProgress",
@@ -539,12 +703,20 @@ __all__ = [
     "RepositoryChannelPushArtifactCreationParameterDict",
     "RepositoryChannelPushArtifactToClientPacketMessage",
     "RepositoryChannelPushArtifactToClientPacketMessageDict",
+    "RepositoryRpcGetLocalArtifactFilesParameter",
+    "RepositoryRpcGetLocalArtifactFilesParameterDict",
+    "RepositoryRpcGetLocalArtifactFilesReturns",
+    "RepositoryRpcGetLocalArtifactFilesReturnsDict",
     "RepositoryRpcGetModelDownloadOptionsParameter",
     "RepositoryRpcGetModelDownloadOptionsParameterDict",
     "RepositoryRpcGetModelDownloadOptionsReturns",
     "RepositoryRpcGetModelDownloadOptionsReturnsDict",
     "RepositoryRpcInstallPluginDependenciesParameter",
     "RepositoryRpcInstallPluginDependenciesParameterDict",
+    "RepositoryRpcLoginWithPreAuthenticatedKeysParameter",
+    "RepositoryRpcLoginWithPreAuthenticatedKeysParameterDict",
+    "RepositoryRpcLoginWithPreAuthenticatedKeysReturns",
+    "RepositoryRpcLoginWithPreAuthenticatedKeysReturnsDict",
     "RepositoryRpcSearchModelsParameter",
     "RepositoryRpcSearchModelsParameterDict",
     "RepositoryRpcSearchModelsReturns",
@@ -567,6 +739,8 @@ __all__ = [
     "SystemPromptDict",
     "SystemRpcNotifyParameter",
     "SystemRpcNotifyParameterDict",
+    "SystemRpcSetExperimentFlagParameter",
+    "SystemRpcSetExperimentFlagParameterDict",
     "SystemRpcVersionReturns",
     "SystemRpcVersionReturnsDict",
     "TextData",
@@ -579,10 +753,48 @@ __all__ = [
     "ToolCallResultDataDict",
     "ToolResultMessage",
     "ToolResultMessageDict",
+    "ToolStatusStepState",
+    "ToolStatusStepStateDict",
+    "ToolStatusStepStateStatusCallingTool",
+    "ToolStatusStepStateStatusCallingToolDict",
+    "ToolStatusStepStateStatusConfirmingToolCall",
+    "ToolStatusStepStateStatusConfirmingToolCallDict",
+    "ToolStatusStepStateStatusGeneratingToolCall",
+    "ToolStatusStepStateStatusGeneratingToolCallDict",
+    "ToolStatusStepStateStatusToolCallDenied",
+    "ToolStatusStepStateStatusToolCallDeniedDict",
+    "ToolStatusStepStateStatusToolCallFailed",
+    "ToolStatusStepStateStatusToolCallFailedDict",
+    "ToolStatusStepStateStatusToolCallGenerationFailed",
+    "ToolStatusStepStateStatusToolCallGenerationFailedDict",
+    "ToolStatusStepStateStatusToolCallQueued",
+    "ToolStatusStepStateStatusToolCallQueuedDict",
+    "ToolStatusStepStateStatusToolCallSucceeded",
+    "ToolStatusStepStateStatusToolCallSucceededDict",
     "UserMessage",
     "UserMessageDict",
-    "VirtualModelManifest",
-    "VirtualModelManifestDict",
+    "VirtualModelBooleanCustomFieldDefinition",
+    "VirtualModelBooleanCustomFieldDefinitionDict",
+    "VirtualModelConditionEquals",
+    "VirtualModelConditionEqualsDict",
+    "VirtualModelCustomFieldAppendSystemPromptEffect",
+    "VirtualModelCustomFieldAppendSystemPromptEffectDict",
+    "VirtualModelCustomFieldDefinitionBase",
+    "VirtualModelCustomFieldDefinitionBaseDict",
+    "VirtualModelCustomFieldPrependSystemPromptEffect",
+    "VirtualModelCustomFieldPrependSystemPromptEffectDict",
+    "VirtualModelCustomFieldSetJinjaVariableEffect",
+    "VirtualModelCustomFieldSetJinjaVariableEffectDict",
+    "VirtualModelDefinition",
+    "VirtualModelDefinitionConcreteModelBase",
+    "VirtualModelDefinitionConcreteModelBaseDict",
+    "VirtualModelDefinitionDict",
+    "VirtualModelDefinitionMetadataOverrides",
+    "VirtualModelDefinitionMetadataOverridesDict",
+    "VirtualModelStringCustomFieldDefinition",
+    "VirtualModelStringCustomFieldDefinitionDict",
+    "VirtualModelSuggestion",
+    "VirtualModelSuggestionDict",
 ]
 
 
@@ -648,29 +860,6 @@ class ToolCallResultDataDict(TypedDict):
 
 
 ChatMessageRoleData = Literal["assistant", "user", "system", "tool"]
-
-
-class ToolCallRequest(LMStudioStruct["ToolCallRequestDict"], kw_only=True):
-    type: Annotated[Literal["function"], Meta(title="Type")]
-    name: str
-    id: str | None = None
-    arguments: Mapping[str, Any] | None = None
-
-
-class ToolCallRequestDict(TypedDict):
-    """Corresponding typed dictionary definition for FunctionToolCallRequest.
-
-    NOTE: Multi-word keys are defined using their camelCase form,
-    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
-    """
-
-    type: Annotated[Literal["function"], Meta(title="Type")]
-    name: str
-    id: NotRequired[str | None]
-    arguments: NotRequired[Mapping[str, Any] | None]
-
-
-ToolCallRequest = ToolCallRequest
 PageNumber = Sequence[int]
 LineNumber = Sequence[int]
 
@@ -758,6 +947,40 @@ class SerializedLMSExtendedErrorDict(TypedDict):
     rootTitle: NotRequired[Any | None]
 
 
+class DocumentParsingLibraryIdentifier(
+    LMStudioStruct["DocumentParsingLibraryIdentifierDict"], kw_only=True
+):
+    library: str
+    version: str
+
+
+class DocumentParsingLibraryIdentifierDict(TypedDict):
+    """Corresponding typed dictionary definition for DocumentParsingLibraryIdentifier.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    library: str
+    version: str
+
+
+class DocumentParsingOpts(LMStudioStruct["DocumentParsingOptsDict"], kw_only=True):
+    parser_id: DocumentParsingLibraryIdentifier | None = field(
+        name="parserId", default=None
+    )
+
+
+class DocumentParsingOptsDict(TypedDict):
+    """Corresponding typed dictionary definition for DocumentParsingOpts.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    parserId: NotRequired[DocumentParsingLibraryIdentifierDict | None]
+
+
 FileNamespace = Literal["local", "base64"]
 FileType = Literal[
     "image",
@@ -771,6 +994,9 @@ DisabledGpu = Annotated[int, Meta(ge=0)]
 PriorityItem = Annotated[int, Meta(ge=0)]
 CustomRatioItem = Annotated[float, Meta(ge=0.0)]
 GpuSplitStrategy = Literal["evenly", "priorityOrder", "custom"]
+JsonSerializable = Any
+KebabCase = Annotated[str, Meta(pattern="^[a-z0-9]+(?:-[a-z0-9]+)*$")]
+KebabCaseWithDots = Annotated[str, Meta(pattern="^[a-z0-9]+(?:[-.][a-z0-9]+)*$")]
 
 
 class KvConfigField(LMStudioStruct["KvConfigFieldDict"], kw_only=True):
@@ -849,24 +1075,6 @@ class KvConfigStackDict(TypedDict):
     """
 
     layers: Sequence[KvConfigStackLayerDict]
-
-
-class LlmApplyPromptTemplateOpts(
-    LMStudioStruct["LlmApplyPromptTemplateOptsDict"], kw_only=True
-):
-    omit_bos_token: bool | None = field(name="omitBosToken", default=None)
-    omit_eos_token: bool | None = field(name="omitEosToken", default=None)
-
-
-class LlmApplyPromptTemplateOptsDict(TypedDict):
-    """Corresponding typed dictionary definition for LlmApplyPromptTemplateOpts.
-
-    NOTE: Multi-word keys are defined using their camelCase form,
-    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
-    """
-
-    omitBosToken: NotRequired[bool | None]
-    omitEosToken: NotRequired[bool | None]
 
 
 LlmLlamaAccelerationOffloadRatio1 = Annotated[float, Meta(ge=0.0, le=1.0)]
@@ -1018,7 +1226,22 @@ LlmPredictionStopReason = Literal[
     "maxPredictedTokensReached",
     "contextLengthReached",
 ]
-LlmJinjaInputMessagesContentConfigTextFieldName = Literal["content", "text"]
+
+
+class LlmJinjaPromptTemplate(
+    LMStudioStruct["LlmJinjaPromptTemplateDict"], kw_only=True
+):
+    template: str
+
+
+class LlmJinjaPromptTemplateDict(TypedDict):
+    """Corresponding typed dictionary definition for LlmJinjaPromptTemplate.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    template: str
 
 
 class LlmManualPromptTemplate(
@@ -1049,6 +1272,77 @@ class LlmManualPromptTemplateDict(TypedDict):
 
 LlmPromptTemplateType = Literal["manual", "jinja"]
 LlmStructuredPredictionType = Literal["none", "json", "gbnf"]
+
+
+class ProcessingRequestConfirmToolCall(
+    LMStudioStruct["ProcessingRequestConfirmToolCallDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="confirmToolCall",
+):
+    type: ClassVar[Annotated[Literal["confirmToolCall"], Meta(title="Type")]] = (
+        "confirmToolCall"
+    )
+    call_id: int = field(name="callId")
+    name: str
+    parameters: Mapping[str, Any]
+    plugin_identifier: str | None = field(name="pluginIdentifier", default=None)
+
+
+class ProcessingRequestConfirmToolCallDict(TypedDict):
+    """Corresponding typed dictionary definition for ProcessingRequestConfirmToolCall.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["confirmToolCall"]
+    callId: int
+    name: str
+    parameters: Mapping[str, Any]
+    pluginIdentifier: NotRequired[str | None]
+
+
+class ProcessingRequestResponseTextInput(
+    LMStudioStruct["ProcessingRequestResponseTextInputDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="textInput",
+):
+    type: ClassVar[Annotated[Literal["textInput"], Meta(title="Type")]] = "textInput"
+    result: str
+
+
+class ProcessingRequestResponseTextInputDict(TypedDict):
+    """Corresponding typed dictionary definition for ProcessingRequestResponseTextInput.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["textInput"]
+    result: str
+
+
+class ProcessingRequestTextInput(
+    LMStudioStruct["ProcessingRequestTextInputDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="textInput",
+):
+    type: ClassVar[Annotated[Literal["textInput"], Meta(title="Type")]] = "textInput"
+    prompt: str
+
+
+class ProcessingRequestTextInputDict(TypedDict):
+    """Corresponding typed dictionary definition for ProcessingRequestTextInput.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["textInput"]
+    prompt: str
 
 
 class ProcessingUpdateCitationBlockCreate(
@@ -1113,6 +1407,68 @@ class ProcessingUpdateContentBlockAppendTextDict(TypedDict):
     fromDraftModel: NotRequired[bool | None]
 
 
+class ProcessingUpdateContentBlockAppendToolRequest(
+    LMStudioStruct["ProcessingUpdateContentBlockAppendToolRequestDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="contentBlock.appendToolRequest",
+):
+    type: ClassVar[
+        Annotated[Literal["contentBlock.appendToolRequest"], Meta(title="Type")]
+    ] = "contentBlock.appendToolRequest"
+    id: str
+    call_id: int = field(name="callId")
+    name: str
+    parameters: Mapping[str, Any]
+    tool_call_request_id: str | None = field(name="toolCallRequestId", default=None)
+    plugin_identifier: str | None = field(name="pluginIdentifier", default=None)
+
+
+class ProcessingUpdateContentBlockAppendToolRequestDict(TypedDict):
+    """Corresponding typed dictionary definition for ProcessingUpdateContentBlockAppendToolRequest.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["contentBlock.appendToolRequest"]
+    id: str
+    callId: int
+    name: str
+    parameters: Mapping[str, Any]
+    toolCallRequestId: NotRequired[str | None]
+    pluginIdentifier: NotRequired[str | None]
+
+
+class ProcessingUpdateContentBlockAppendToolResult(
+    LMStudioStruct["ProcessingUpdateContentBlockAppendToolResultDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="contentBlock.appendToolResult",
+):
+    type: ClassVar[
+        Annotated[Literal["contentBlock.appendToolResult"], Meta(title="Type")]
+    ] = "contentBlock.appendToolResult"
+    id: str
+    call_id: int = field(name="callId")
+    content: str
+    tool_call_request_id: str | None = field(name="toolCallRequestId", default=None)
+
+
+class ProcessingUpdateContentBlockAppendToolResultDict(TypedDict):
+    """Corresponding typed dictionary definition for ProcessingUpdateContentBlockAppendToolResult.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["contentBlock.appendToolResult"]
+    id: str
+    callId: int
+    content: str
+    toolCallRequestId: NotRequired[str | None]
+
+
 class ProcessingUpdateContentBlockReplaceText(
     LMStudioStruct["ProcessingUpdateContentBlockReplaceTextDict"],
     kw_only=True,
@@ -1136,6 +1492,39 @@ class ProcessingUpdateContentBlockReplaceTextDict(TypedDict):
     type: Literal["contentBlock.replaceText"]
     id: str
     text: str
+
+
+class ProcessingUpdateContentBlockReplaceToolRequest(
+    LMStudioStruct["ProcessingUpdateContentBlockReplaceToolRequestDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="contentBlock.replaceToolRequest",
+):
+    type: ClassVar[
+        Annotated[Literal["contentBlock.replaceToolRequest"], Meta(title="Type")]
+    ] = "contentBlock.replaceToolRequest"
+    id: str
+    call_id: int = field(name="callId")
+    name: str
+    parameters: Mapping[str, Any]
+    tool_call_request_id: str | None = field(name="toolCallRequestId", default=None)
+    plugin_identifier: str | None = field(name="pluginIdentifier", default=None)
+
+
+class ProcessingUpdateContentBlockReplaceToolRequestDict(TypedDict):
+    """Corresponding typed dictionary definition for ProcessingUpdateContentBlockReplaceToolRequest.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["contentBlock.replaceToolRequest"]
+    id: str
+    callId: int
+    name: str
+    parameters: Mapping[str, Any]
+    toolCallRequestId: NotRequired[str | None]
+    pluginIdentifier: NotRequired[str | None]
 
 
 class ProcessingUpdateContentBlockSetPrefix(
@@ -1259,6 +1648,31 @@ class ProcessingUpdateStatusRemoveDict(TypedDict):
     id: str
 
 
+class ProcessingUpdateToolStatusArgumentFragment(
+    LMStudioStruct["ProcessingUpdateToolStatusArgumentFragmentDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="toolStatus.argumentFragment",
+):
+    type: ClassVar[
+        Annotated[Literal["toolStatus.argumentFragment"], Meta(title="Type")]
+    ] = "toolStatus.argumentFragment"
+    id: str
+    content: str
+
+
+class ProcessingUpdateToolStatusArgumentFragmentDict(TypedDict):
+    """Corresponding typed dictionary definition for ProcessingUpdateToolStatusArgumentFragment.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["toolStatus.argumentFragment"]
+    id: str
+    content: str
+
+
 StatusStepStatus = Literal["waiting", "loading", "done", "error", "canceled"]
 
 
@@ -1282,8 +1696,79 @@ ModelCompatibilityType = Literal[
     "gguf", "safetensors", "onnx", "ggml", "mlx_placeholder", "torch_safetensors"
 ]
 ModelDomainType = Literal["llm", "embedding", "imageGen", "transcription", "tts"]
-PluginRunnerType = Literal["ecmascript"]
+FileName = Annotated[
+    str,
+    Meta(
+        pattern="^[..!@#$%^&()\\-_+=,.;'[\\]{}~`][..!@#$%^&()\\-_+=,.;'[\\]{}~` ]*(?<![. ])$"
+    ),
+]
+RelativePathNoLeadingDotSlash = Annotated[
+    str,
+    Meta(
+        pattern="^[..!@#$%^&()\\-_+=,.;'[\\]{}~`][..!@#$%^&()\\-_+=,.;'[\\]{}~` ]*(?<![. ])(?:\\/[..!@#$%^&()\\-_+=,.;'[\\]{}~`][..!@#$%^&()\\-_+=,.;'[\\]{}~` ]*(?<![. ]))*$"
+    ),
+]
+PluginRunnerType = Literal["ecmascript", "node", "mcpBridge"]
 ReasonableKeyString = Annotated[str, Meta(max_length=1024, min_length=1)]
+
+
+class ArtifactDownloadPlanModelInfo(
+    LMStudioStruct["ArtifactDownloadPlanModelInfoDict"], kw_only=True
+):
+    display_name: str = field(name="displayName")
+    size_bytes: float = field(name="sizeBytes")
+    compatibility_type: ModelCompatibilityType = field(name="compatibilityType")
+    quant_name: str | None = field(name="quantName", default=None)
+
+
+class ArtifactDownloadPlanModelInfoDict(TypedDict):
+    """Corresponding typed dictionary definition for ArtifactDownloadPlanModelInfo.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    displayName: str
+    sizeBytes: float
+    compatibilityType: ModelCompatibilityType
+    quantName: NotRequired[str | None]
+
+
+ArtifactDownloadPlanNodeState = Literal["pending", "fetching", "satisfied", "completed"]
+
+
+class LocalArtifactFileEntry(
+    LMStudioStruct["LocalArtifactFileEntryDict"], kw_only=True
+):
+    relative_path: str = field(name="relativePath")
+    size_bytes: int = field(name="sizeBytes")
+
+
+class LocalArtifactFileEntryDict(TypedDict):
+    """Corresponding typed dictionary definition for LocalArtifactFileEntry.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    relativePath: str
+    sizeBytes: int
+
+
+class LocalArtifactFileList(LMStudioStruct["LocalArtifactFileListDict"], kw_only=True):
+    files: Sequence[LocalArtifactFileEntry]
+    used_ignore_file: str | None = field(name="usedIgnoreFile")
+
+
+class LocalArtifactFileListDict(TypedDict):
+    """Corresponding typed dictionary definition for LocalArtifactFileList.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    files: Sequence[LocalArtifactFileEntryDict]
+    usedIgnoreFile: NotRequired[str | None]
 
 
 class DownloadProgressUpdate(
@@ -1420,6 +1905,206 @@ RetrievalFileProcessingStep = Literal["loading", "chunking", "embedding"]
 AcceleratorType = Literal["unknown", "integratedGpu", "dedicatedGpu"]
 
 
+class KvConfigSchematicsDeserializationError(
+    LMStudioStruct["KvConfigSchematicsDeserializationErrorDict"], kw_only=True
+):
+    full_key: str = field(name="fullKey")
+    error: JsonSerializable
+
+
+class KvConfigSchematicsDeserializationErrorDict(TypedDict):
+    """Corresponding typed dictionary definition for KvConfigSchematicsDeserializationError.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    fullKey: str
+    error: JsonSerializable
+
+
+class SerializedKVConfigSchematicsField(
+    LMStudioStruct["SerializedKVConfigSchematicsFieldDict"], kw_only=True
+):
+    short_key: str = field(name="shortKey")
+    full_key: str = field(name="fullKey")
+    type_key: str = field(name="typeKey")
+    type_params: JsonSerializable = field(name="typeParams")
+    default_value: JsonSerializable = field(name="defaultValue")
+
+
+class SerializedKVConfigSchematicsFieldDict(TypedDict):
+    """Corresponding typed dictionary definition for SerializedKVConfigSchematicsField.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    shortKey: str
+    fullKey: str
+    typeKey: str
+    typeParams: JsonSerializable
+    defaultValue: JsonSerializable
+
+
+class SerializedKVConfigSchematics(
+    LMStudioStruct["SerializedKVConfigSchematicsDict"], kw_only=True
+):
+    fields: Sequence[SerializedKVConfigSchematicsField]
+    extension_prefixes: Sequence[str] | None = field(
+        name="extensionPrefixes", default=None
+    )
+
+
+class SerializedKVConfigSchematicsDict(TypedDict):
+    """Corresponding typed dictionary definition for SerializedKVConfigSchematics.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    fields: Sequence[SerializedKVConfigSchematicsFieldDict]
+    extensionPrefixes: NotRequired[Sequence[str] | None]
+
+
+BooleanOrMixed = Literal[True, False, "mixed"]
+
+
+class VirtualModelConditionEquals(
+    LMStudioStruct["VirtualModelConditionEqualsDict"], kw_only=True
+):
+    type: Annotated[Literal["equals"], Meta(title="Type")]
+    key: str
+    value: JsonSerializable
+
+
+class VirtualModelConditionEqualsDict(TypedDict):
+    """Corresponding typed dictionary definition for VirtualModelConditionEquals.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Annotated[Literal["equals"], Meta(title="Type")]
+    key: str
+    value: JsonSerializable
+
+
+VirtualModelCondition = VirtualModelConditionEquals
+
+
+class VirtualModelCustomFieldAppendSystemPromptEffect(
+    LMStudioStruct["VirtualModelCustomFieldAppendSystemPromptEffectDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="appendSystemPrompt",
+):
+    type: ClassVar[Annotated[Literal["appendSystemPrompt"], Meta(title="Type")]] = (
+        "appendSystemPrompt"
+    )
+    content: str
+
+
+class VirtualModelCustomFieldAppendSystemPromptEffectDict(TypedDict):
+    """Corresponding typed dictionary definition for VirtualModelCustomFieldAppendSystemPromptEffect.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["appendSystemPrompt"]
+    content: str
+
+
+class VirtualModelCustomFieldPrependSystemPromptEffect(
+    LMStudioStruct["VirtualModelCustomFieldPrependSystemPromptEffectDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="prependSystemPrompt",
+):
+    type: ClassVar[Annotated[Literal["prependSystemPrompt"], Meta(title="Type")]] = (
+        "prependSystemPrompt"
+    )
+    content: str
+
+
+class VirtualModelCustomFieldPrependSystemPromptEffectDict(TypedDict):
+    """Corresponding typed dictionary definition for VirtualModelCustomFieldPrependSystemPromptEffect.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["prependSystemPrompt"]
+    content: str
+
+
+class VirtualModelCustomFieldSetJinjaVariableEffect(
+    LMStudioStruct["VirtualModelCustomFieldSetJinjaVariableEffectDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="setJinjaVariable",
+):
+    type: ClassVar[Annotated[Literal["setJinjaVariable"], Meta(title="Type")]] = (
+        "setJinjaVariable"
+    )
+    variable: str
+
+
+class VirtualModelCustomFieldSetJinjaVariableEffectDict(TypedDict):
+    """Corresponding typed dictionary definition for VirtualModelCustomFieldSetJinjaVariableEffect.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["setJinjaVariable"]
+    variable: str
+
+
+class VirtualModelDefinitionMetadataOverrides(
+    LMStudioStruct["VirtualModelDefinitionMetadataOverridesDict"], kw_only=True
+):
+    domain: ModelDomainType | None = None
+    architectures: Sequence[str] | None = None
+    compatibility_types: Sequence[ModelCompatibilityType] | None = field(
+        name="compatibilityTypes", default=None
+    )
+    params_strings: Sequence[str] | None = field(name="paramsStrings", default=None)
+    min_memory_usage_bytes: float | None = field(
+        name="minMemoryUsageBytes", default=None
+    )
+    context_lengths: Sequence[float] | None = field(name="contextLengths", default=None)
+    trained_for_tool_use: BooleanOrMixed | None = field(
+        name="trainedForToolUse", default=None
+    )
+    vision: BooleanOrMixed | None = None
+    reasoning: BooleanOrMixed | None = None
+    fim: BooleanOrMixed | None = None
+
+
+class VirtualModelDefinitionMetadataOverridesDict(TypedDict):
+    """Corresponding typed dictionary definition for VirtualModelDefinitionMetadataOverrides.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    domain: NotRequired[ModelDomainType | None]
+    architectures: NotRequired[Sequence[str] | None]
+    compatibilityTypes: NotRequired[Sequence[ModelCompatibilityType] | None]
+    paramsStrings: NotRequired[Sequence[str] | None]
+    minMemoryUsageBytes: NotRequired[float | None]
+    contextLengths: NotRequired[Sequence[float] | None]
+    trainedForToolUse: NotRequired[BooleanOrMixed | None]
+    vision: NotRequired[BooleanOrMixed | None]
+    reasoning: NotRequired[BooleanOrMixed | None]
+    fim: NotRequired[BooleanOrMixed | None]
+
+
+Tag = Annotated[str, Meta(max_length=100)]
+
+
 class Config(LMStudioStruct["ConfigDict"], kw_only=True):
     load: KvConfig | None = None
     operation: KvConfig | None = None
@@ -1436,22 +2121,24 @@ class ConfigDict(TypedDict):
     operation: NotRequired[KvConfigDict | None]
 
 
-class VirtualModelManifest(LMStudioStruct["VirtualModelManifestDict"], kw_only=True):
-    model: Annotated[str, Meta(pattern="^[^/]+\\/[^/]+$")]
-    base: str
-    config: Config | None = None
+class VirtualModelSuggestion(
+    LMStudioStruct["VirtualModelSuggestionDict"], kw_only=True
+):
+    message: str
+    conditions: Sequence[VirtualModelCondition]
+    fields: Sequence[KvConfigField] | None = None
 
 
-class VirtualModelManifestDict(TypedDict):
-    """Corresponding typed dictionary definition for VirtualModelManifest.
+class VirtualModelSuggestionDict(TypedDict):
+    """Corresponding typed dictionary definition for VirtualModelSuggestion.
 
     NOTE: Multi-word keys are defined using their camelCase form,
     as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
     """
 
-    model: Annotated[str, Meta(pattern="^[^/]+\\/[^/]+$")]
-    base: str
-    config: NotRequired[ConfigDict | None]
+    message: str
+    conditions: Sequence[VirtualModelConditionEqualsDict]
+    fields: NotRequired[Sequence[KvConfigFieldDict] | None]
 
 
 ZodSchema = Any
@@ -1691,6 +2378,76 @@ class PseudoFilesRpcUploadFileBase64Dict(TypedDict):
 
     parameter: FilesRpcUploadFileBase64ParameterDict
     returns: FilesRpcUploadFileBase64ReturnsDict
+
+
+class FilesRpcGetDocumentParsingLibraryParameter(
+    LMStudioStruct["FilesRpcGetDocumentParsingLibraryParameterDict"], kw_only=True
+):
+    file_identifier: str = field(name="fileIdentifier")
+
+
+class FilesRpcGetDocumentParsingLibraryParameterDict(TypedDict):
+    """Corresponding typed dictionary definition for FilesRpcGetDocumentParsingLibraryParameter.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    fileIdentifier: str
+
+
+class FilesRpcGetDocumentParsingLibraryReturns(
+    LMStudioStruct["FilesRpcGetDocumentParsingLibraryReturnsDict"], kw_only=True
+):
+    library: str
+    version: str
+
+
+class FilesRpcGetDocumentParsingLibraryReturnsDict(TypedDict):
+    """Corresponding typed dictionary definition for FilesRpcGetDocumentParsingLibraryReturns.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    library: str
+    version: str
+
+
+class PseudoFilesRpcGetDocumentParsingLibrary(
+    LMStudioStruct["PseudoFilesRpcGetDocumentParsingLibraryDict"], kw_only=True
+):
+    parameter: FilesRpcGetDocumentParsingLibraryParameter
+    returns: FilesRpcGetDocumentParsingLibraryReturns
+
+
+class PseudoFilesRpcGetDocumentParsingLibraryDict(TypedDict):
+    """Corresponding typed dictionary definition for PseudoFilesRpcGetDocumentParsingLibrary.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    parameter: FilesRpcGetDocumentParsingLibraryParameterDict
+    returns: FilesRpcGetDocumentParsingLibraryReturnsDict
+
+
+class FilesChannelParseDocumentCreationParameter(
+    LMStudioStruct["FilesChannelParseDocumentCreationParameterDict"], kw_only=True
+):
+    file_identifier: str = field(name="fileIdentifier")
+    parse_opts: DocumentParsingOpts = field(name="parseOpts")
+
+
+class FilesChannelParseDocumentCreationParameterDict(TypedDict):
+    """Corresponding typed dictionary definition for FilesChannelParseDocumentCreationParameter.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    fileIdentifier: str
+    parseOpts: DocumentParsingOptsDict
 
 
 class LlmRpcUnloadModelParameter(
@@ -2062,7 +2819,76 @@ class PseudoPluginsRpcProcessingSetSenderNameDict(TypedDict):
     parameter: PluginsRpcProcessingSetSenderNameParameterDict
 
 
+class PluginsRpcSetConfigSchematicsParameter(
+    LMStudioStruct["PluginsRpcSetConfigSchematicsParameterDict"], kw_only=True
+):
+    schematics: SerializedKVConfigSchematics
+
+
+class PluginsRpcSetConfigSchematicsParameterDict(TypedDict):
+    """Corresponding typed dictionary definition for PluginsRpcSetConfigSchematicsParameter.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    schematics: SerializedKVConfigSchematicsDict
+
+
 PluginsRpcSetConfigSchematicsReturns = Any
+
+
+class PseudoPluginsRpcSetConfigSchematics(
+    LMStudioStruct["PseudoPluginsRpcSetConfigSchematicsDict"], kw_only=True
+):
+    parameter: PluginsRpcSetConfigSchematicsParameter
+
+
+class PseudoPluginsRpcSetConfigSchematicsDict(TypedDict):
+    """Corresponding typed dictionary definition for PseudoPluginsRpcSetConfigSchematics.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    parameter: PluginsRpcSetConfigSchematicsParameterDict
+
+
+class PluginsRpcSetGlobalConfigSchematicsParameter(
+    LMStudioStruct["PluginsRpcSetGlobalConfigSchematicsParameterDict"], kw_only=True
+):
+    schematics: SerializedKVConfigSchematics
+
+
+class PluginsRpcSetGlobalConfigSchematicsParameterDict(TypedDict):
+    """Corresponding typed dictionary definition for PluginsRpcSetGlobalConfigSchematicsParameter.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    schematics: SerializedKVConfigSchematicsDict
+
+
+PluginsRpcSetGlobalConfigSchematicsReturns = Any
+
+
+class PseudoPluginsRpcSetGlobalConfigSchematics(
+    LMStudioStruct["PseudoPluginsRpcSetGlobalConfigSchematicsDict"], kw_only=True
+):
+    parameter: PluginsRpcSetGlobalConfigSchematicsParameter
+
+
+class PseudoPluginsRpcSetGlobalConfigSchematicsDict(TypedDict):
+    """Corresponding typed dictionary definition for PseudoPluginsRpcSetGlobalConfigSchematics.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    parameter: PluginsRpcSetGlobalConfigSchematicsParameterDict
+
+
 PluginsRpcPluginInitCompletedReturns = Any
 
 
@@ -2137,6 +2963,112 @@ class PseudoRepositoryRpcInstallPluginDependenciesDict(TypedDict):
     parameter: RepositoryRpcInstallPluginDependenciesParameterDict
 
 
+class RepositoryRpcGetLocalArtifactFilesParameter(
+    LMStudioStruct["RepositoryRpcGetLocalArtifactFilesParameterDict"], kw_only=True
+):
+    path: str
+
+
+class RepositoryRpcGetLocalArtifactFilesParameterDict(TypedDict):
+    """Corresponding typed dictionary definition for RepositoryRpcGetLocalArtifactFilesParameter.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    path: str
+
+
+class RepositoryRpcGetLocalArtifactFilesReturns(
+    LMStudioStruct["RepositoryRpcGetLocalArtifactFilesReturnsDict"], kw_only=True
+):
+    file_list: LocalArtifactFileList = field(name="fileList")
+
+
+class RepositoryRpcGetLocalArtifactFilesReturnsDict(TypedDict):
+    """Corresponding typed dictionary definition for RepositoryRpcGetLocalArtifactFilesReturns.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    fileList: LocalArtifactFileListDict
+
+
+class PseudoRepositoryRpcGetLocalArtifactFiles(
+    LMStudioStruct["PseudoRepositoryRpcGetLocalArtifactFilesDict"], kw_only=True
+):
+    parameter: RepositoryRpcGetLocalArtifactFilesParameter
+    returns: RepositoryRpcGetLocalArtifactFilesReturns
+
+
+class PseudoRepositoryRpcGetLocalArtifactFilesDict(TypedDict):
+    """Corresponding typed dictionary definition for PseudoRepositoryRpcGetLocalArtifactFiles.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    parameter: RepositoryRpcGetLocalArtifactFilesParameterDict
+    returns: RepositoryRpcGetLocalArtifactFilesReturnsDict
+
+
+class RepositoryRpcLoginWithPreAuthenticatedKeysParameter(
+    LMStudioStruct["RepositoryRpcLoginWithPreAuthenticatedKeysParameterDict"],
+    kw_only=True,
+):
+    key_id: str = field(name="keyId")
+    public_key: str = field(name="publicKey")
+    private_key: str = field(name="privateKey")
+
+
+class RepositoryRpcLoginWithPreAuthenticatedKeysParameterDict(TypedDict):
+    """Corresponding typed dictionary definition for RepositoryRpcLoginWithPreAuthenticatedKeysParameter.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    keyId: str
+    publicKey: str
+    privateKey: str
+
+
+class RepositoryRpcLoginWithPreAuthenticatedKeysReturns(
+    LMStudioStruct["RepositoryRpcLoginWithPreAuthenticatedKeysReturnsDict"],
+    kw_only=True,
+):
+    user_name: str = field(name="userName")
+
+
+class RepositoryRpcLoginWithPreAuthenticatedKeysReturnsDict(TypedDict):
+    """Corresponding typed dictionary definition for RepositoryRpcLoginWithPreAuthenticatedKeysReturns.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    userName: str
+
+
+class PseudoRepositoryRpcLoginWithPreAuthenticatedKeys(
+    LMStudioStruct["PseudoRepositoryRpcLoginWithPreAuthenticatedKeysDict"], kw_only=True
+):
+    parameter: RepositoryRpcLoginWithPreAuthenticatedKeysParameter
+    returns: RepositoryRpcLoginWithPreAuthenticatedKeysReturns
+
+
+class PseudoRepositoryRpcLoginWithPreAuthenticatedKeysDict(TypedDict):
+    """Corresponding typed dictionary definition for PseudoRepositoryRpcLoginWithPreAuthenticatedKeys.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    parameter: RepositoryRpcLoginWithPreAuthenticatedKeysParameterDict
+    returns: RepositoryRpcLoginWithPreAuthenticatedKeysReturnsDict
+
+
 class DownloadModelChannelRequest(
     LMStudioStruct["DownloadModelChannelRequestDict"], kw_only=True
 ):
@@ -2158,7 +3090,7 @@ class RepositoryChannelDownloadArtifactCreationParameter(
     kw_only=True,
 ):
     artifact_owner: KebabCase = field(name="artifactOwner")
-    artifact_name: KebabCase = field(name="artifactName")
+    artifact_name: KebabCaseWithDots = field(name="artifactName")
     revision_number: int | None = field(name="revisionNumber")
     path: str
 
@@ -2180,6 +3112,10 @@ class RepositoryChannelPushArtifactCreationParameter(
     LMStudioStruct["RepositoryChannelPushArtifactCreationParameterDict"], kw_only=True
 ):
     path: str
+    description: Annotated[str, Meta(max_length=1000)] | None = None
+    make_private: bool | None = field(name="makePrivate", default=None)
+    write_revision: bool | None = field(name="writeRevision", default=None)
+    overrides: JsonSerializable | None = None
 
 
 class RepositoryChannelPushArtifactCreationParameterDict(TypedDict):
@@ -2190,6 +3126,29 @@ class RepositoryChannelPushArtifactCreationParameterDict(TypedDict):
     """
 
     path: str
+    description: NotRequired[Annotated[str, Meta(max_length=1000)] | None]
+    makePrivate: NotRequired[bool | None]
+    writeRevision: NotRequired[bool | None]
+    overrides: NotRequired[JsonSerializable | None]
+
+
+class RepositoryChannelCreateArtifactDownloadPlanCreationParameter(
+    LMStudioStruct["RepositoryChannelCreateArtifactDownloadPlanCreationParameterDict"],
+    kw_only=True,
+):
+    owner: KebabCase
+    name: KebabCaseWithDots
+
+
+class RepositoryChannelCreateArtifactDownloadPlanCreationParameterDict(TypedDict):
+    """Corresponding typed dictionary definition for RepositoryChannelCreateArtifactDownloadPlanCreationParameter.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    owner: str
+    name: str
 
 
 SystemRpcNotifyReturns = Any
@@ -2227,6 +3186,62 @@ class PseudoSystemRpcVersionDict(TypedDict):
     """
 
     returns: SystemRpcVersionReturnsDict
+
+
+class SystemRpcSetExperimentFlagParameter(
+    LMStudioStruct["SystemRpcSetExperimentFlagParameterDict"], kw_only=True
+):
+    code: str
+    value: bool
+
+
+class SystemRpcSetExperimentFlagParameterDict(TypedDict):
+    """Corresponding typed dictionary definition for SystemRpcSetExperimentFlagParameter.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    code: str
+    value: bool
+
+
+SystemRpcSetExperimentFlagReturns = Any
+
+
+class PseudoSystemRpcSetExperimentFlag(
+    LMStudioStruct["PseudoSystemRpcSetExperimentFlagDict"], kw_only=True
+):
+    parameter: SystemRpcSetExperimentFlagParameter
+
+
+class PseudoSystemRpcSetExperimentFlagDict(TypedDict):
+    """Corresponding typed dictionary definition for PseudoSystemRpcSetExperimentFlag.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    parameter: SystemRpcSetExperimentFlagParameterDict
+
+
+SystemRpcGetExperimentFlagsReturns = Sequence[str]
+
+
+class PseudoSystemRpcGetExperimentFlags(
+    LMStudioStruct["PseudoSystemRpcGetExperimentFlagsDict"], kw_only=True
+):
+    returns: SystemRpcGetExperimentFlagsReturns
+
+
+class PseudoSystemRpcGetExperimentFlagsDict(TypedDict):
+    """Corresponding typed dictionary definition for PseudoSystemRpcGetExperimentFlags.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    returns: SystemRpcGetExperimentFlagsReturns
 
 
 class PseudoSystemChannelAlive:
@@ -2648,67 +3663,28 @@ class LlmContextReferenceYamlFileDict(TypedDict):
     absPath: str
 
 
-class LlmJinjaInputMessagesContentImagesConfigSimple(
-    LMStudioStruct["LlmJinjaInputMessagesContentImagesConfigSimpleDict"],
-    kw_only=True,
-    tag_field="type",
-    tag="simple",
+class LlmToolParametersObject(
+    LMStudioStruct["LlmToolParametersObjectDict"], kw_only=True
 ):
-    type: ClassVar[Annotated[Literal["simple"], Meta(title="Type")]] = "simple"
-    value: str
+    type: Annotated[Literal["object"], Meta(title="Type")]
+    properties: Mapping[str, JsonSerializable]
+    required: Sequence[str] | None = None
+    additional_properties: bool | None = field(
+        name="additionalProperties", default=None
+    )
 
 
-class LlmJinjaInputMessagesContentImagesConfigSimpleDict(TypedDict):
-    """Corresponding typed dictionary definition for LlmJinjaInputMessagesContentImagesConfigSimple.
+class LlmToolParametersObjectDict(TypedDict):
+    """Corresponding typed dictionary definition for LlmToolParametersObject.
 
     NOTE: Multi-word keys are defined using their camelCase form,
     as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
     """
 
-    type: Literal["simple"]
-    value: str
-
-
-class LlmJinjaInputMessagesContentImagesConfigNumbered(
-    LMStudioStruct["LlmJinjaInputMessagesContentImagesConfigNumberedDict"],
-    kw_only=True,
-    tag_field="type",
-    tag="numbered",
-):
-    type: ClassVar[Annotated[Literal["numbered"], Meta(title="Type")]] = "numbered"
-    prefix: str
-    suffix: str
-
-
-class LlmJinjaInputMessagesContentImagesConfigNumberedDict(TypedDict):
-    """Corresponding typed dictionary definition for LlmJinjaInputMessagesContentImagesConfigNumbered.
-
-    NOTE: Multi-word keys are defined using their camelCase form,
-    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
-    """
-
-    type: Literal["numbered"]
-    prefix: str
-    suffix: str
-
-
-class LlmJinjaInputMessagesContentImagesConfigObject(
-    LMStudioStruct["LlmJinjaInputMessagesContentImagesConfigObjectDict"],
-    kw_only=True,
-    tag_field="type",
-    tag="object",
-):
-    type: ClassVar[Annotated[Literal["object"], Meta(title="Type")]] = "object"
-
-
-class LlmJinjaInputMessagesContentImagesConfigObjectDict(TypedDict):
-    """Corresponding typed dictionary definition for LlmJinjaInputMessagesContentImagesConfigObject.
-
-    NOTE: Multi-word keys are defined using their camelCase form,
-    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
-    """
-
-    type: Literal["object"]
+    type: Annotated[Literal["object"], Meta(title="Type")]
+    properties: Mapping[str, JsonSerializable]
+    required: NotRequired[Sequence[str] | None]
+    additionalProperties: NotRequired[bool | None]
 
 
 class LlmToolUseSettingNone(
@@ -2728,6 +3704,50 @@ class LlmToolUseSettingNoneDict(TypedDict):
     """
 
     type: Literal["none"]
+
+
+class ProcessingRequestResponseConfirmToolCallResultAllow(
+    LMStudioStruct["ProcessingRequestResponseConfirmToolCallResultAllowDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="allow",
+):
+    type: ClassVar[Annotated[Literal["allow"], Meta(title="Type")]] = "allow"
+    tool_args_override: Mapping[str, Any] | None = field(
+        name="toolArgsOverride", default=None
+    )
+
+
+class ProcessingRequestResponseConfirmToolCallResultAllowDict(TypedDict):
+    """Corresponding typed dictionary definition for ProcessingRequestResponseConfirmToolCallResultAllow.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["allow"]
+    toolArgsOverride: NotRequired[Mapping[str, Any] | None]
+
+
+class ProcessingRequestResponseConfirmToolCallResultDeny(
+    LMStudioStruct["ProcessingRequestResponseConfirmToolCallResultDenyDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="deny",
+):
+    type: ClassVar[Annotated[Literal["deny"], Meta(title="Type")]] = "deny"
+    deny_reason: str | None = field(name="denyReason", default=None)
+
+
+class ProcessingRequestResponseConfirmToolCallResultDenyDict(TypedDict):
+    """Corresponding typed dictionary definition for ProcessingRequestResponseConfirmToolCallResultDeny.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["deny"]
+    denyReason: NotRequired[str | None]
 
 
 class BlockLocationBeforeId(
@@ -2772,6 +3792,190 @@ class BlockLocationAfterIdDict(TypedDict):
     id: str
 
 
+class ToolStatusStepStateStatusGeneratingToolCall(
+    LMStudioStruct["ToolStatusStepStateStatusGeneratingToolCallDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="generatingToolCall",
+):
+    type: ClassVar[Annotated[Literal["generatingToolCall"], Meta(title="Type")]] = (
+        "generatingToolCall"
+    )
+    name: str | None = None
+    plugin_identifier: str | None = field(name="pluginIdentifier", default=None)
+    arguments_string: str | None = field(name="argumentsString", default=None)
+
+
+class ToolStatusStepStateStatusGeneratingToolCallDict(TypedDict):
+    """Corresponding typed dictionary definition for ToolStatusStepStateStatusGeneratingToolCall.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["generatingToolCall"]
+    name: NotRequired[str | None]
+    pluginIdentifier: NotRequired[str | None]
+    argumentsString: NotRequired[str | None]
+
+
+class ToolStatusStepStateStatusToolCallGenerationFailed(
+    LMStudioStruct["ToolStatusStepStateStatusToolCallGenerationFailedDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="toolCallGenerationFailed",
+):
+    type: ClassVar[
+        Annotated[Literal["toolCallGenerationFailed"], Meta(title="Type")]
+    ] = "toolCallGenerationFailed"
+    error: str
+    raw_content: str | None = field(name="rawContent", default=None)
+
+
+class ToolStatusStepStateStatusToolCallGenerationFailedDict(TypedDict):
+    """Corresponding typed dictionary definition for ToolStatusStepStateStatusToolCallGenerationFailed.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["toolCallGenerationFailed"]
+    error: str
+    rawContent: NotRequired[str | None]
+
+
+class ToolStatusStepStateStatusToolCallQueued(
+    LMStudioStruct["ToolStatusStepStateStatusToolCallQueuedDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="toolCallQueued",
+):
+    type: ClassVar[Annotated[Literal["toolCallQueued"], Meta(title="Type")]] = (
+        "toolCallQueued"
+    )
+
+
+class ToolStatusStepStateStatusToolCallQueuedDict(TypedDict):
+    """Corresponding typed dictionary definition for ToolStatusStepStateStatusToolCallQueued.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["toolCallQueued"]
+
+
+class ToolStatusStepStateStatusConfirmingToolCall(
+    LMStudioStruct["ToolStatusStepStateStatusConfirmingToolCallDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="confirmingToolCall",
+):
+    type: ClassVar[Annotated[Literal["confirmingToolCall"], Meta(title="Type")]] = (
+        "confirmingToolCall"
+    )
+
+
+class ToolStatusStepStateStatusConfirmingToolCallDict(TypedDict):
+    """Corresponding typed dictionary definition for ToolStatusStepStateStatusConfirmingToolCall.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["confirmingToolCall"]
+
+
+class ToolStatusStepStateStatusToolCallDenied(
+    LMStudioStruct["ToolStatusStepStateStatusToolCallDeniedDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="toolCallDenied",
+):
+    type: ClassVar[Annotated[Literal["toolCallDenied"], Meta(title="Type")]] = (
+        "toolCallDenied"
+    )
+    deny_reason: str | None = field(name="denyReason", default=None)
+
+
+class ToolStatusStepStateStatusToolCallDeniedDict(TypedDict):
+    """Corresponding typed dictionary definition for ToolStatusStepStateStatusToolCallDenied.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["toolCallDenied"]
+    denyReason: NotRequired[str | None]
+
+
+class ToolStatusStepStateStatusCallingTool(
+    LMStudioStruct["ToolStatusStepStateStatusCallingToolDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="callingTool",
+):
+    type: ClassVar[Annotated[Literal["callingTool"], Meta(title="Type")]] = (
+        "callingTool"
+    )
+
+
+class ToolStatusStepStateStatusCallingToolDict(TypedDict):
+    """Corresponding typed dictionary definition for ToolStatusStepStateStatusCallingTool.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["callingTool"]
+
+
+class ToolStatusStepStateStatusToolCallFailed(
+    LMStudioStruct["ToolStatusStepStateStatusToolCallFailedDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="toolCallFailed",
+):
+    type: ClassVar[Annotated[Literal["toolCallFailed"], Meta(title="Type")]] = (
+        "toolCallFailed"
+    )
+    error: str
+
+
+class ToolStatusStepStateStatusToolCallFailedDict(TypedDict):
+    """Corresponding typed dictionary definition for ToolStatusStepStateStatusToolCallFailed.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["toolCallFailed"]
+    error: str
+
+
+class ToolStatusStepStateStatusToolCallSucceeded(
+    LMStudioStruct["ToolStatusStepStateStatusToolCallSucceededDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="toolCallSucceeded",
+):
+    type: ClassVar[Annotated[Literal["toolCallSucceeded"], Meta(title="Type")]] = (
+        "toolCallSucceeded"
+    )
+    time_ms: int = field(name="timeMs")
+
+
+class ToolStatusStepStateStatusToolCallSucceededDict(TypedDict):
+    """Corresponding typed dictionary definition for ToolStatusStepStateStatusToolCallSucceeded.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["toolCallSucceeded"]
+    timeMs: int
+
+
 class ModelSpecifierInstanceReference(
     LMStudioStruct["ModelSpecifierInstanceReferenceDict"],
     kw_only=True,
@@ -2793,6 +3997,68 @@ class ModelSpecifierInstanceReferenceDict(TypedDict):
 
     type: Literal["instanceReference"]
     instanceReference: str
+
+
+class ArtifactDownloadPlanNodeArtifact(
+    LMStudioStruct["ArtifactDownloadPlanNodeArtifactDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="artifact",
+):
+    type: ClassVar[Annotated[Literal["artifact"], Meta(title="Type")]] = "artifact"
+    owner: KebabCase
+    name: KebabCaseWithDots
+    state: ArtifactDownloadPlanNodeState
+    dependency_nodes: Sequence[int] = field(name="dependencyNodes")
+    artifact_type: ArtifactType | None = field(name="artifactType", default=None)
+    size_bytes: int | None = field(name="sizeBytes", default=None)
+
+
+class ArtifactDownloadPlanNodeArtifactDict(TypedDict):
+    """Corresponding typed dictionary definition for ArtifactDownloadPlanNodeArtifact.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["artifact"]
+    owner: str
+    name: str
+    state: ArtifactDownloadPlanNodeState
+    dependencyNodes: Sequence[int]
+    artifactType: NotRequired[ArtifactType | None]
+    sizeBytes: NotRequired[int | None]
+
+
+class ArtifactDownloadPlanNodeModel(
+    LMStudioStruct["ArtifactDownloadPlanNodeModelDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="model",
+):
+    type: ClassVar[Annotated[Literal["model"], Meta(title="Type")]] = "model"
+    state: ArtifactDownloadPlanNodeState
+    resolved_sources: int | None = field(name="resolvedSources", default=None)
+    total_sources: int | None = field(name="totalSources", default=None)
+    already_owned: ArtifactDownloadPlanModelInfo | None = field(
+        name="alreadyOwned", default=None
+    )
+    selected: ArtifactDownloadPlanModelInfo | None = None
+
+
+class ArtifactDownloadPlanNodeModelDict(TypedDict):
+    """Corresponding typed dictionary definition for ArtifactDownloadPlanNodeModel.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["model"]
+    state: ArtifactDownloadPlanNodeState
+    resolvedSources: NotRequired[int | None]
+    totalSources: NotRequired[int | None]
+    alreadyOwned: NotRequired[ArtifactDownloadPlanModelInfoDict | None]
+    selected: NotRequired[ArtifactDownloadPlanModelInfoDict | None]
 
 
 class ModelSearchResultIdentifierCatalog(
@@ -2855,6 +4121,21 @@ class RetrievalChunkingMethodRecursiveV1Dict(TypedDict):
     type: Annotated[Literal["recursive-v1"], Meta(title="Type")]
     chunkSize: int
     chunkOverlap: int
+
+
+VirtualModelBooleanCustomFieldDefinitionEffectsItem = (
+    VirtualModelCustomFieldSetJinjaVariableEffect
+    | VirtualModelCustomFieldPrependSystemPromptEffect
+    | VirtualModelCustomFieldAppendSystemPromptEffect
+)
+VirtualModelBooleanCustomFieldDefinitionEffectsItemDict = (
+    VirtualModelCustomFieldAppendSystemPromptEffectDict
+    | VirtualModelCustomFieldSetJinjaVariableEffectDict
+    | VirtualModelCustomFieldPrependSystemPromptEffectDict
+)
+VirtualModelStringCustomFieldDefinitionEffectsItem = (
+    VirtualModelCustomFieldSetJinjaVariableEffect
+)
 
 
 class DiagnosticsChannelStreamLogsToServerPacketStop(
@@ -3176,6 +4457,89 @@ class FilesChannelRetrieveToServerPacketStopDict(TypedDict):
     type: Annotated[Literal["stop"], Meta(title="Type")]
 
 
+class FilesChannelParseDocumentToClientPacketParserLoaded(
+    LMStudioStruct["FilesChannelParseDocumentToClientPacketParserLoadedDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="parserLoaded",
+):
+    type: ClassVar[Annotated[Literal["parserLoaded"], Meta(title="Type")]] = (
+        "parserLoaded"
+    )
+    parser: DocumentParsingLibraryIdentifier
+
+
+class FilesChannelParseDocumentToClientPacketParserLoadedDict(TypedDict):
+    """Corresponding typed dictionary definition for FilesChannelParseDocumentToClientPacketParserLoaded.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["parserLoaded"]
+    parser: DocumentParsingLibraryIdentifierDict
+
+
+class FilesChannelParseDocumentToClientPacketProgress(
+    LMStudioStruct["FilesChannelParseDocumentToClientPacketProgressDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="progress",
+):
+    type: ClassVar[Annotated[Literal["progress"], Meta(title="Type")]] = "progress"
+    progress: float
+
+
+class FilesChannelParseDocumentToClientPacketProgressDict(TypedDict):
+    """Corresponding typed dictionary definition for FilesChannelParseDocumentToClientPacketProgress.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["progress"]
+    progress: float
+
+
+class FilesChannelParseDocumentToClientPacketResult(
+    LMStudioStruct["FilesChannelParseDocumentToClientPacketResultDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="result",
+):
+    type: ClassVar[Annotated[Literal["result"], Meta(title="Type")]] = "result"
+    content: str
+    parser: DocumentParsingLibraryIdentifier
+
+
+class FilesChannelParseDocumentToClientPacketResultDict(TypedDict):
+    """Corresponding typed dictionary definition for FilesChannelParseDocumentToClientPacketResult.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["result"]
+    content: str
+    parser: DocumentParsingLibraryIdentifierDict
+
+
+class FilesChannelParseDocumentToServerPacketCancel(
+    LMStudioStruct["FilesChannelParseDocumentToServerPacketCancelDict"], kw_only=True
+):
+    type: Annotated[Literal["cancel"], Meta(title="Type")]
+
+
+class FilesChannelParseDocumentToServerPacketCancelDict(TypedDict):
+    """Corresponding typed dictionary definition for FilesChannelParseDocumentToServerPacketCancel.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Annotated[Literal["cancel"], Meta(title="Type")]
+
+
 class LlmChannelLoadModelToClientPacketProgress(
     LMStudioStruct["LlmChannelLoadModelToClientPacketProgressDict"],
     kw_only=True,
@@ -3335,27 +4699,56 @@ class LlmChannelPredictToClientPacketToolCallGenerationStartDict(TypedDict):
     type: Literal["toolCallGenerationStart"]
 
 
-class LlmChannelPredictToClientPacketToolCallGenerationEnd(
-    LMStudioStruct["LlmChannelPredictToClientPacketToolCallGenerationEndDict"],
+class LlmChannelPredictToClientPacketToolCallGenerationNameReceived(
+    LMStudioStruct["LlmChannelPredictToClientPacketToolCallGenerationNameReceivedDict"],
     kw_only=True,
     tag_field="type",
-    tag="toolCallGenerationEnd",
+    tag="toolCallGenerationNameReceived",
 ):
-    type: ClassVar[Annotated[Literal["toolCallGenerationEnd"], Meta(title="Type")]] = (
-        "toolCallGenerationEnd"
-    )
-    tool_call_request: ToolCallRequest = field(name="toolCallRequest")
+    type: ClassVar[
+        Annotated[Literal["toolCallGenerationNameReceived"], Meta(title="Type")]
+    ] = "toolCallGenerationNameReceived"
+    name: str
 
 
-class LlmChannelPredictToClientPacketToolCallGenerationEndDict(TypedDict):
-    """Corresponding typed dictionary definition for LlmChannelPredictToClientPacketToolCallGenerationEnd.
+class LlmChannelPredictToClientPacketToolCallGenerationNameReceivedDict(TypedDict):
+    """Corresponding typed dictionary definition for LlmChannelPredictToClientPacketToolCallGenerationNameReceived.
 
     NOTE: Multi-word keys are defined using their camelCase form,
     as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
     """
 
-    type: Literal["toolCallGenerationEnd"]
-    toolCallRequest: ToolCallRequestDict
+    type: Literal["toolCallGenerationNameReceived"]
+    name: str
+
+
+class LlmChannelPredictToClientPacketToolCallGenerationArgumentFragmentGenerated(
+    LMStudioStruct[
+        "LlmChannelPredictToClientPacketToolCallGenerationArgumentFragmentGeneratedDict"
+    ],
+    kw_only=True,
+    tag_field="type",
+    tag="toolCallGenerationArgumentFragmentGenerated",
+):
+    type: ClassVar[
+        Annotated[
+            Literal["toolCallGenerationArgumentFragmentGenerated"], Meta(title="Type")
+        ]
+    ] = "toolCallGenerationArgumentFragmentGenerated"
+    content: str
+
+
+class LlmChannelPredictToClientPacketToolCallGenerationArgumentFragmentGeneratedDict(
+    TypedDict
+):
+    """Corresponding typed dictionary definition for LlmChannelPredictToClientPacketToolCallGenerationArgumentFragmentGenerated.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["toolCallGenerationArgumentFragmentGenerated"]
+    content: str
 
 
 class LlmChannelPredictToClientPacketToolCallGenerationFailed(
@@ -3367,6 +4760,8 @@ class LlmChannelPredictToClientPacketToolCallGenerationFailed(
     type: ClassVar[
         Annotated[Literal["toolCallGenerationFailed"], Meta(title="Type")]
     ] = "toolCallGenerationFailed"
+    error: SerializedLMSExtendedError
+    raw_content: str | None = field(name="rawContent", default=None)
 
 
 class LlmChannelPredictToClientPacketToolCallGenerationFailedDict(TypedDict):
@@ -3377,6 +4772,8 @@ class LlmChannelPredictToClientPacketToolCallGenerationFailedDict(TypedDict):
     """
 
     type: Literal["toolCallGenerationFailed"]
+    error: SerializedLMSExtendedErrorDict
+    rawContent: NotRequired[str | None]
 
 
 class LlmChannelPredictToServerPacketCancel(
@@ -3387,6 +4784,196 @@ class LlmChannelPredictToServerPacketCancel(
 
 class LlmChannelPredictToServerPacketCancelDict(TypedDict):
     """Corresponding typed dictionary definition for LlmChannelPredictToServerPacketCancel.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Annotated[Literal["cancel"], Meta(title="Type")]
+
+
+class LlmChannelGenerateWithGeneratorToClientPacketFragment(
+    LMStudioStruct["LlmChannelGenerateWithGeneratorToClientPacketFragmentDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="fragment",
+):
+    type: ClassVar[Annotated[Literal["fragment"], Meta(title="Type")]] = "fragment"
+    fragment: LlmPredictionFragment
+
+
+class LlmChannelGenerateWithGeneratorToClientPacketFragmentDict(TypedDict):
+    """Corresponding typed dictionary definition for LlmChannelGenerateWithGeneratorToClientPacketFragment.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["fragment"]
+    fragment: LlmPredictionFragmentDict
+
+
+class LlmChannelGenerateWithGeneratorToClientPacketPromptProcessingProgress(
+    LMStudioStruct[
+        "LlmChannelGenerateWithGeneratorToClientPacketPromptProcessingProgressDict"
+    ],
+    kw_only=True,
+    tag_field="type",
+    tag="promptProcessingProgress",
+):
+    type: ClassVar[
+        Annotated[Literal["promptProcessingProgress"], Meta(title="Type")]
+    ] = "promptProcessingProgress"
+    progress: float
+
+
+class LlmChannelGenerateWithGeneratorToClientPacketPromptProcessingProgressDict(
+    TypedDict
+):
+    """Corresponding typed dictionary definition for LlmChannelGenerateWithGeneratorToClientPacketPromptProcessingProgress.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["promptProcessingProgress"]
+    progress: float
+
+
+class LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationStart(
+    LMStudioStruct[
+        "LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationStartDict"
+    ],
+    kw_only=True,
+    tag_field="type",
+    tag="toolCallGenerationStart",
+):
+    type: ClassVar[
+        Annotated[Literal["toolCallGenerationStart"], Meta(title="Type")]
+    ] = "toolCallGenerationStart"
+
+
+class LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationStartDict(
+    TypedDict
+):
+    """Corresponding typed dictionary definition for LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationStart.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["toolCallGenerationStart"]
+
+
+class LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationNameReceived(
+    LMStudioStruct[
+        "LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationNameReceivedDict"
+    ],
+    kw_only=True,
+    tag_field="type",
+    tag="toolCallGenerationNameReceived",
+):
+    type: ClassVar[
+        Annotated[Literal["toolCallGenerationNameReceived"], Meta(title="Type")]
+    ] = "toolCallGenerationNameReceived"
+    name: str
+
+
+class LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationNameReceivedDict(
+    TypedDict
+):
+    """Corresponding typed dictionary definition for LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationNameReceived.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["toolCallGenerationNameReceived"]
+    name: str
+
+
+class LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationArgumentFragmentGenerated(
+    LMStudioStruct[
+        "LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationArgumentFragmentGeneratedDict"
+    ],
+    kw_only=True,
+    tag_field="type",
+    tag="toolCallGenerationArgumentFragmentGenerated",
+):
+    type: ClassVar[
+        Annotated[
+            Literal["toolCallGenerationArgumentFragmentGenerated"], Meta(title="Type")
+        ]
+    ] = "toolCallGenerationArgumentFragmentGenerated"
+    content: str
+
+
+class LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationArgumentFragmentGeneratedDict(
+    TypedDict
+):
+    """Corresponding typed dictionary definition for LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationArgumentFragmentGenerated.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["toolCallGenerationArgumentFragmentGenerated"]
+    content: str
+
+
+class LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationFailed(
+    LMStudioStruct[
+        "LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationFailedDict"
+    ],
+    kw_only=True,
+    tag_field="type",
+    tag="toolCallGenerationFailed",
+):
+    type: ClassVar[
+        Annotated[Literal["toolCallGenerationFailed"], Meta(title="Type")]
+    ] = "toolCallGenerationFailed"
+
+
+class LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationFailedDict(
+    TypedDict
+):
+    """Corresponding typed dictionary definition for LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationFailed.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["toolCallGenerationFailed"]
+
+
+class LlmChannelGenerateWithGeneratorToClientPacketSuccess(
+    LMStudioStruct["LlmChannelGenerateWithGeneratorToClientPacketSuccessDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="success",
+):
+    type: ClassVar[Annotated[Literal["success"], Meta(title="Type")]] = "success"
+
+
+class LlmChannelGenerateWithGeneratorToClientPacketSuccessDict(TypedDict):
+    """Corresponding typed dictionary definition for LlmChannelGenerateWithGeneratorToClientPacketSuccess.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["success"]
+
+
+class LlmChannelGenerateWithGeneratorToServerPacketCancel(
+    LMStudioStruct["LlmChannelGenerateWithGeneratorToServerPacketCancelDict"],
+    kw_only=True,
+):
+    type: Annotated[Literal["cancel"], Meta(title="Type")]
+
+
+class LlmChannelGenerateWithGeneratorToServerPacketCancelDict(TypedDict):
+    """Corresponding typed dictionary definition for LlmChannelGenerateWithGeneratorToServerPacketCancel.
 
     NOTE: Multi-word keys are defined using their camelCase form,
     as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
@@ -3498,6 +5085,304 @@ class PluginsChannelSetPreprocessorToServerPacketErrorDict(TypedDict):
     error: SerializedLMSExtendedErrorDict
 
 
+class PluginsChannelSetPredictionLoopHandlerToClientPacketAbort(
+    LMStudioStruct["PluginsChannelSetPredictionLoopHandlerToClientPacketAbortDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="abort",
+):
+    type: ClassVar[Annotated[Literal["abort"], Meta(title="Type")]] = "abort"
+    task_id: str = field(name="taskId")
+
+
+class PluginsChannelSetPredictionLoopHandlerToClientPacketAbortDict(TypedDict):
+    """Corresponding typed dictionary definition for PluginsChannelSetPredictionLoopHandlerToClientPacketAbort.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["abort"]
+    taskId: str
+
+
+class PluginsChannelSetPredictionLoopHandlerToServerPacketComplete(
+    LMStudioStruct["PluginsChannelSetPredictionLoopHandlerToServerPacketCompleteDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="complete",
+):
+    type: ClassVar[Annotated[Literal["complete"], Meta(title="Type")]] = "complete"
+    task_id: str = field(name="taskId")
+
+
+class PluginsChannelSetPredictionLoopHandlerToServerPacketCompleteDict(TypedDict):
+    """Corresponding typed dictionary definition for PluginsChannelSetPredictionLoopHandlerToServerPacketComplete.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["complete"]
+    taskId: str
+
+
+class PluginsChannelSetPredictionLoopHandlerToServerPacketAborted(
+    LMStudioStruct["PluginsChannelSetPredictionLoopHandlerToServerPacketAbortedDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="aborted",
+):
+    type: ClassVar[Annotated[Literal["aborted"], Meta(title="Type")]] = "aborted"
+    task_id: str = field(name="taskId")
+
+
+class PluginsChannelSetPredictionLoopHandlerToServerPacketAbortedDict(TypedDict):
+    """Corresponding typed dictionary definition for PluginsChannelSetPredictionLoopHandlerToServerPacketAborted.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["aborted"]
+    taskId: str
+
+
+class PluginsChannelSetPredictionLoopHandlerToServerPacketError(
+    LMStudioStruct["PluginsChannelSetPredictionLoopHandlerToServerPacketErrorDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="error",
+):
+    type: ClassVar[Annotated[Literal["error"], Meta(title="Type")]] = "error"
+    task_id: str = field(name="taskId")
+    error: SerializedLMSExtendedError
+
+
+class PluginsChannelSetPredictionLoopHandlerToServerPacketErrorDict(TypedDict):
+    """Corresponding typed dictionary definition for PluginsChannelSetPredictionLoopHandlerToServerPacketError.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["error"]
+    taskId: str
+    error: SerializedLMSExtendedErrorDict
+
+
+class PluginsChannelSetToolsProviderToClientPacketDiscardSession(
+    LMStudioStruct["PluginsChannelSetToolsProviderToClientPacketDiscardSessionDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="discardSession",
+):
+    type: ClassVar[Annotated[Literal["discardSession"], Meta(title="Type")]] = (
+        "discardSession"
+    )
+    session_id: str = field(name="sessionId")
+
+
+class PluginsChannelSetToolsProviderToClientPacketDiscardSessionDict(TypedDict):
+    """Corresponding typed dictionary definition for PluginsChannelSetToolsProviderToClientPacketDiscardSession.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["discardSession"]
+    sessionId: str
+
+
+class PluginsChannelSetToolsProviderToClientPacketCallTool(
+    LMStudioStruct["PluginsChannelSetToolsProviderToClientPacketCallToolDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="callTool",
+):
+    type: ClassVar[Annotated[Literal["callTool"], Meta(title="Type")]] = "callTool"
+    session_id: str = field(name="sessionId")
+    call_id: str = field(name="callId")
+    tool_name: str = field(name="toolName")
+    parameters: JsonSerializable
+
+
+class PluginsChannelSetToolsProviderToClientPacketCallToolDict(TypedDict):
+    """Corresponding typed dictionary definition for PluginsChannelSetToolsProviderToClientPacketCallTool.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["callTool"]
+    sessionId: str
+    callId: str
+    toolName: str
+    parameters: JsonSerializable
+
+
+class PluginsChannelSetToolsProviderToClientPacketAbortToolCall(
+    LMStudioStruct["PluginsChannelSetToolsProviderToClientPacketAbortToolCallDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="abortToolCall",
+):
+    type: ClassVar[Annotated[Literal["abortToolCall"], Meta(title="Type")]] = (
+        "abortToolCall"
+    )
+    session_id: str = field(name="sessionId")
+    call_id: str = field(name="callId")
+
+
+class PluginsChannelSetToolsProviderToClientPacketAbortToolCallDict(TypedDict):
+    """Corresponding typed dictionary definition for PluginsChannelSetToolsProviderToClientPacketAbortToolCall.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["abortToolCall"]
+    sessionId: str
+    callId: str
+
+
+class PluginsChannelSetToolsProviderToServerPacketSessionInitializationFailed(
+    LMStudioStruct[
+        "PluginsChannelSetToolsProviderToServerPacketSessionInitializationFailedDict"
+    ],
+    kw_only=True,
+    tag_field="type",
+    tag="sessionInitializationFailed",
+):
+    type: ClassVar[
+        Annotated[Literal["sessionInitializationFailed"], Meta(title="Type")]
+    ] = "sessionInitializationFailed"
+    session_id: str = field(name="sessionId")
+    error: SerializedLMSExtendedError
+
+
+class PluginsChannelSetToolsProviderToServerPacketSessionInitializationFailedDict(
+    TypedDict
+):
+    """Corresponding typed dictionary definition for PluginsChannelSetToolsProviderToServerPacketSessionInitializationFailed.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["sessionInitializationFailed"]
+    sessionId: str
+    error: SerializedLMSExtendedErrorDict
+
+
+class PluginsChannelSetToolsProviderToServerPacketToolCallComplete(
+    LMStudioStruct["PluginsChannelSetToolsProviderToServerPacketToolCallCompleteDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="toolCallComplete",
+):
+    type: ClassVar[Annotated[Literal["toolCallComplete"], Meta(title="Type")]] = (
+        "toolCallComplete"
+    )
+    session_id: str = field(name="sessionId")
+    call_id: str = field(name="callId")
+    result: JsonSerializable
+
+
+class PluginsChannelSetToolsProviderToServerPacketToolCallCompleteDict(TypedDict):
+    """Corresponding typed dictionary definition for PluginsChannelSetToolsProviderToServerPacketToolCallComplete.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["toolCallComplete"]
+    sessionId: str
+    callId: str
+    result: JsonSerializable
+
+
+class PluginsChannelSetToolsProviderToServerPacketToolCallError(
+    LMStudioStruct["PluginsChannelSetToolsProviderToServerPacketToolCallErrorDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="toolCallError",
+):
+    type: ClassVar[Annotated[Literal["toolCallError"], Meta(title="Type")]] = (
+        "toolCallError"
+    )
+    session_id: str = field(name="sessionId")
+    call_id: str = field(name="callId")
+    error: SerializedLMSExtendedError
+
+
+class PluginsChannelSetToolsProviderToServerPacketToolCallErrorDict(TypedDict):
+    """Corresponding typed dictionary definition for PluginsChannelSetToolsProviderToServerPacketToolCallError.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["toolCallError"]
+    sessionId: str
+    callId: str
+    error: SerializedLMSExtendedErrorDict
+
+
+class PluginsChannelSetToolsProviderToServerPacketToolCallStatus(
+    LMStudioStruct["PluginsChannelSetToolsProviderToServerPacketToolCallStatusDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="toolCallStatus",
+):
+    type: ClassVar[Annotated[Literal["toolCallStatus"], Meta(title="Type")]] = (
+        "toolCallStatus"
+    )
+    session_id: str = field(name="sessionId")
+    call_id: str = field(name="callId")
+    status_text: str = field(name="statusText")
+
+
+class PluginsChannelSetToolsProviderToServerPacketToolCallStatusDict(TypedDict):
+    """Corresponding typed dictionary definition for PluginsChannelSetToolsProviderToServerPacketToolCallStatus.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["toolCallStatus"]
+    sessionId: str
+    callId: str
+    statusText: str
+
+
+class PluginsChannelSetToolsProviderToServerPacketToolCallWarn(
+    LMStudioStruct["PluginsChannelSetToolsProviderToServerPacketToolCallWarnDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="toolCallWarn",
+):
+    type: ClassVar[Annotated[Literal["toolCallWarn"], Meta(title="Type")]] = (
+        "toolCallWarn"
+    )
+    session_id: str = field(name="sessionId")
+    call_id: str = field(name="callId")
+    warn_text: str = field(name="warnText")
+
+
+class PluginsChannelSetToolsProviderToServerPacketToolCallWarnDict(TypedDict):
+    """Corresponding typed dictionary definition for PluginsChannelSetToolsProviderToServerPacketToolCallWarn.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["toolCallWarn"]
+    sessionId: str
+    callId: str
+    warnText: str
+
+
 class PluginsChannelSetGeneratorToClientPacketAbort(
     LMStudioStruct["PluginsChannelSetGeneratorToClientPacketAbortDict"],
     kw_only=True,
@@ -3580,6 +5465,118 @@ class PluginsChannelSetGeneratorToServerPacketErrorDict(TypedDict):
     """
 
     type: Literal["error"]
+    taskId: str
+    error: SerializedLMSExtendedErrorDict
+
+
+class PluginsChannelSetGeneratorToServerPacketToolCallGenerationStarted(
+    LMStudioStruct[
+        "PluginsChannelSetGeneratorToServerPacketToolCallGenerationStartedDict"
+    ],
+    kw_only=True,
+    tag_field="type",
+    tag="toolCallGenerationStarted",
+):
+    type: ClassVar[
+        Annotated[Literal["toolCallGenerationStarted"], Meta(title="Type")]
+    ] = "toolCallGenerationStarted"
+    task_id: str = field(name="taskId")
+
+
+class PluginsChannelSetGeneratorToServerPacketToolCallGenerationStartedDict(TypedDict):
+    """Corresponding typed dictionary definition for PluginsChannelSetGeneratorToServerPacketToolCallGenerationStarted.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["toolCallGenerationStarted"]
+    taskId: str
+
+
+class PluginsChannelSetGeneratorToServerPacketToolCallGenerationNameReceived(
+    LMStudioStruct[
+        "PluginsChannelSetGeneratorToServerPacketToolCallGenerationNameReceivedDict"
+    ],
+    kw_only=True,
+    tag_field="type",
+    tag="toolCallGenerationNameReceived",
+):
+    type: ClassVar[
+        Annotated[Literal["toolCallGenerationNameReceived"], Meta(title="Type")]
+    ] = "toolCallGenerationNameReceived"
+    task_id: str = field(name="taskId")
+    tool_name: str = field(name="toolName")
+
+
+class PluginsChannelSetGeneratorToServerPacketToolCallGenerationNameReceivedDict(
+    TypedDict
+):
+    """Corresponding typed dictionary definition for PluginsChannelSetGeneratorToServerPacketToolCallGenerationNameReceived.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["toolCallGenerationNameReceived"]
+    taskId: str
+    toolName: str
+
+
+class PluginsChannelSetGeneratorToServerPacketToolCallGenerationArgumentFragmentGenerated(
+    LMStudioStruct[
+        "PluginsChannelSetGeneratorToServerPacketToolCallGenerationArgumentFragmentGeneratedDict"
+    ],
+    kw_only=True,
+    tag_field="type",
+    tag="toolCallGenerationArgumentFragmentGenerated",
+):
+    type: ClassVar[
+        Annotated[
+            Literal["toolCallGenerationArgumentFragmentGenerated"], Meta(title="Type")
+        ]
+    ] = "toolCallGenerationArgumentFragmentGenerated"
+    task_id: str = field(name="taskId")
+    content: str
+
+
+class PluginsChannelSetGeneratorToServerPacketToolCallGenerationArgumentFragmentGeneratedDict(
+    TypedDict
+):
+    """Corresponding typed dictionary definition for PluginsChannelSetGeneratorToServerPacketToolCallGenerationArgumentFragmentGenerated.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["toolCallGenerationArgumentFragmentGenerated"]
+    taskId: str
+    content: str
+
+
+class PluginsChannelSetGeneratorToServerPacketToolCallGenerationFailed(
+    LMStudioStruct[
+        "PluginsChannelSetGeneratorToServerPacketToolCallGenerationFailedDict"
+    ],
+    kw_only=True,
+    tag_field="type",
+    tag="toolCallGenerationFailed",
+):
+    type: ClassVar[
+        Annotated[Literal["toolCallGenerationFailed"], Meta(title="Type")]
+    ] = "toolCallGenerationFailed"
+    task_id: str = field(name="taskId")
+    error: SerializedLMSExtendedError
+
+
+class PluginsChannelSetGeneratorToServerPacketToolCallGenerationFailedDict(TypedDict):
+    """Corresponding typed dictionary definition for PluginsChannelSetGeneratorToServerPacketToolCallGenerationFailed.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["toolCallGenerationFailed"]
     taskId: str
     error: SerializedLMSExtendedErrorDict
 
@@ -3819,25 +5816,139 @@ class RepositoryChannelEnsureAuthenticatedToClientPacketAuthenticatedDict(TypedD
     type: Literal["authenticated"]
 
 
-Description = Annotated[str, Meta(max_length=1000)]
+class RepositoryChannelCreateArtifactDownloadPlanToClientPacketDownloadProgress(
+    LMStudioStruct[
+        "RepositoryChannelCreateArtifactDownloadPlanToClientPacketDownloadProgressDict"
+    ],
+    kw_only=True,
+    tag_field="type",
+    tag="downloadProgress",
+):
+    type: ClassVar[Annotated[Literal["downloadProgress"], Meta(title="Type")]] = (
+        "downloadProgress"
+    )
+    update: DownloadProgressUpdate
+
+
+class RepositoryChannelCreateArtifactDownloadPlanToClientPacketDownloadProgressDict(
+    TypedDict
+):
+    """Corresponding typed dictionary definition for RepositoryChannelCreateArtifactDownloadPlanToClientPacketDownloadProgress.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["downloadProgress"]
+    update: DownloadProgressUpdateDict
+
+
+class RepositoryChannelCreateArtifactDownloadPlanToClientPacketStartFinalizing(
+    LMStudioStruct[
+        "RepositoryChannelCreateArtifactDownloadPlanToClientPacketStartFinalizingDict"
+    ],
+    kw_only=True,
+    tag_field="type",
+    tag="startFinalizing",
+):
+    type: ClassVar[Annotated[Literal["startFinalizing"], Meta(title="Type")]] = (
+        "startFinalizing"
+    )
+
+
+class RepositoryChannelCreateArtifactDownloadPlanToClientPacketStartFinalizingDict(
+    TypedDict
+):
+    """Corresponding typed dictionary definition for RepositoryChannelCreateArtifactDownloadPlanToClientPacketStartFinalizing.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["startFinalizing"]
+
+
+class RepositoryChannelCreateArtifactDownloadPlanToClientPacketSuccess(
+    LMStudioStruct[
+        "RepositoryChannelCreateArtifactDownloadPlanToClientPacketSuccessDict"
+    ],
+    kw_only=True,
+    tag_field="type",
+    tag="success",
+):
+    type: ClassVar[Annotated[Literal["success"], Meta(title="Type")]] = "success"
+
+
+class RepositoryChannelCreateArtifactDownloadPlanToClientPacketSuccessDict(TypedDict):
+    """Corresponding typed dictionary definition for RepositoryChannelCreateArtifactDownloadPlanToClientPacketSuccess.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["success"]
+
+
+class RepositoryChannelCreateArtifactDownloadPlanToServerPacketCancel(
+    LMStudioStruct[
+        "RepositoryChannelCreateArtifactDownloadPlanToServerPacketCancelDict"
+    ],
+    kw_only=True,
+    tag_field="type",
+    tag="cancel",
+):
+    type: ClassVar[Annotated[Literal["cancel"], Meta(title="Type")]] = "cancel"
+
+
+class RepositoryChannelCreateArtifactDownloadPlanToServerPacketCancelDict(TypedDict):
+    """Corresponding typed dictionary definition for RepositoryChannelCreateArtifactDownloadPlanToServerPacketCancel.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["cancel"]
+
+
+class RepositoryChannelCreateArtifactDownloadPlanToServerPacketCommit(
+    LMStudioStruct[
+        "RepositoryChannelCreateArtifactDownloadPlanToServerPacketCommitDict"
+    ],
+    kw_only=True,
+    tag_field="type",
+    tag="commit",
+):
+    type: ClassVar[Annotated[Literal["commit"], Meta(title="Type")]] = "commit"
+
+
+class RepositoryChannelCreateArtifactDownloadPlanToServerPacketCommitDict(TypedDict):
+    """Corresponding typed dictionary definition for RepositoryChannelCreateArtifactDownloadPlanToServerPacketCommit.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["commit"]
+
+
 Name = Annotated[
-    str, Meta(max_length=100, min_length=1, pattern="^[a-z0-9]+(?:-[a-z0-9]+)*$")
+    str, Meta(max_length=100, min_length=1, pattern="^[a-z0-9]+(?:[-.][a-z0-9]+)*$")
 ]
 Revision = int
-DescriptionModel = str
+Tags = Sequence[str]
+Description = str
 NoAutoDismiss = bool
 Title = str
 MaxContextLength = int
 Architecture = str
 DisplayName = str
-ModelKey = str
+ModelKeyModel = str
 ParamsString = str
 Path = str
 SizeBytes = int
 ContextLength = int
 Identifier = str
 InstanceReference = str
-AdditionalProperties = Any
 Fields = Sequence[KvConfigField]
 TrainedForToolUse = bool
 Vision = bool
@@ -3847,6 +5958,7 @@ DraftModel = str
 MaxTokensModel = Any | MaxTokens | bool
 MaxTokensModelDict = bool | Any | int
 MinPSampling = Any | float | bool
+Raw = KvConfig
 ReasoningParsing = LlmReasoningParsing
 RepeatPenalty = Any | float | bool
 SpeculativeDecodingMinContinueDraftingProbability = float
@@ -3857,30 +5969,48 @@ Temperature = Annotated[float, Meta(ge=0.0)]
 ToolCallStopStrings = Sequence[str]
 TopKSampling = float
 TopPSampling = Any | float | bool
+Key = str
 
 
-class ArtifactManifestBase(LMStudioStruct["ArtifactManifestBaseDict"], kw_only=True):
+class ArtifactArtifactDependency(
+    LMStudioStruct["ArtifactArtifactDependencyDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="artifact",
+):
+    type: ClassVar[Annotated[Literal["artifact"], Meta(title="Type")]] = "artifact"
+    purpose: ArtifactDependencyPurpose
     owner: KebabCase
-    name: Annotated[
-        str, Meta(max_length=100, min_length=1, pattern="^[a-z0-9]+(?:-[a-z0-9]+)*$")
-    ]
-    description: Annotated[str, Meta(max_length=1000)]
-    revision: int | None = None
+    name: KebabCaseWithDots
 
 
-class ArtifactManifestBaseDict(TypedDict):
-    """Corresponding typed dictionary definition for ArtifactManifestBase.
+class ArtifactArtifactDependencyDict(TypedDict):
+    """Corresponding typed dictionary definition for ArtifactArtifactDependency.
 
     NOTE: Multi-word keys are defined using their camelCase form,
     as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
     """
 
+    type: Literal["artifact"]
+    purpose: ArtifactDependencyPurpose
     owner: str
-    name: Annotated[
-        str, Meta(max_length=100, min_length=1, pattern="^[a-z0-9]+(?:-[a-z0-9]+)*$")
-    ]
-    description: Annotated[str, Meta(max_length=1000)]
-    revision: NotRequired[int | None]
+    name: str
+
+
+class ArtifactDependencyBase(
+    LMStudioStruct["ArtifactDependencyBaseDict"], kw_only=True
+):
+    purpose: ArtifactDependencyPurpose
+
+
+class ArtifactDependencyBaseDict(TypedDict):
+    """Corresponding typed dictionary definition for ArtifactDependencyBase.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    purpose: ArtifactDependencyPurpose
 
 
 class FileHandle(
@@ -3907,29 +6037,27 @@ class FileHandleDict(TypedDict):
     fileType: FileType
 
 
-class ToolCallRequestData(
-    LMStudioStruct["ToolCallRequestDataDict"],
-    kw_only=True,
-    tag_field="type",
-    tag="toolCallRequest",
-):
-    type: ClassVar[Annotated[Literal["toolCallRequest"], Meta(title="Type")]] = (
-        "toolCallRequest"
-    )
-    tool_call_request: ToolCallRequest = field(name="toolCallRequest")
+class ToolCallRequest(LMStudioStruct["ToolCallRequestDict"], kw_only=True):
+    type: Annotated[Literal["function"], Meta(title="Type")]
+    name: str
+    id: str | None = None
+    arguments: Mapping[str, JsonSerializable] | None = None
 
 
-class ToolCallRequestDataDict(TypedDict):
-    """Corresponding typed dictionary definition for ChatMessagePartToolCallRequestData.
+class ToolCallRequestDict(TypedDict):
+    """Corresponding typed dictionary definition for FunctionToolCallRequest.
 
     NOTE: Multi-word keys are defined using their camelCase form,
     as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
     """
 
-    type: Literal["toolCallRequest"]
-    toolCallRequest: ToolCallRequestDict
+    type: Annotated[Literal["function"], Meta(title="Type")]
+    name: str
+    id: NotRequired[str | None]
+    arguments: NotRequired[Mapping[str, JsonSerializable] | None]
 
 
+ToolCallRequest = ToolCallRequest
 DiagnosticsLogEventData = DiagnosticsLogEventDataLlmPredictionInput
 
 
@@ -3991,7 +6119,7 @@ class EmbeddingModelInstanceInfo(
     tag="embedding",
 ):
     type: ClassVar[Annotated[Literal["embedding"], Meta(title="Type")]] = "embedding"
-    model_key: ModelKey = field(name="modelKey")
+    model_key: ModelKeyModel = field(name="modelKey")
     format: ModelCompatibilityType
     display_name: DisplayName = field(name="displayName")
     path: Path
@@ -4088,6 +6216,9 @@ class GpuSettingDict(TypedDict):
 class LlmLoadModelConfig(LMStudioStruct["LlmLoadModelConfigDict"], kw_only=True):
     gpu: GpuSetting | None = None
     gpu_strict_vram_cap: bool | None = field(name="gpuStrictVramCap", default=None)
+    offload_kv_cache_to_gpu: bool | None = field(
+        name="offloadKVCacheToGpu", default=None
+    )
     context_length: Annotated[int, Meta(ge=1)] | None = field(
         name="contextLength", default=None
     )
@@ -4123,6 +6254,7 @@ class LlmLoadModelConfigDict(TypedDict):
 
     gpu: NotRequired[GpuSettingDict | None]
     gpuStrictVramCap: NotRequired[bool | None]
+    offloadKVCacheToGpu: NotRequired[bool | None]
     contextLength: NotRequired[Annotated[int, Meta(ge=1)] | None]
     ropeFrequencyBase: NotRequired[float | None]
     ropeFrequencyScale: NotRequired[float | None]
@@ -4147,7 +6279,7 @@ class LlmLoadModelConfigDict(TypedDict):
 
 class LlmInfo(LMStudioStruct["LlmInfoDict"], kw_only=True, tag_field="type", tag="llm"):
     type: ClassVar[Annotated[Literal["llm"], Meta(title="Type")]] = "llm"
-    model_key: ModelKey = field(name="modelKey")
+    model_key: ModelKeyModel = field(name="modelKey")
     format: ModelCompatibilityType
     display_name: DisplayName = field(name="displayName")
     path: Path
@@ -4183,7 +6315,7 @@ class LlmInstanceInfo(
     LMStudioStruct["LlmInstanceInfoDict"], kw_only=True, tag_field="type", tag="llm"
 ):
     type: ClassVar[Annotated[Literal["llm"], Meta(title="Type")]] = "llm"
-    model_key: ModelKey = field(name="modelKey")
+    model_key: ModelKeyModel = field(name="modelKey")
     format: ModelCompatibilityType
     display_name: DisplayName = field(name="displayName")
     path: Path
@@ -4223,6 +6355,28 @@ class LlmInstanceInfoDict(TypedDict):
 
 LlmLlamaLogitBiasConfigItem = Sequence[float | LlmLlamaSingleLogitBiasModification]
 LlmLlamaLogitBiasConfig = Sequence[LlmLlamaLogitBiasConfigItem]
+
+
+class LlmPredictionFragmentInputOpts(
+    LMStudioStruct["LlmPredictionFragmentInputOptsDict"], kw_only=True
+):
+    token_count: int | None = field(name="tokenCount", default=None)
+    contains_drafted: bool | None = field(name="containsDrafted", default=None)
+    reasoning_type: LlmPredictionFragmentReasoningType | None = field(
+        name="reasoningType", default=None
+    )
+
+
+class LlmPredictionFragmentInputOptsDict(TypedDict):
+    """Corresponding typed dictionary definition for LlmPredictionFragmentInputOpts.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    tokenCount: NotRequired[int | None]
+    containsDrafted: NotRequired[bool | None]
+    reasoningType: NotRequired[LlmPredictionFragmentReasoningType | None]
 
 
 class LlmPredictionStats(LMStudioStruct["LlmPredictionStatsDict"], kw_only=True):
@@ -4273,23 +6427,35 @@ class LlmPredictionStatsDict(TypedDict):
     ignoredDraftTokensCount: NotRequired[int | None]
 
 
-LlmJinjaInputMessagesContentImagesConfig = (
-    LlmJinjaInputMessagesContentImagesConfigSimple
-    | LlmJinjaInputMessagesContentImagesConfigNumbered
-    | LlmJinjaInputMessagesContentImagesConfigObject
-)
-LlmJinjaInputMessagesContentImagesConfigDict = (
-    LlmJinjaInputMessagesContentImagesConfigObjectDict
-    | LlmJinjaInputMessagesContentImagesConfigSimpleDict
-    | LlmJinjaInputMessagesContentImagesConfigNumberedDict
-)
+class LlmPromptTemplate(LMStudioStruct["LlmPromptTemplateDict"], kw_only=True):
+    type: LlmPromptTemplateType
+    stop_strings: Sequence[str] = field(name="stopStrings")
+    manual_prompt_template: LlmManualPromptTemplate | None = field(
+        name="manualPromptTemplate", default=None
+    )
+    jinja_prompt_template: LlmJinjaPromptTemplate | None = field(
+        name="jinjaPromptTemplate", default=None
+    )
+
+
+class LlmPromptTemplateDict(TypedDict):
+    """Corresponding typed dictionary definition for LlmPromptTemplate.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: LlmPromptTemplateType
+    stopStrings: Sequence[str]
+    manualPromptTemplate: NotRequired[LlmManualPromptTemplateDict | None]
+    jinjaPromptTemplate: NotRequired[LlmJinjaPromptTemplateDict | None]
 
 
 class LlmStructuredPredictionSetting(
     LMStudioStruct["LlmStructuredPredictionSettingDict"], kw_only=True
 ):
     type: LlmStructuredPredictionType
-    json_schema: AdditionalProperties | None = field(name="jsonSchema", default=None)
+    json_schema: JsonSerializable | None = field(name="jsonSchema", default=None)
     gbnf_grammar: str | None = field(name="gbnfGrammar", default=None)
 
 
@@ -4301,10 +6467,15 @@ class LlmStructuredPredictionSettingDict(TypedDict):
     """
 
     type: LlmStructuredPredictionType
-    jsonSchema: NotRequired[AdditionalProperties | None]
+    jsonSchema: NotRequired[JsonSerializable | None]
     gbnfGrammar: NotRequired[str | None]
 
 
+LlmToolParameters = LlmToolParametersObject
+ProcessingRequest = ProcessingRequestConfirmToolCall | ProcessingRequestTextInput
+ProcessingRequestDict = (
+    ProcessingRequestConfirmToolCallDict | ProcessingRequestTextInputDict
+)
 BlockLocation = BlockLocationBeforeId | BlockLocationAfterId
 BlockLocationDict = BlockLocationBeforeIdDict | BlockLocationAfterIdDict
 
@@ -4320,6 +6491,9 @@ class ProcessingUpdateContentBlockCreate(
     )
     id: str
     include_in_context: bool = field(name="includeInContext")
+    role_override: Literal["user", "assistant", "system", "tool"] | None = field(
+        name="roleOverride", default=None
+    )
     style: ContentBlockStyle | None = None
     prefix: str | None = None
     suffix: str | None = None
@@ -4335,6 +6509,7 @@ class ProcessingUpdateContentBlockCreateDict(TypedDict):
     type: Literal["contentBlock.create"]
     id: str
     includeInContext: bool
+    roleOverride: NotRequired[Literal["user", "assistant", "system", "tool"] | None]
     style: NotRequired[ContentBlockStyleDict | None]
     prefix: NotRequired[str | None]
     suffix: NotRequired[str | None]
@@ -4381,6 +6556,49 @@ class StatusStepStateDict(TypedDict):
     text: str
 
 
+ToolStatusStepStateStatus = (
+    ToolStatusStepStateStatusGeneratingToolCall
+    | ToolStatusStepStateStatusToolCallGenerationFailed
+    | ToolStatusStepStateStatusToolCallQueued
+    | ToolStatusStepStateStatusConfirmingToolCall
+    | ToolStatusStepStateStatusToolCallDenied
+    | ToolStatusStepStateStatusCallingTool
+    | ToolStatusStepStateStatusToolCallFailed
+    | ToolStatusStepStateStatusToolCallSucceeded
+)
+ToolStatusStepStateStatusDict = (
+    ToolStatusStepStateStatusToolCallSucceededDict
+    | ToolStatusStepStateStatusToolCallFailedDict
+    | ToolStatusStepStateStatusCallingToolDict
+    | ToolStatusStepStateStatusToolCallDeniedDict
+    | ToolStatusStepStateStatusConfirmingToolCallDict
+    | ToolStatusStepStateStatusToolCallQueuedDict
+    | ToolStatusStepStateStatusGeneratingToolCallDict
+    | ToolStatusStepStateStatusToolCallGenerationFailedDict
+)
+
+
+class HuggingFaceModelDownloadSource(
+    LMStudioStruct["HuggingFaceModelDownloadSourceDict"], kw_only=True
+):
+    type: Annotated[Literal["huggingface"], Meta(title="Type")]
+    user: FileName
+    repo: FileName
+
+
+class HuggingFaceModelDownloadSourceDict(TypedDict):
+    """Corresponding typed dictionary definition for HuggingFaceModelDownloadSource.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Annotated[Literal["huggingface"], Meta(title="Type")]
+    user: str
+    repo: str
+
+
+ModelDownloadSource = HuggingFaceModelDownloadSource
 ModelInfo = LlmInfo | EmbeddingModelInfo
 ModelInfoDict = LlmInfoDict | EmbeddingModelInfoDict
 ModelInstanceInfo = LlmInstanceInfo | EmbeddingModelInstanceInfo
@@ -4388,7 +6606,7 @@ ModelInstanceInfoDict = LlmInstanceInfoDict | EmbeddingModelInstanceInfoDict
 
 
 class ModelInfoBase(LMStudioStruct["ModelInfoBaseDict"], kw_only=True):
-    model_key: ModelKey = field(name="modelKey")
+    model_key: ModelKeyModel = field(name="modelKey")
     format: ModelCompatibilityType
     display_name: DisplayName = field(name="displayName")
     path: Path
@@ -4414,7 +6632,7 @@ class ModelInfoBaseDict(TypedDict):
 
 
 class ModelInstanceInfoBase(LMStudioStruct["ModelInstanceInfoBaseDict"], kw_only=True):
-    model_key: ModelKey = field(name="modelKey")
+    model_key: ModelKeyModel = field(name="modelKey")
     format: ModelCompatibilityType
     display_name: DisplayName = field(name="displayName")
     path: Path
@@ -4443,32 +6661,6 @@ class ModelInstanceInfoBaseDict(TypedDict):
     architecture: NotRequired[str | None]
 
 
-class ModelManifest(
-    LMStudioStruct["ModelManifestDict"], kw_only=True, tag_field="type", tag="model"
-):
-    type: ClassVar[Annotated[Literal["model"], Meta(title="Type")]] = "model"
-    virtual: bool
-    owner: KebabCase
-    name: Name
-    description: Description
-    revision: Revision | None = None
-
-
-class ModelManifestDict(TypedDict):
-    """Corresponding typed dictionary definition for ModelManifest.
-
-    NOTE: Multi-word keys are defined using their camelCase form,
-    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
-    """
-
-    type: Literal["model"]
-    virtual: bool
-    owner: str
-    name: str
-    description: str
-    revision: NotRequired[int | None]
-
-
 class ModelQuery(LMStudioStruct["ModelQueryDict"], kw_only=True):
     domain: ModelDomainType | None = None
     identifier: ReasonableKeyString | None = None
@@ -4489,54 +6681,28 @@ class ModelQueryDict(TypedDict):
     vision: NotRequired[bool | None]
 
 
-class PluginManifest(
-    LMStudioStruct["PluginManifestDict"], kw_only=True, tag_field="type", tag="plugin"
-):
-    type: ClassVar[Annotated[Literal["plugin"], Meta(title="Type")]] = "plugin"
-    runner: PluginRunnerType
-    owner: KebabCase
-    name: Name
-    description: Description
-    revision: Revision | None = None
+ArtifactDownloadPlanNode = (
+    ArtifactDownloadPlanNodeArtifact | ArtifactDownloadPlanNodeModel
+)
+ArtifactDownloadPlanNodeDict = (
+    ArtifactDownloadPlanNodeArtifactDict | ArtifactDownloadPlanNodeModelDict
+)
 
 
-class PluginManifestDict(TypedDict):
-    """Corresponding typed dictionary definition for PluginManifest.
-
-    NOTE: Multi-word keys are defined using their camelCase form,
-    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
-    """
-
-    type: Literal["plugin"]
-    runner: PluginRunnerType
-    owner: str
-    name: str
-    description: str
-    revision: NotRequired[int | None]
+class ArtifactDownloadPlan(LMStudioStruct["ArtifactDownloadPlanDict"], kw_only=True):
+    nodes: Sequence[ArtifactDownloadPlanNode]
+    download_size_bytes: int = field(name="downloadSizeBytes")
 
 
-class PresetManifest(
-    LMStudioStruct["PresetManifestDict"], kw_only=True, tag_field="type", tag="preset"
-):
-    type: ClassVar[Annotated[Literal["preset"], Meta(title="Type")]] = "preset"
-    owner: KebabCase
-    name: Name
-    description: Description
-    revision: Revision | None = None
-
-
-class PresetManifestDict(TypedDict):
-    """Corresponding typed dictionary definition for PresetManifest.
+class ArtifactDownloadPlanDict(TypedDict):
+    """Corresponding typed dictionary definition for ArtifactDownloadPlan.
 
     NOTE: Multi-word keys are defined using their camelCase form,
     as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
     """
 
-    type: Literal["preset"]
-    owner: str
-    name: str
-    description: str
-    revision: NotRequired[int | None]
+    nodes: Sequence[ArtifactDownloadPlanNodeDict]
+    downloadSizeBytes: int
 
 
 ModelSearchResultIdentifier = (
@@ -4586,62 +6752,100 @@ class RuntimeDict(TypedDict):
     accelerators: Sequence[AcceleratorDict]
 
 
-class KvConfigSchematicsDeserializationError(
-    LMStudioStruct["KvConfigSchematicsDeserializationErrorDict"], kw_only=True
+class VirtualModelBooleanCustomFieldDefinition(
+    LMStudioStruct["VirtualModelBooleanCustomFieldDefinitionDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="boolean",
 ):
-    full_key: str = field(name="fullKey")
-    error: AdditionalProperties
+    key: str
+    display_name: str = field(name="displayName")
+    description: str
+    type: ClassVar[Annotated[Literal["boolean"], Meta(title="Type")]] = "boolean"
+    default_value: bool = field(name="defaultValue")
+    effects: Sequence[VirtualModelBooleanCustomFieldDefinitionEffectsItem]
 
 
-class KvConfigSchematicsDeserializationErrorDict(TypedDict):
-    """Corresponding typed dictionary definition for KvConfigSchematicsDeserializationError.
+class VirtualModelBooleanCustomFieldDefinitionDict(TypedDict):
+    """Corresponding typed dictionary definition for VirtualModelBooleanCustomFieldDefinition.
 
     NOTE: Multi-word keys are defined using their camelCase form,
     as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
     """
 
-    fullKey: str
-    error: AdditionalProperties
+    key: str
+    displayName: str
+    description: str
+    type: Literal["boolean"]
+    defaultValue: bool
+    effects: Sequence[VirtualModelBooleanCustomFieldDefinitionEffectsItemDict]
 
 
-class SerializedKVConfigSchematicsField(
-    LMStudioStruct["SerializedKVConfigSchematicsFieldDict"], kw_only=True
+class VirtualModelCustomFieldDefinitionBase(
+    LMStudioStruct["VirtualModelCustomFieldDefinitionBaseDict"], kw_only=True
 ):
-    short_key: str = field(name="shortKey")
-    full_key: str = field(name="fullKey")
-    type_key: str = field(name="typeKey")
-    type_params: AdditionalProperties = field(name="typeParams")
-    default_value: AdditionalProperties = field(name="defaultValue")
+    key: Key
+    display_name: DisplayName = field(name="displayName")
+    description: Description
 
 
-class SerializedKVConfigSchematicsFieldDict(TypedDict):
-    """Corresponding typed dictionary definition for SerializedKVConfigSchematicsField.
+class VirtualModelCustomFieldDefinitionBaseDict(TypedDict):
+    """Corresponding typed dictionary definition for VirtualModelCustomFieldDefinitionBase.
 
     NOTE: Multi-word keys are defined using their camelCase form,
     as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
     """
 
-    shortKey: str
-    fullKey: str
-    typeKey: str
-    typeParams: AdditionalProperties
-    defaultValue: AdditionalProperties
+    key: str
+    displayName: str
+    description: str
 
 
-class SerializedKVConfigSchematics(
-    LMStudioStruct["SerializedKVConfigSchematicsDict"], kw_only=True
+class VirtualModelDefinitionConcreteModelBase(
+    LMStudioStruct["VirtualModelDefinitionConcreteModelBaseDict"], kw_only=True
 ):
-    fields: Sequence[SerializedKVConfigSchematicsField]
+    key: str
+    sources: Sequence[ModelDownloadSource]
 
 
-class SerializedKVConfigSchematicsDict(TypedDict):
-    """Corresponding typed dictionary definition for SerializedKVConfigSchematics.
+class VirtualModelDefinitionConcreteModelBaseDict(TypedDict):
+    """Corresponding typed dictionary definition for VirtualModelDefinitionConcreteModelBase.
 
     NOTE: Multi-word keys are defined using their camelCase form,
     as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
     """
 
-    fields: Sequence[SerializedKVConfigSchematicsFieldDict]
+    key: str
+    sources: Sequence[HuggingFaceModelDownloadSourceDict]
+
+
+class VirtualModelStringCustomFieldDefinition(
+    LMStudioStruct["VirtualModelStringCustomFieldDefinitionDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="string",
+):
+    key: Key
+    display_name: DisplayName = field(name="displayName")
+    description: Description
+    type: ClassVar[Annotated[Literal["string"], Meta(title="Type")]] = "string"
+    default_value: str = field(name="defaultValue")
+    effects: Sequence[VirtualModelStringCustomFieldDefinitionEffectsItem]
+
+
+class VirtualModelStringCustomFieldDefinitionDict(TypedDict):
+    """Corresponding typed dictionary definition for VirtualModelStringCustomFieldDefinition.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    key: str
+    displayName: str
+    description: str
+    type: Literal["string"]
+    defaultValue: str
+    effects: Sequence[VirtualModelCustomFieldSetJinjaVariableEffectDict]
 
 
 DiagnosticsChannelStreamLogsToServerPacket = (
@@ -4755,6 +6959,45 @@ class PseudoFilesChannelRetrieveDict(TypedDict):
     toServerPacket: FilesChannelRetrieveToServerPacketStopDict
 
 
+FilesChannelParseDocumentToClientPacket = (
+    FilesChannelParseDocumentToClientPacketParserLoaded
+    | FilesChannelParseDocumentToClientPacketProgress
+    | FilesChannelParseDocumentToClientPacketResult
+)
+FilesChannelParseDocumentToClientPacketDict = (
+    FilesChannelParseDocumentToClientPacketResultDict
+    | FilesChannelParseDocumentToClientPacketParserLoadedDict
+    | FilesChannelParseDocumentToClientPacketProgressDict
+)
+FilesChannelParseDocumentToServerPacket = FilesChannelParseDocumentToServerPacketCancel
+
+
+class PseudoFilesChannelParseDocument(
+    LMStudioStruct["PseudoFilesChannelParseDocumentDict"], kw_only=True
+):
+    creation_parameter: FilesChannelParseDocumentCreationParameter = field(
+        name="creationParameter"
+    )
+    to_client_packet: FilesChannelParseDocumentToClientPacket = field(
+        name="toClientPacket"
+    )
+    to_server_packet: FilesChannelParseDocumentToServerPacket = field(
+        name="toServerPacket"
+    )
+
+
+class PseudoFilesChannelParseDocumentDict(TypedDict):
+    """Corresponding typed dictionary definition for PseudoFilesChannelParseDocument.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    creationParameter: FilesChannelParseDocumentCreationParameterDict
+    toClientPacket: FilesChannelParseDocumentToClientPacketDict
+    toServerPacket: FilesChannelParseDocumentToServerPacketCancelDict
+
+
 class PseudoFiles(LMStudioStruct["PseudoFilesDict"], kw_only=True):
     rpc_get_local_file_absolute_path: PseudoFilesRpcGetLocalFileAbsolutePath = field(
         name="rpcGetLocalFileAbsolutePath"
@@ -4762,7 +7005,13 @@ class PseudoFiles(LMStudioStruct["PseudoFilesDict"], kw_only=True):
     rpc_upload_file_base64: PseudoFilesRpcUploadFileBase64 = field(
         name="rpcUploadFileBase64"
     )
+    rpc_get_document_parsing_library: PseudoFilesRpcGetDocumentParsingLibrary = field(
+        name="rpcGetDocumentParsingLibrary"
+    )
     channel_retrieve: PseudoFilesChannelRetrieve = field(name="channelRetrieve")
+    channel_parse_document: PseudoFilesChannelParseDocument = field(
+        name="channelParseDocument"
+    )
 
 
 class PseudoFilesDict(TypedDict):
@@ -4774,7 +7023,9 @@ class PseudoFilesDict(TypedDict):
 
     rpcGetLocalFileAbsolutePath: PseudoFilesRpcGetLocalFileAbsolutePathDict
     rpcUploadFileBase64: PseudoFilesRpcUploadFileBase64Dict
+    rpcGetDocumentParsingLibrary: PseudoFilesRpcGetDocumentParsingLibraryDict
     channelRetrieve: PseudoFilesChannelRetrieveDict
+    channelParseDocument: PseudoFilesChannelParseDocumentDict
 
 
 LlmRpcListLoadedReturns = Sequence[LlmInstanceInfo]
@@ -4817,55 +7068,29 @@ class LlmRpcGetLoadConfigReturnsDict(TypedDict):
 LlmChannelLoadModelToServerPacket = LlmChannelLoadModelToServerPacketCancel
 LlmChannelGetOrLoadToServerPacket = LlmChannelGetOrLoadToServerPacketCancel
 LlmChannelPredictToServerPacket = LlmChannelPredictToServerPacketCancel
+LlmChannelGenerateWithGeneratorToServerPacket = (
+    LlmChannelGenerateWithGeneratorToServerPacketCancel
+)
 
 
-class PluginsRpcSetConfigSchematicsParameter(
-    LMStudioStruct["PluginsRpcSetConfigSchematicsParameterDict"], kw_only=True
+class PluginsRpcProcessingHandleRequestParameter(
+    LMStudioStruct["PluginsRpcProcessingHandleRequestParameterDict"], kw_only=True
 ):
-    schematics: SerializedKVConfigSchematics
+    pci: str
+    token: str
+    request: ProcessingRequest
 
 
-class PluginsRpcSetConfigSchematicsParameterDict(TypedDict):
-    """Corresponding typed dictionary definition for PluginsRpcSetConfigSchematicsParameter.
+class PluginsRpcProcessingHandleRequestParameterDict(TypedDict):
+    """Corresponding typed dictionary definition for PluginsRpcProcessingHandleRequestParameter.
 
     NOTE: Multi-word keys are defined using their camelCase form,
     as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
     """
 
-    schematics: SerializedKVConfigSchematicsDict
-
-
-class PseudoPluginsRpcSetConfigSchematics(
-    LMStudioStruct["PseudoPluginsRpcSetConfigSchematicsDict"], kw_only=True
-):
-    parameter: PluginsRpcSetConfigSchematicsParameter
-
-
-class PseudoPluginsRpcSetConfigSchematicsDict(TypedDict):
-    """Corresponding typed dictionary definition for PseudoPluginsRpcSetConfigSchematics.
-
-    NOTE: Multi-word keys are defined using their camelCase form,
-    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
-    """
-
-    parameter: PluginsRpcSetConfigSchematicsParameterDict
-
-
-class PluginsChannelRegisterDevelopmentPluginCreationParameter(
-    LMStudioStruct["PluginsChannelRegisterDevelopmentPluginCreationParameterDict"],
-    kw_only=True,
-):
-    manifest: PluginManifest
-
-
-class PluginsChannelRegisterDevelopmentPluginCreationParameterDict(TypedDict):
-    """Corresponding typed dictionary definition for PluginsChannelRegisterDevelopmentPluginCreationParameter.
-
-    NOTE: Multi-word keys are defined using their camelCase form,
-    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
-    """
-
-    manifest: PluginManifestDict
+    pci: str
+    token: str
+    request: ProcessingRequestDict
 
 
 PluginsChannelRegisterDevelopmentPluginToClientPacket = (
@@ -4874,43 +7099,15 @@ PluginsChannelRegisterDevelopmentPluginToClientPacket = (
 PluginsChannelRegisterDevelopmentPluginToServerPacket = (
     PluginsChannelRegisterDevelopmentPluginToServerPacketEnd
 )
-
-
-class PseudoPluginsChannelRegisterDevelopmentPlugin(
-    LMStudioStruct["PseudoPluginsChannelRegisterDevelopmentPluginDict"], kw_only=True
-):
-    creation_parameter: PluginsChannelRegisterDevelopmentPluginCreationParameter = (
-        field(name="creationParameter")
-    )
-    to_client_packet: PluginsChannelRegisterDevelopmentPluginToClientPacket = field(
-        name="toClientPacket"
-    )
-    to_server_packet: PluginsChannelRegisterDevelopmentPluginToServerPacket = field(
-        name="toServerPacket"
-    )
-
-
-class PseudoPluginsChannelRegisterDevelopmentPluginDict(TypedDict):
-    """Corresponding typed dictionary definition for PseudoPluginsChannelRegisterDevelopmentPlugin.
-
-    NOTE: Multi-word keys are defined using their camelCase form,
-    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
-    """
-
-    creationParameter: PluginsChannelRegisterDevelopmentPluginCreationParameterDict
-    toClientPacket: PluginsChannelRegisterDevelopmentPluginToClientPacketReadyDict
-    toServerPacket: PluginsChannelRegisterDevelopmentPluginToServerPacketEndDict
-
-
-PluginsChannelSetGeneratorToServerPacket = (
-    PluginsChannelSetGeneratorToServerPacketComplete
-    | PluginsChannelSetGeneratorToServerPacketAborted
-    | PluginsChannelSetGeneratorToServerPacketError
+PluginsChannelSetPredictionLoopHandlerToServerPacket = (
+    PluginsChannelSetPredictionLoopHandlerToServerPacketComplete
+    | PluginsChannelSetPredictionLoopHandlerToServerPacketAborted
+    | PluginsChannelSetPredictionLoopHandlerToServerPacketError
 )
-PluginsChannelSetGeneratorToServerPacketDict = (
-    PluginsChannelSetGeneratorToServerPacketErrorDict
-    | PluginsChannelSetGeneratorToServerPacketCompleteDict
-    | PluginsChannelSetGeneratorToServerPacketAbortedDict
+PluginsChannelSetPredictionLoopHandlerToServerPacketDict = (
+    PluginsChannelSetPredictionLoopHandlerToServerPacketErrorDict
+    | PluginsChannelSetPredictionLoopHandlerToServerPacketCompleteDict
+    | PluginsChannelSetPredictionLoopHandlerToServerPacketAbortedDict
 )
 
 
@@ -5085,6 +7282,14 @@ class PseudoRepositoryChannelEnsureAuthenticatedDict(TypedDict):
     toClientPacket: RepositoryChannelEnsureAuthenticatedToClientPacketDict
 
 
+RepositoryChannelCreateArtifactDownloadPlanToServerPacket = (
+    RepositoryChannelCreateArtifactDownloadPlanToServerPacketCancel
+    | RepositoryChannelCreateArtifactDownloadPlanToServerPacketCommit
+)
+RepositoryChannelCreateArtifactDownloadPlanToServerPacketDict = (
+    RepositoryChannelCreateArtifactDownloadPlanToServerPacketCancelDict
+    | RepositoryChannelCreateArtifactDownloadPlanToServerPacketCommitDict
+)
 SystemRpcListDownloadedModelsReturns = Sequence[ModelInfo]
 
 
@@ -5108,7 +7313,7 @@ class SystemRpcNotifyParameter(
     LMStudioStruct["SystemRpcNotifyParameterDict"], kw_only=True
 ):
     title: Title
-    description: DescriptionModel | None = None
+    description: Description | None = None
     no_auto_dismiss: NoAutoDismiss | None = field(name="noAutoDismiss", default=None)
 
 
@@ -5144,6 +7349,12 @@ class PseudoSystem(LMStudioStruct["PseudoSystemDict"], kw_only=True):
     )
     rpc_notify: PseudoSystemRpcNotify = field(name="rpcNotify")
     rpc_version: PseudoSystemRpcVersion = field(name="rpcVersion")
+    rpc_set_experiment_flag: PseudoSystemRpcSetExperimentFlag = field(
+        name="rpcSetExperimentFlag"
+    )
+    rpc_get_experiment_flags: PseudoSystemRpcGetExperimentFlags = field(
+        name="rpcGetExperimentFlags"
+    )
     channel_alive: PseudoSystemChannelAlive = field(name="channelAlive")
 
 
@@ -5157,28 +7368,9 @@ class PseudoSystemDict(TypedDict):
     rpcListDownloadedModels: PseudoSystemRpcListDownloadedModelsDict
     rpcNotify: PseudoSystemRpcNotifyDict
     rpcVersion: PseudoSystemRpcVersionDict
+    rpcSetExperimentFlag: PseudoSystemRpcSetExperimentFlagDict
+    rpcGetExperimentFlags: PseudoSystemRpcGetExperimentFlagsDict
     channelAlive: PseudoSystemChannelAlive
-
-
-class AssistantResponse(
-    LMStudioStruct["AssistantResponseDict"],
-    kw_only=True,
-    tag_field="role",
-    tag="assistant",
-):
-    role: ClassVar[Annotated[Literal["assistant"], Meta(title="Role")]] = "assistant"
-    content: Sequence[TextData | FileHandle | ToolCallRequestData]
-
-
-class AssistantResponseDict(TypedDict):
-    """Corresponding typed dictionary definition for ChatMessageDataAssistant.
-
-    NOTE: Multi-word keys are defined using their camelCase form,
-    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
-    """
-
-    role: Literal["assistant"]
-    content: Sequence[TextDataDict | FileHandleDict | ToolCallRequestDataDict]
 
 
 class UserMessage(
@@ -5253,78 +7445,48 @@ KvConfigFieldDependencyConditionDict = (
 )
 
 
-class LlmJinjaInputMessagesContentConfigString(
-    LMStudioStruct["LlmJinjaInputMessagesContentConfigStringDict"],
-    kw_only=True,
-    tag_field="type",
-    tag="string",
-):
-    type: ClassVar[Annotated[Literal["string"], Meta(title="Type")]] = "string"
-    images_config: LlmJinjaInputMessagesContentImagesConfig | None = field(
-        name="imagesConfig", default=None
-    )
+class Function(LMStudioStruct["FunctionDict"], kw_only=True):
+    name: str
+    description: str | None = None
+    parameters: LlmToolParameters | None = None
 
 
-class LlmJinjaInputMessagesContentConfigStringDict(TypedDict):
-    """Corresponding typed dictionary definition for LlmJinjaInputMessagesContentConfigString.
+class FunctionDict(TypedDict):
+    """Corresponding typed dictionary definition for Function.
 
     NOTE: Multi-word keys are defined using their camelCase form,
     as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
     """
 
-    type: Literal["string"]
-    imagesConfig: NotRequired[LlmJinjaInputMessagesContentImagesConfigDict | None]
+    name: str
+    description: NotRequired[str | None]
+    parameters: NotRequired[LlmToolParametersObjectDict | None]
 
 
-class LlmJinjaInputMessagesContentConfigArray(
-    LMStudioStruct["LlmJinjaInputMessagesContentConfigArrayDict"],
-    kw_only=True,
-    tag_field="type",
-    tag="array",
-):
-    type: ClassVar[Annotated[Literal["array"], Meta(title="Type")]] = "array"
-    text_field_name: LlmJinjaInputMessagesContentConfigTextFieldName = field(
-        name="textFieldName"
-    )
-    images_config: LlmJinjaInputMessagesContentImagesConfig | None = field(
-        name="imagesConfig", default=None
-    )
+class LlmToolFunction(LMStudioStruct["LlmToolFunctionDict"], kw_only=True):
+    type: Annotated[Literal["function"], Meta(title="Type")]
+    function: Function
 
 
-class LlmJinjaInputMessagesContentConfigArrayDict(TypedDict):
-    """Corresponding typed dictionary definition for LlmJinjaInputMessagesContentConfigArray.
+class LlmToolFunctionDict(TypedDict):
+    """Corresponding typed dictionary definition for LlmToolFunction.
 
     NOTE: Multi-word keys are defined using their camelCase form,
     as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
     """
 
-    type: Literal["array"]
-    textFieldName: LlmJinjaInputMessagesContentConfigTextFieldName
-    imagesConfig: NotRequired[LlmJinjaInputMessagesContentImagesConfigDict | None]
+    type: Annotated[Literal["function"], Meta(title="Type")]
+    function: FunctionDict
 
 
-class LlmToolParametersObject(
-    LMStudioStruct["LlmToolParametersObjectDict"], kw_only=True
-):
-    type: Annotated[Literal["object"], Meta(title="Type")]
-    properties: Mapping[str, AdditionalProperties]
-    required: Sequence[str] | None = None
-    additional_properties: bool | None = field(
-        name="additionalProperties", default=None
-    )
-
-
-class LlmToolParametersObjectDict(TypedDict):
-    """Corresponding typed dictionary definition for LlmToolParametersObject.
-
-    NOTE: Multi-word keys are defined using their camelCase form,
-    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
-    """
-
-    type: Annotated[Literal["object"], Meta(title="Type")]
-    properties: Mapping[str, AdditionalProperties]
-    required: NotRequired[Sequence[str] | None]
-    additionalProperties: NotRequired[bool | None]
+ProcessingRequestResponseConfirmToolCallResult = (
+    ProcessingRequestResponseConfirmToolCallResultAllow
+    | ProcessingRequestResponseConfirmToolCallResultDeny
+)
+ProcessingRequestResponseConfirmToolCallResultDict = (
+    ProcessingRequestResponseConfirmToolCallResultAllowDict
+    | ProcessingRequestResponseConfirmToolCallResultDenyDict
+)
 
 
 class ModelSpecifierQuery(
@@ -5648,6 +7810,31 @@ class LlmChannelGetOrLoadToClientPacketLoadSuccessDict(TypedDict):
     info: LlmInstanceInfoDict
 
 
+class LlmChannelPredictToClientPacketToolCallGenerationEnd(
+    LMStudioStruct["LlmChannelPredictToClientPacketToolCallGenerationEndDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="toolCallGenerationEnd",
+):
+    type: ClassVar[Annotated[Literal["toolCallGenerationEnd"], Meta(title="Type")]] = (
+        "toolCallGenerationEnd"
+    )
+    tool_call_request: ToolCallRequest = field(name="toolCallRequest")
+    raw_content: str | None = field(name="rawContent", default=None)
+
+
+class LlmChannelPredictToClientPacketToolCallGenerationEndDict(TypedDict):
+    """Corresponding typed dictionary definition for LlmChannelPredictToClientPacketToolCallGenerationEnd.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["toolCallGenerationEnd"]
+    toolCallRequest: ToolCallRequestDict
+    rawContent: NotRequired[str | None]
+
+
 class LlmChannelPredictToClientPacketSuccess(
     LMStudioStruct["LlmChannelPredictToClientPacketSuccessDict"],
     kw_only=True,
@@ -5675,45 +7862,252 @@ class LlmChannelPredictToClientPacketSuccessDict(TypedDict):
     predictionConfig: LlmRpcGetLoadConfigReturnsDict
 
 
-class PluginsChannelSetGeneratorToClientPacketGenerate(
-    LMStudioStruct["PluginsChannelSetGeneratorToClientPacketGenerateDict"],
+class LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationEnd(
+    LMStudioStruct[
+        "LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationEndDict"
+    ],
     kw_only=True,
     tag_field="type",
-    tag="generate",
+    tag="toolCallGenerationEnd",
 ):
-    type: ClassVar[Annotated[Literal["generate"], Meta(title="Type")]] = "generate"
-    task_id: str = field(name="taskId")
-    config: LlmRpcGetLoadConfigReturns
-    plugin_config: LlmRpcGetLoadConfigReturns = field(name="pluginConfig")
-    pci: str
-    token: str
+    type: ClassVar[Annotated[Literal["toolCallGenerationEnd"], Meta(title="Type")]] = (
+        "toolCallGenerationEnd"
+    )
+    tool_call_request: ToolCallRequest = field(name="toolCallRequest")
 
 
-class PluginsChannelSetGeneratorToClientPacketGenerateDict(TypedDict):
-    """Corresponding typed dictionary definition for PluginsChannelSetGeneratorToClientPacketGenerate.
+class LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationEndDict(TypedDict):
+    """Corresponding typed dictionary definition for LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationEnd.
 
     NOTE: Multi-word keys are defined using their camelCase form,
     as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
     """
 
-    type: Literal["generate"]
-    taskId: str
-    config: LlmRpcGetLoadConfigReturnsDict
-    pluginConfig: LlmRpcGetLoadConfigReturnsDict
+    type: Literal["toolCallGenerationEnd"]
+    toolCallRequest: ToolCallRequestDict
+
+
+class PluginsChannelSetPredictionLoopHandlerToClientPacketHandlePredictionLoop(
+    LMStudioStruct[
+        "PluginsChannelSetPredictionLoopHandlerToClientPacketHandlePredictionLoopDict"
+    ],
+    kw_only=True,
+    tag_field="type",
+    tag="handlePredictionLoop",
+):
+    type: ClassVar[Annotated[Literal["handlePredictionLoop"], Meta(title="Type")]] = (
+        "handlePredictionLoop"
+    )
+    task_id: str = field(name="taskId")
+    config: LlmRpcGetLoadConfigReturns
+    plugin_config: LlmRpcGetLoadConfigReturns = field(name="pluginConfig")
+    global_plugin_config: LlmRpcGetLoadConfigReturns = field(name="globalPluginConfig")
+    working_directory_path: str | None = field(name="workingDirectoryPath")
     pci: str
     token: str
 
 
-ArtifactManifest = PluginManifest | PresetManifest | ModelManifest
-ArtifactManifestDict = ModelManifestDict | PluginManifestDict | PresetManifestDict
-AnyChatMessage = AssistantResponse | UserMessage | SystemPrompt | ToolResultMessage
-AnyChatMessageDict = (
-    ToolResultMessageDict | SystemPromptDict | AssistantResponseDict | UserMessageDict
-)
-ChatMessagePartData = TextData | FileHandle | ToolCallRequestData | ToolCallResultData
-ChatMessagePartDataDict = (
-    ToolCallResultDataDict | ToolCallRequestDataDict | TextDataDict | FileHandleDict
-)
+class PluginsChannelSetPredictionLoopHandlerToClientPacketHandlePredictionLoopDict(
+    TypedDict
+):
+    """Corresponding typed dictionary definition for PluginsChannelSetPredictionLoopHandlerToClientPacketHandlePredictionLoop.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["handlePredictionLoop"]
+    taskId: str
+    config: LlmRpcGetLoadConfigReturnsDict
+    pluginConfig: LlmRpcGetLoadConfigReturnsDict
+    globalPluginConfig: LlmRpcGetLoadConfigReturnsDict
+    workingDirectoryPath: NotRequired[str | None]
+    pci: str
+    token: str
+
+
+class PluginsChannelSetToolsProviderToClientPacketInitSession(
+    LMStudioStruct["PluginsChannelSetToolsProviderToClientPacketInitSessionDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="initSession",
+):
+    type: ClassVar[Annotated[Literal["initSession"], Meta(title="Type")]] = (
+        "initSession"
+    )
+    plugin_config: LlmRpcGetLoadConfigReturns = field(name="pluginConfig")
+    global_plugin_config: LlmRpcGetLoadConfigReturns = field(name="globalPluginConfig")
+    working_directory_path: str | None = field(name="workingDirectoryPath")
+    session_id: str = field(name="sessionId")
+
+
+class PluginsChannelSetToolsProviderToClientPacketInitSessionDict(TypedDict):
+    """Corresponding typed dictionary definition for PluginsChannelSetToolsProviderToClientPacketInitSession.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["initSession"]
+    pluginConfig: LlmRpcGetLoadConfigReturnsDict
+    globalPluginConfig: LlmRpcGetLoadConfigReturnsDict
+    workingDirectoryPath: NotRequired[str | None]
+    sessionId: str
+
+
+class PluginsChannelSetGeneratorToServerPacketFragmentGenerated(
+    LMStudioStruct["PluginsChannelSetGeneratorToServerPacketFragmentGeneratedDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="fragmentGenerated",
+):
+    type: ClassVar[Annotated[Literal["fragmentGenerated"], Meta(title="Type")]] = (
+        "fragmentGenerated"
+    )
+    task_id: str = field(name="taskId")
+    content: str
+    opts: LlmPredictionFragmentInputOpts
+
+
+class PluginsChannelSetGeneratorToServerPacketFragmentGeneratedDict(TypedDict):
+    """Corresponding typed dictionary definition for PluginsChannelSetGeneratorToServerPacketFragmentGenerated.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["fragmentGenerated"]
+    taskId: str
+    content: str
+    opts: LlmPredictionFragmentInputOptsDict
+
+
+class PluginsChannelSetGeneratorToServerPacketToolCallGenerationEnded(
+    LMStudioStruct[
+        "PluginsChannelSetGeneratorToServerPacketToolCallGenerationEndedDict"
+    ],
+    kw_only=True,
+    tag_field="type",
+    tag="toolCallGenerationEnded",
+):
+    type: ClassVar[
+        Annotated[Literal["toolCallGenerationEnded"], Meta(title="Type")]
+    ] = "toolCallGenerationEnded"
+    task_id: str = field(name="taskId")
+    tool_call_request: ToolCallRequest = field(name="toolCallRequest")
+
+
+class PluginsChannelSetGeneratorToServerPacketToolCallGenerationEndedDict(TypedDict):
+    """Corresponding typed dictionary definition for PluginsChannelSetGeneratorToServerPacketToolCallGenerationEnded.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["toolCallGenerationEnded"]
+    taskId: str
+    toolCallRequest: ToolCallRequestDict
+
+
+class RepositoryChannelCreateArtifactDownloadPlanToClientPacketPlanUpdated(
+    LMStudioStruct[
+        "RepositoryChannelCreateArtifactDownloadPlanToClientPacketPlanUpdatedDict"
+    ],
+    kw_only=True,
+    tag_field="type",
+    tag="planUpdated",
+):
+    type: ClassVar[Annotated[Literal["planUpdated"], Meta(title="Type")]] = (
+        "planUpdated"
+    )
+    plan: ArtifactDownloadPlan
+
+
+class RepositoryChannelCreateArtifactDownloadPlanToClientPacketPlanUpdatedDict(
+    TypedDict
+):
+    """Corresponding typed dictionary definition for RepositoryChannelCreateArtifactDownloadPlanToClientPacketPlanUpdated.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["planUpdated"]
+    plan: ArtifactDownloadPlanDict
+
+
+class RepositoryChannelCreateArtifactDownloadPlanToClientPacketPlanReady(
+    LMStudioStruct[
+        "RepositoryChannelCreateArtifactDownloadPlanToClientPacketPlanReadyDict"
+    ],
+    kw_only=True,
+    tag_field="type",
+    tag="planReady",
+):
+    type: ClassVar[Annotated[Literal["planReady"], Meta(title="Type")]] = "planReady"
+    plan: ArtifactDownloadPlan
+
+
+class RepositoryChannelCreateArtifactDownloadPlanToClientPacketPlanReadyDict(TypedDict):
+    """Corresponding typed dictionary definition for RepositoryChannelCreateArtifactDownloadPlanToClientPacketPlanReady.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["planReady"]
+    plan: ArtifactDownloadPlanDict
+
+
+PromptTemplate = LlmPromptTemplate
+
+
+class ArtifactModelDependency(
+    LMStudioStruct["ArtifactModelDependencyDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="model",
+):
+    type: ClassVar[Annotated[Literal["model"], Meta(title="Type")]] = "model"
+    purpose: ArtifactDependencyPurpose
+    model_keys: Sequence[ModelKey] = field(name="modelKeys")
+    sources: Sequence[ModelDownloadSource]
+
+
+class ArtifactModelDependencyDict(TypedDict):
+    """Corresponding typed dictionary definition for ArtifactModelDependency.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["model"]
+    purpose: ArtifactDependencyPurpose
+    modelKeys: Sequence[str]
+    sources: Sequence[HuggingFaceModelDownloadSourceDict]
+
+
+class ToolCallRequestData(
+    LMStudioStruct["ToolCallRequestDataDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="toolCallRequest",
+):
+    type: ClassVar[Annotated[Literal["toolCallRequest"], Meta(title="Type")]] = (
+        "toolCallRequest"
+    )
+    tool_call_request: ToolCallRequest = field(name="toolCallRequest")
+
+
+class ToolCallRequestDataDict(TypedDict):
+    """Corresponding typed dictionary definition for ChatMessagePartToolCallRequestData.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["toolCallRequest"]
+    toolCallRequest: ToolCallRequestDict
 
 
 class EmbeddingLoadModelConfig(
@@ -5804,14 +8198,39 @@ class LlmGenInfoDict(TypedDict):
     stats: LlmPredictionStatsDict
 
 
-LlmJinjaInputMessagesContentConfig = (
-    LlmJinjaInputMessagesContentConfigString | LlmJinjaInputMessagesContentConfigArray
+LlmTool = LlmToolFunction
+
+
+class ProcessingRequestResponseConfirmToolCall(
+    LMStudioStruct["ProcessingRequestResponseConfirmToolCallDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="confirmToolCall",
+):
+    type: ClassVar[Annotated[Literal["confirmToolCall"], Meta(title="Type")]] = (
+        "confirmToolCall"
+    )
+    result: ProcessingRequestResponseConfirmToolCallResult
+
+
+class ProcessingRequestResponseConfirmToolCallDict(TypedDict):
+    """Corresponding typed dictionary definition for ProcessingRequestResponseConfirmToolCall.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["confirmToolCall"]
+    result: ProcessingRequestResponseConfirmToolCallResultDict
+
+
+ProcessingRequestResponse = (
+    ProcessingRequestResponseConfirmToolCall | ProcessingRequestResponseTextInput
 )
-LlmJinjaInputMessagesContentConfigDict = (
-    LlmJinjaInputMessagesContentConfigStringDict
-    | LlmJinjaInputMessagesContentConfigArrayDict
+ProcessingRequestResponseDict = (
+    ProcessingRequestResponseConfirmToolCallDict
+    | ProcessingRequestResponseTextInputDict
 )
-LlmToolParameters = LlmToolParametersObject
 
 
 class ProcessingUpdateContentBlockAttachGenInfo(
@@ -5893,6 +8312,24 @@ class ProcessingUpdateStatusUpdateDict(TypedDict):
     state: StatusStepStateDict
 
 
+class ToolStatusStepState(LMStudioStruct["ToolStatusStepStateDict"], kw_only=True):
+    status: ToolStatusStepStateStatus
+    custom_status: str = field(name="customStatus")
+    custom_warnings: Sequence[str] = field(name="customWarnings")
+
+
+class ToolStatusStepStateDict(TypedDict):
+    """Corresponding typed dictionary definition for ToolStatusStepState.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    status: ToolStatusStepStateStatusDict
+    customStatus: str
+    customWarnings: Sequence[str]
+
+
 ModelSpecifier = ModelSpecifierQuery | ModelSpecifierInstanceReference
 ModelSpecifierDict = ModelSpecifierQueryDict | ModelSpecifierInstanceReferenceDict
 
@@ -5917,6 +8354,47 @@ class ModelSearchResultEntryDataDict(TypedDict):
     identifier: ModelSearchResultIdentifierDict
     exact: NotRequired[bool | None]
     staffPick: NotRequired[bool | None]
+
+
+VirtualModelCustomFieldDefinition = (
+    VirtualModelBooleanCustomFieldDefinition | VirtualModelStringCustomFieldDefinition
+)
+VirtualModelCustomFieldDefinitionDict = (
+    VirtualModelBooleanCustomFieldDefinitionDict
+    | VirtualModelStringCustomFieldDefinitionDict
+)
+
+
+class VirtualModelDefinition(
+    LMStudioStruct["VirtualModelDefinitionDict"], kw_only=True
+):
+    model: Annotated[str, Meta(pattern="^[^/]+\\/[^/]+$")]
+    base: str | Sequence[VirtualModelDefinitionConcreteModelBase]
+    tags: Sequence[Tag] | None = None
+    config: Config | None = None
+    metadata_overrides: VirtualModelDefinitionMetadataOverrides | None = field(
+        name="metadataOverrides", default=None
+    )
+    custom_fields: Sequence[VirtualModelCustomFieldDefinition] | None = field(
+        name="customFields", default=None
+    )
+    suggestions: Sequence[VirtualModelSuggestion] | None = None
+
+
+class VirtualModelDefinitionDict(TypedDict):
+    """Corresponding typed dictionary definition for VirtualModelDefinition.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    model: Annotated[str, Meta(pattern="^[^/]+\\/[^/]+$")]
+    base: str | Sequence[VirtualModelDefinitionConcreteModelBaseDict]
+    tags: NotRequired[Sequence[str] | None]
+    config: NotRequired[ConfigDict | None]
+    metadataOverrides: NotRequired[VirtualModelDefinitionMetadataOverridesDict | None]
+    customFields: NotRequired[Sequence[VirtualModelCustomFieldDefinitionDict] | None]
+    suggestions: NotRequired[Sequence[VirtualModelSuggestionDict] | None]
 
 
 DiagnosticsChannelStreamLogsToClientPacket = (
@@ -6512,6 +8990,8 @@ LlmChannelPredictToClientPacket = (
     LlmChannelPredictToClientPacketFragment
     | LlmChannelPredictToClientPacketPromptProcessingProgress
     | LlmChannelPredictToClientPacketToolCallGenerationStart
+    | LlmChannelPredictToClientPacketToolCallGenerationNameReceived
+    | LlmChannelPredictToClientPacketToolCallGenerationArgumentFragmentGenerated
     | LlmChannelPredictToClientPacketToolCallGenerationEnd
     | LlmChannelPredictToClientPacketToolCallGenerationFailed
     | LlmChannelPredictToClientPacketSuccess
@@ -6520,40 +9000,134 @@ LlmChannelPredictToClientPacketDict = (
     LlmChannelPredictToClientPacketSuccessDict
     | LlmChannelPredictToClientPacketToolCallGenerationFailedDict
     | LlmChannelPredictToClientPacketToolCallGenerationEndDict
+    | LlmChannelPredictToClientPacketToolCallGenerationArgumentFragmentGeneratedDict
+    | LlmChannelPredictToClientPacketToolCallGenerationNameReceivedDict
     | LlmChannelPredictToClientPacketToolCallGenerationStartDict
     | LlmChannelPredictToClientPacketFragmentDict
     | LlmChannelPredictToClientPacketPromptProcessingProgressDict
 )
-PluginsChannelSetGeneratorToClientPacket = (
-    PluginsChannelSetGeneratorToClientPacketGenerate
-    | PluginsChannelSetGeneratorToClientPacketAbort
+LlmChannelGenerateWithGeneratorToClientPacket = (
+    LlmChannelGenerateWithGeneratorToClientPacketFragment
+    | LlmChannelGenerateWithGeneratorToClientPacketPromptProcessingProgress
+    | LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationStart
+    | LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationNameReceived
+    | LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationArgumentFragmentGenerated
+    | LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationEnd
+    | LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationFailed
+    | LlmChannelGenerateWithGeneratorToClientPacketSuccess
 )
-PluginsChannelSetGeneratorToClientPacketDict = (
-    PluginsChannelSetGeneratorToClientPacketGenerateDict
-    | PluginsChannelSetGeneratorToClientPacketAbortDict
+LlmChannelGenerateWithGeneratorToClientPacketDict = (
+    LlmChannelGenerateWithGeneratorToClientPacketSuccessDict
+    | LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationFailedDict
+    | LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationEndDict
+    | LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationArgumentFragmentGeneratedDict
+    | LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationNameReceivedDict
+    | LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationStartDict
+    | LlmChannelGenerateWithGeneratorToClientPacketFragmentDict
+    | LlmChannelGenerateWithGeneratorToClientPacketPromptProcessingProgressDict
 )
 
 
-class PseudoPluginsChannelSetGenerator(
-    LMStudioStruct["PseudoPluginsChannelSetGeneratorDict"], kw_only=True
+class PluginsRpcProcessingHandleRequestReturns(
+    LMStudioStruct["PluginsRpcProcessingHandleRequestReturnsDict"], kw_only=True
 ):
-    to_client_packet: PluginsChannelSetGeneratorToClientPacket = field(
-        name="toClientPacket"
-    )
-    to_server_packet: PluginsChannelSetGeneratorToServerPacket = field(
-        name="toServerPacket"
-    )
+    response: ProcessingRequestResponse
 
 
-class PseudoPluginsChannelSetGeneratorDict(TypedDict):
-    """Corresponding typed dictionary definition for PseudoPluginsChannelSetGenerator.
+class PluginsRpcProcessingHandleRequestReturnsDict(TypedDict):
+    """Corresponding typed dictionary definition for PluginsRpcProcessingHandleRequestReturns.
 
     NOTE: Multi-word keys are defined using their camelCase form,
     as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
     """
 
-    toClientPacket: PluginsChannelSetGeneratorToClientPacketDict
-    toServerPacket: PluginsChannelSetGeneratorToServerPacketDict
+    response: ProcessingRequestResponseDict
+
+
+class PseudoPluginsRpcProcessingHandleRequest(
+    LMStudioStruct["PseudoPluginsRpcProcessingHandleRequestDict"], kw_only=True
+):
+    parameter: PluginsRpcProcessingHandleRequestParameter
+    returns: PluginsRpcProcessingHandleRequestReturns
+
+
+class PseudoPluginsRpcProcessingHandleRequestDict(TypedDict):
+    """Corresponding typed dictionary definition for PseudoPluginsRpcProcessingHandleRequest.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    parameter: PluginsRpcProcessingHandleRequestParameterDict
+    returns: PluginsRpcProcessingHandleRequestReturnsDict
+
+
+PluginsChannelSetPredictionLoopHandlerToClientPacket = (
+    PluginsChannelSetPredictionLoopHandlerToClientPacketHandlePredictionLoop
+    | PluginsChannelSetPredictionLoopHandlerToClientPacketAbort
+)
+PluginsChannelSetPredictionLoopHandlerToClientPacketDict = (
+    PluginsChannelSetPredictionLoopHandlerToClientPacketHandlePredictionLoopDict
+    | PluginsChannelSetPredictionLoopHandlerToClientPacketAbortDict
+)
+
+
+class PseudoPluginsChannelSetPredictionLoopHandler(
+    LMStudioStruct["PseudoPluginsChannelSetPredictionLoopHandlerDict"], kw_only=True
+):
+    to_client_packet: PluginsChannelSetPredictionLoopHandlerToClientPacket = field(
+        name="toClientPacket"
+    )
+    to_server_packet: PluginsChannelSetPredictionLoopHandlerToServerPacket = field(
+        name="toServerPacket"
+    )
+
+
+class PseudoPluginsChannelSetPredictionLoopHandlerDict(TypedDict):
+    """Corresponding typed dictionary definition for PseudoPluginsChannelSetPredictionLoopHandler.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    toClientPacket: PluginsChannelSetPredictionLoopHandlerToClientPacketDict
+    toServerPacket: PluginsChannelSetPredictionLoopHandlerToServerPacketDict
+
+
+PluginsChannelSetToolsProviderToClientPacket = (
+    PluginsChannelSetToolsProviderToClientPacketInitSession
+    | PluginsChannelSetToolsProviderToClientPacketDiscardSession
+    | PluginsChannelSetToolsProviderToClientPacketCallTool
+    | PluginsChannelSetToolsProviderToClientPacketAbortToolCall
+)
+PluginsChannelSetToolsProviderToClientPacketDict = (
+    PluginsChannelSetToolsProviderToClientPacketAbortToolCallDict
+    | PluginsChannelSetToolsProviderToClientPacketCallToolDict
+    | PluginsChannelSetToolsProviderToClientPacketInitSessionDict
+    | PluginsChannelSetToolsProviderToClientPacketDiscardSessionDict
+)
+PluginsChannelSetGeneratorToServerPacket = (
+    PluginsChannelSetGeneratorToServerPacketComplete
+    | PluginsChannelSetGeneratorToServerPacketAborted
+    | PluginsChannelSetGeneratorToServerPacketError
+    | PluginsChannelSetGeneratorToServerPacketFragmentGenerated
+    | PluginsChannelSetGeneratorToServerPacketToolCallGenerationStarted
+    | PluginsChannelSetGeneratorToServerPacketToolCallGenerationNameReceived
+    | PluginsChannelSetGeneratorToServerPacketToolCallGenerationArgumentFragmentGenerated
+    | PluginsChannelSetGeneratorToServerPacketToolCallGenerationEnded
+    | PluginsChannelSetGeneratorToServerPacketToolCallGenerationFailed
+)
+PluginsChannelSetGeneratorToServerPacketDict = (
+    PluginsChannelSetGeneratorToServerPacketToolCallGenerationFailedDict
+    | PluginsChannelSetGeneratorToServerPacketToolCallGenerationEndedDict
+    | PluginsChannelSetGeneratorToServerPacketToolCallGenerationArgumentFragmentGeneratedDict
+    | PluginsChannelSetGeneratorToServerPacketToolCallGenerationNameReceivedDict
+    | PluginsChannelSetGeneratorToServerPacketToolCallGenerationStartedDict
+    | PluginsChannelSetGeneratorToServerPacketFragmentGeneratedDict
+    | PluginsChannelSetGeneratorToServerPacketErrorDict
+    | PluginsChannelSetGeneratorToServerPacketCompleteDict
+    | PluginsChannelSetGeneratorToServerPacketAbortedDict
+)
 
 
 class RepositoryRpcSearchModelsReturns(
@@ -6590,6 +9164,49 @@ class PseudoRepositoryRpcSearchModelsDict(TypedDict):
     returns: RepositoryRpcSearchModelsReturnsDict
 
 
+RepositoryChannelCreateArtifactDownloadPlanToClientPacket = (
+    RepositoryChannelCreateArtifactDownloadPlanToClientPacketPlanUpdated
+    | RepositoryChannelCreateArtifactDownloadPlanToClientPacketPlanReady
+    | RepositoryChannelCreateArtifactDownloadPlanToClientPacketDownloadProgress
+    | RepositoryChannelCreateArtifactDownloadPlanToClientPacketStartFinalizing
+    | RepositoryChannelCreateArtifactDownloadPlanToClientPacketSuccess
+)
+RepositoryChannelCreateArtifactDownloadPlanToClientPacketDict = (
+    RepositoryChannelCreateArtifactDownloadPlanToClientPacketSuccessDict
+    | RepositoryChannelCreateArtifactDownloadPlanToClientPacketStartFinalizingDict
+    | RepositoryChannelCreateArtifactDownloadPlanToClientPacketDownloadProgressDict
+    | RepositoryChannelCreateArtifactDownloadPlanToClientPacketPlanUpdatedDict
+    | RepositoryChannelCreateArtifactDownloadPlanToClientPacketPlanReadyDict
+)
+
+
+class PseudoRepositoryChannelCreateArtifactDownloadPlan(
+    LMStudioStruct["PseudoRepositoryChannelCreateArtifactDownloadPlanDict"],
+    kw_only=True,
+):
+    creation_parameter: RepositoryChannelCreateArtifactDownloadPlanCreationParameter = (
+        field(name="creationParameter")
+    )
+    to_client_packet: RepositoryChannelCreateArtifactDownloadPlanToClientPacket = field(
+        name="toClientPacket"
+    )
+    to_server_packet: RepositoryChannelCreateArtifactDownloadPlanToServerPacket = field(
+        name="toServerPacket"
+    )
+
+
+class PseudoRepositoryChannelCreateArtifactDownloadPlanDict(TypedDict):
+    """Corresponding typed dictionary definition for PseudoRepositoryChannelCreateArtifactDownloadPlan.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    creationParameter: RepositoryChannelCreateArtifactDownloadPlanCreationParameterDict
+    toClientPacket: RepositoryChannelCreateArtifactDownloadPlanToClientPacketDict
+    toServerPacket: RepositoryChannelCreateArtifactDownloadPlanToServerPacketDict
+
+
 class PseudoRepository(LMStudioStruct["PseudoRepositoryDict"], kw_only=True):
     rpc_search_models: PseudoRepositoryRpcSearchModels = field(name="rpcSearchModels")
     rpc_get_model_download_options: PseudoRepositoryRpcGetModelDownloadOptions = field(
@@ -6597,6 +9214,12 @@ class PseudoRepository(LMStudioStruct["PseudoRepositoryDict"], kw_only=True):
     )
     rpc_install_plugin_dependencies: PseudoRepositoryRpcInstallPluginDependencies = (
         field(name="rpcInstallPluginDependencies")
+    )
+    rpc_get_local_artifact_files: PseudoRepositoryRpcGetLocalArtifactFiles = field(
+        name="rpcGetLocalArtifactFiles"
+    )
+    rpc_login_with_pre_authenticated_keys: PseudoRepositoryRpcLoginWithPreAuthenticatedKeys = field(
+        name="rpcLoginWithPreAuthenticatedKeys"
     )
     channel_download_model: PseudoRepositoryChannelDownloadModel = field(
         name="channelDownloadModel"
@@ -6610,6 +9233,9 @@ class PseudoRepository(LMStudioStruct["PseudoRepositoryDict"], kw_only=True):
     channel_ensure_authenticated: PseudoRepositoryChannelEnsureAuthenticated = field(
         name="channelEnsureAuthenticated"
     )
+    channel_create_artifact_download_plan: PseudoRepositoryChannelCreateArtifactDownloadPlan = field(
+        name="channelCreateArtifactDownloadPlan"
+    )
 
 
 class PseudoRepositoryDict(TypedDict):
@@ -6622,44 +9248,261 @@ class PseudoRepositoryDict(TypedDict):
     rpcSearchModels: PseudoRepositoryRpcSearchModelsDict
     rpcGetModelDownloadOptions: PseudoRepositoryRpcGetModelDownloadOptionsDict
     rpcInstallPluginDependencies: PseudoRepositoryRpcInstallPluginDependenciesDict
+    rpcGetLocalArtifactFiles: PseudoRepositoryRpcGetLocalArtifactFilesDict
+    rpcLoginWithPreAuthenticatedKeys: (
+        PseudoRepositoryRpcLoginWithPreAuthenticatedKeysDict
+    )
     channelDownloadModel: PseudoRepositoryChannelDownloadModelDict
     channelDownloadArtifact: PseudoRepositoryChannelDownloadArtifactDict
     channelPushArtifact: PseudoRepositoryChannelPushArtifactDict
     channelEnsureAuthenticated: PseudoRepositoryChannelEnsureAuthenticatedDict
+    channelCreateArtifactDownloadPlan: (
+        PseudoRepositoryChannelCreateArtifactDownloadPlanDict
+    )
 
 
-class Function(LMStudioStruct["FunctionDict"], kw_only=True):
-    name: str
-    description: str | None = None
-    parameters: LlmToolParameters | None = None
+class AssistantResponse(
+    LMStudioStruct["AssistantResponseDict"],
+    kw_only=True,
+    tag_field="role",
+    tag="assistant",
+):
+    role: ClassVar[Annotated[Literal["assistant"], Meta(title="Role")]] = "assistant"
+    content: Sequence[TextData | FileHandle | ToolCallRequestData]
 
 
-class FunctionDict(TypedDict):
-    """Corresponding typed dictionary definition for Function.
-
-    NOTE: Multi-word keys are defined using their camelCase form,
-    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
-    """
-
-    name: str
-    description: NotRequired[str | None]
-    parameters: NotRequired[LlmToolParametersObjectDict | None]
-
-
-class LlmToolFunction(LMStudioStruct["LlmToolFunctionDict"], kw_only=True):
-    type: Annotated[Literal["function"], Meta(title="Type")]
-    function: Function
-
-
-class LlmToolFunctionDict(TypedDict):
-    """Corresponding typed dictionary definition for LlmToolFunction.
+class AssistantResponseDict(TypedDict):
+    """Corresponding typed dictionary definition for ChatMessageDataAssistant.
 
     NOTE: Multi-word keys are defined using their camelCase form,
     as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
     """
 
-    type: Annotated[Literal["function"], Meta(title="Type")]
-    function: FunctionDict
+    role: Literal["assistant"]
+    content: Sequence[TextDataDict | FileHandleDict | ToolCallRequestDataDict]
+
+
+class LlmToolUseSettingToolArray(
+    LMStudioStruct["LlmToolUseSettingToolArrayDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="toolArray",
+):
+    type: ClassVar[Annotated[Literal["toolArray"], Meta(title="Type")]] = "toolArray"
+    tools: Sequence[LlmTool] | None = None
+    force: bool | None = None
+
+
+class LlmToolUseSettingToolArrayDict(TypedDict):
+    """Corresponding typed dictionary definition for LlmToolUseSettingToolArray.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["toolArray"]
+    tools: NotRequired[Sequence[LlmToolFunctionDict] | None]
+    force: NotRequired[bool | None]
+
+
+class PluginsChannelSetToolsProviderToServerPacketSessionInitialized(
+    LMStudioStruct[
+        "PluginsChannelSetToolsProviderToServerPacketSessionInitializedDict"
+    ],
+    kw_only=True,
+    tag_field="type",
+    tag="sessionInitialized",
+):
+    type: ClassVar[Annotated[Literal["sessionInitialized"], Meta(title="Type")]] = (
+        "sessionInitialized"
+    )
+    session_id: str = field(name="sessionId")
+    tool_definitions: Sequence[LlmTool] = field(name="toolDefinitions")
+
+
+class PluginsChannelSetToolsProviderToServerPacketSessionInitializedDict(TypedDict):
+    """Corresponding typed dictionary definition for PluginsChannelSetToolsProviderToServerPacketSessionInitialized.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["sessionInitialized"]
+    sessionId: str
+    toolDefinitions: Sequence[LlmToolFunctionDict]
+
+
+ArtifactDependency = ArtifactModelDependency | ArtifactArtifactDependency
+ArtifactDependencyDict = ArtifactModelDependencyDict | ArtifactArtifactDependencyDict
+
+
+class ArtifactManifestBase(LMStudioStruct["ArtifactManifestBaseDict"], kw_only=True):
+    owner: KebabCase
+    name: Annotated[
+        str, Meta(max_length=100, min_length=1, pattern="^[a-z0-9]+(?:[-.][a-z0-9]+)*$")
+    ]
+    revision: int | None = None
+    dependencies: Sequence[ArtifactDependency] | None = None
+    tags: Sequence[str] | None = None
+
+
+class ArtifactManifestBaseDict(TypedDict):
+    """Corresponding typed dictionary definition for ArtifactManifestBase.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    owner: str
+    name: Annotated[
+        str, Meta(max_length=100, min_length=1, pattern="^[a-z0-9]+(?:[-.][a-z0-9]+)*$")
+    ]
+    revision: NotRequired[int | None]
+    dependencies: NotRequired[Sequence[ArtifactDependencyDict] | None]
+    tags: NotRequired[Sequence[str] | None]
+
+
+AnyChatMessage = AssistantResponse | UserMessage | SystemPrompt | ToolResultMessage
+AnyChatMessageDict = (
+    ToolResultMessageDict | SystemPromptDict | AssistantResponseDict | UserMessageDict
+)
+ChatMessagePartData = TextData | FileHandle | ToolCallRequestData | ToolCallResultData
+ChatMessagePartDataDict = (
+    ToolCallResultDataDict | ToolCallRequestDataDict | TextDataDict | FileHandleDict
+)
+
+
+class LlmApplyPromptTemplateOpts(
+    LMStudioStruct["LlmApplyPromptTemplateOptsDict"], kw_only=True
+):
+    omit_bos_token: bool | None = field(name="omitBosToken", default=None)
+    omit_eos_token: bool | None = field(name="omitEosToken", default=None)
+    tool_definitions: Sequence[LlmTool] | None = field(
+        name="toolDefinitions", default=None
+    )
+
+
+class LlmApplyPromptTemplateOptsDict(TypedDict):
+    """Corresponding typed dictionary definition for LlmApplyPromptTemplateOpts.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    omitBosToken: NotRequired[bool | None]
+    omitEosToken: NotRequired[bool | None]
+    toolDefinitions: NotRequired[Sequence[LlmToolFunctionDict] | None]
+
+
+LlmToolArray = Sequence[LlmTool]
+LlmToolUseSetting = LlmToolUseSettingNone | LlmToolUseSettingToolArray
+LlmToolUseSettingDict = LlmToolUseSettingNoneDict | LlmToolUseSettingToolArrayDict
+PreprocessorUpdate = (
+    ProcessingUpdateStatusCreate
+    | ProcessingUpdateStatusUpdate
+    | ProcessingUpdateStatusRemove
+    | ProcessingUpdateCitationBlockCreate
+    | ProcessingUpdateDebugInfoBlockCreate
+)
+PreprocessorUpdateDict = (
+    ProcessingUpdateDebugInfoBlockCreateDict
+    | ProcessingUpdateCitationBlockCreateDict
+    | ProcessingUpdateStatusRemoveDict
+    | ProcessingUpdateStatusCreateDict
+    | ProcessingUpdateStatusUpdateDict
+)
+
+
+class ProcessingUpdateToolStatusCreate(
+    LMStudioStruct["ProcessingUpdateToolStatusCreateDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="toolStatus.create",
+):
+    type: ClassVar[Annotated[Literal["toolStatus.create"], Meta(title="Type")]] = (
+        "toolStatus.create"
+    )
+    id: str
+    call_id: int = field(name="callId")
+    state: ToolStatusStepState
+
+
+class ProcessingUpdateToolStatusCreateDict(TypedDict):
+    """Corresponding typed dictionary definition for ProcessingUpdateToolStatusCreate.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["toolStatus.create"]
+    id: str
+    callId: int
+    state: ToolStatusStepStateDict
+
+
+class ProcessingUpdateToolStatusUpdate(
+    LMStudioStruct["ProcessingUpdateToolStatusUpdateDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="toolStatus.update",
+):
+    type: ClassVar[Annotated[Literal["toolStatus.update"], Meta(title="Type")]] = (
+        "toolStatus.update"
+    )
+    id: str
+    state: ToolStatusStepState
+
+
+class ProcessingUpdateToolStatusUpdateDict(TypedDict):
+    """Corresponding typed dictionary definition for ProcessingUpdateToolStatusUpdate.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["toolStatus.update"]
+    id: str
+    state: ToolStatusStepStateDict
+
+
+PluginsChannelSetToolsProviderToServerPacket = (
+    PluginsChannelSetToolsProviderToServerPacketSessionInitialized
+    | PluginsChannelSetToolsProviderToServerPacketSessionInitializationFailed
+    | PluginsChannelSetToolsProviderToServerPacketToolCallComplete
+    | PluginsChannelSetToolsProviderToServerPacketToolCallError
+    | PluginsChannelSetToolsProviderToServerPacketToolCallStatus
+    | PluginsChannelSetToolsProviderToServerPacketToolCallWarn
+)
+PluginsChannelSetToolsProviderToServerPacketDict = (
+    PluginsChannelSetToolsProviderToServerPacketToolCallWarnDict
+    | PluginsChannelSetToolsProviderToServerPacketToolCallStatusDict
+    | PluginsChannelSetToolsProviderToServerPacketToolCallErrorDict
+    | PluginsChannelSetToolsProviderToServerPacketToolCallCompleteDict
+    | PluginsChannelSetToolsProviderToServerPacketSessionInitializedDict
+    | PluginsChannelSetToolsProviderToServerPacketSessionInitializationFailedDict
+)
+
+
+class PseudoPluginsChannelSetToolsProvider(
+    LMStudioStruct["PseudoPluginsChannelSetToolsProviderDict"], kw_only=True
+):
+    to_client_packet: PluginsChannelSetToolsProviderToClientPacket = field(
+        name="toClientPacket"
+    )
+    to_server_packet: PluginsChannelSetToolsProviderToServerPacket = field(
+        name="toServerPacket"
+    )
+
+
+class PseudoPluginsChannelSetToolsProviderDict(TypedDict):
+    """Corresponding typed dictionary definition for PseudoPluginsChannelSetToolsProvider.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    toClientPacket: PluginsChannelSetToolsProviderToClientPacketDict
+    toServerPacket: PluginsChannelSetToolsProviderToServerPacketDict
 
 
 class PluginsChannelSetPreprocessorToClientPacketPreprocess(
@@ -6673,6 +9516,8 @@ class PluginsChannelSetPreprocessorToClientPacketPreprocess(
     input: AnyChatMessage
     config: LlmRpcGetLoadConfigReturns
     plugin_config: LlmRpcGetLoadConfigReturns = field(name="pluginConfig")
+    global_plugin_config: LlmRpcGetLoadConfigReturns = field(name="globalPluginConfig")
+    working_directory_path: str | None = field(name="workingDirectoryPath")
     pci: str
     token: str
 
@@ -6689,6 +9534,8 @@ class PluginsChannelSetPreprocessorToClientPacketPreprocessDict(TypedDict):
     input: AnyChatMessageDict
     config: LlmRpcGetLoadConfigReturnsDict
     pluginConfig: LlmRpcGetLoadConfigReturnsDict
+    globalPluginConfig: LlmRpcGetLoadConfigReturnsDict
+    workingDirectoryPath: NotRequired[str | None]
     pci: str
     token: str
 
@@ -6716,7 +9563,9 @@ class PluginsChannelSetPreprocessorToServerPacketCompleteDict(TypedDict):
     processed: AnyChatMessageDict
 
 
+Dependencies = Sequence[ArtifactDependency]
 Messages = Sequence[AnyChatMessage]
+RawTools = LlmToolUseSetting
 
 
 class ChatHistoryData(LMStudioStruct["ChatHistoryDataDict"], kw_only=True):
@@ -6733,24 +9582,141 @@ class ChatHistoryDataDict(TypedDict):
     messages: Sequence[AnyChatMessageDict]
 
 
-class LlmJinjaInputMessagesConfig(
-    LMStudioStruct["LlmJinjaInputMessagesConfigDict"], kw_only=True
+class LlmPredictionConfigInput(
+    LMStudioStruct["LlmPredictionConfigInputDict"], kw_only=True
 ):
-    content_config: LlmJinjaInputMessagesContentConfig = field(name="contentConfig")
+    max_tokens: Any | MaxTokens | bool | None = field(name="maxTokens", default=None)
+    temperature: Annotated[float, Meta(ge=0.0)] | None = None
+    stop_strings: Sequence[str] | None = field(name="stopStrings", default=None)
+    tool_call_stop_strings: Sequence[str] | None = field(
+        name="toolCallStopStrings", default=None
+    )
+    context_overflow_policy: LlmContextOverflowPolicy | None = field(
+        name="contextOverflowPolicy", default=None
+    )
+    structured: ZodSchema | LlmStructuredPredictionSetting | None = None
+    raw_tools: LlmToolUseSetting | None = field(name="rawTools", default=None)
+    top_k_sampling: float | None = field(name="topKSampling", default=None)
+    repeat_penalty: Any | float | bool | None = field(
+        name="repeatPenalty", default=None
+    )
+    min_p_sampling: Any | float | bool | None = field(name="minPSampling", default=None)
+    top_p_sampling: Any | float | bool | None = field(name="topPSampling", default=None)
+    cpu_threads: int | None = field(name="cpuThreads", default=None)
+    prompt_template: LlmPromptTemplate | None = field(
+        name="promptTemplate", default=None
+    )
+    draft_model: str | None = field(name="draftModel", default=None)
+    speculative_decoding_num_draft_tokens_exact: Annotated[int, Meta(ge=1)] | None = (
+        field(name="speculativeDecodingNumDraftTokensExact", default=None)
+    )
+    speculative_decoding_min_draft_length_to_consider: (
+        Annotated[int, Meta(ge=0)] | None
+    ) = field(name="speculativeDecodingMinDraftLengthToConsider", default=None)
+    speculative_decoding_min_continue_drafting_probability: float | None = field(
+        name="speculativeDecodingMinContinueDraftingProbability", default=None
+    )
+    reasoning_parsing: LlmReasoningParsing | None = field(
+        name="reasoningParsing", default=None
+    )
+    raw: KvConfig | None = None
 
 
-class LlmJinjaInputMessagesConfigDict(TypedDict):
-    """Corresponding typed dictionary definition for LlmJinjaInputMessagesConfig.
+class LlmPredictionConfigInputDict(TypedDict):
+    """Corresponding typed dictionary definition for LlmPredictionConfigInput.
 
     NOTE: Multi-word keys are defined using their camelCase form,
     as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
     """
 
-    contentConfig: LlmJinjaInputMessagesContentConfigDict
+    maxTokens: NotRequired[Any | int | bool | None]
+    temperature: NotRequired[Annotated[float, Meta(ge=0.0)] | None]
+    stopStrings: NotRequired[Sequence[str] | None]
+    toolCallStopStrings: NotRequired[Sequence[str] | None]
+    contextOverflowPolicy: NotRequired[LlmContextOverflowPolicy | None]
+    structured: NotRequired[ZodSchema | LlmStructuredPredictionSettingDict | None]
+    rawTools: NotRequired[LlmToolUseSettingDict | None]
+    topKSampling: NotRequired[float | None]
+    repeatPenalty: NotRequired[Any | float | bool | None]
+    minPSampling: NotRequired[Any | float | bool | None]
+    topPSampling: NotRequired[Any | float | bool | None]
+    cpuThreads: NotRequired[int | None]
+    promptTemplate: NotRequired[LlmPromptTemplateDict | None]
+    draftModel: NotRequired[str | None]
+    speculativeDecodingNumDraftTokensExact: NotRequired[
+        Annotated[int, Meta(ge=1)] | None
+    ]
+    speculativeDecodingMinDraftLengthToConsider: NotRequired[
+        Annotated[int, Meta(ge=0)] | None
+    ]
+    speculativeDecodingMinContinueDraftingProbability: NotRequired[float | None]
+    reasoningParsing: NotRequired[LlmReasoningParsingDict | None]
+    raw: NotRequired[KvConfigDict | None]
 
 
-LlmTool = LlmToolFunction
-GeneratorUpdate = (
+class LlmPredictionConfig(LMStudioStruct["LlmPredictionConfigDict"], kw_only=True):
+    max_tokens: MaxTokensModel | None = field(name="maxTokens", default=None)
+    temperature: Temperature | None = None
+    stop_strings: StopStrings | None = field(name="stopStrings", default=None)
+    tool_call_stop_strings: ToolCallStopStrings | None = field(
+        name="toolCallStopStrings", default=None
+    )
+    context_overflow_policy: ContextOverflowPolicy | None = field(
+        name="contextOverflowPolicy", default=None
+    )
+    structured: LlmStructuredPredictionSetting | None = None
+    raw_tools: RawTools | None = field(name="rawTools", default=None)
+    top_k_sampling: TopKSampling | None = field(name="topKSampling", default=None)
+    repeat_penalty: RepeatPenalty | None = field(name="repeatPenalty", default=None)
+    min_p_sampling: MinPSampling | None = field(name="minPSampling", default=None)
+    top_p_sampling: TopPSampling | None = field(name="topPSampling", default=None)
+    cpu_threads: CpuThreads | None = field(name="cpuThreads", default=None)
+    prompt_template: PromptTemplate | None = field(name="promptTemplate", default=None)
+    draft_model: DraftModel | None = field(name="draftModel", default=None)
+    speculative_decoding_num_draft_tokens_exact: (
+        SpeculativeDecodingNumDraftTokensExact | None
+    ) = field(name="speculativeDecodingNumDraftTokensExact", default=None)
+    speculative_decoding_min_draft_length_to_consider: (
+        SpeculativeDecodingMinDraftLengthToConsider | None
+    ) = field(name="speculativeDecodingMinDraftLengthToConsider", default=None)
+    speculative_decoding_min_continue_drafting_probability: (
+        SpeculativeDecodingMinContinueDraftingProbability | None
+    ) = field(name="speculativeDecodingMinContinueDraftingProbability", default=None)
+    reasoning_parsing: ReasoningParsing | None = field(
+        name="reasoningParsing", default=None
+    )
+    raw: Raw | None = None
+
+
+class LlmPredictionConfigDict(TypedDict):
+    """Corresponding typed dictionary definition for LlmPredictionConfig.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    maxTokens: NotRequired[MaxTokensModelDict | None]
+    temperature: NotRequired[float | None]
+    stopStrings: NotRequired[StopStrings | None]
+    toolCallStopStrings: NotRequired[ToolCallStopStrings | None]
+    contextOverflowPolicy: NotRequired[ContextOverflowPolicy | None]
+    structured: NotRequired[LlmStructuredPredictionSettingDict | None]
+    rawTools: NotRequired[LlmToolUseSettingDict | None]
+    topKSampling: NotRequired[float | None]
+    repeatPenalty: NotRequired[RepeatPenalty | None]
+    minPSampling: NotRequired[MinPSampling | None]
+    topPSampling: NotRequired[TopPSampling | None]
+    cpuThreads: NotRequired[int | None]
+    promptTemplate: NotRequired[LlmPromptTemplateDict | None]
+    draftModel: NotRequired[str | None]
+    speculativeDecodingNumDraftTokensExact: NotRequired[int | None]
+    speculativeDecodingMinDraftLengthToConsider: NotRequired[int | None]
+    speculativeDecodingMinContinueDraftingProbability: NotRequired[float | None]
+    reasoningParsing: NotRequired[LlmReasoningParsingDict | None]
+    raw: NotRequired[KvConfigDict | None]
+
+
+PredictionLoopHandlerUpdate = (
     ProcessingUpdateStatusCreate
     | ProcessingUpdateStatusUpdate
     | ProcessingUpdateStatusRemove
@@ -6759,32 +9725,30 @@ GeneratorUpdate = (
     | ProcessingUpdateContentBlockCreate
     | ProcessingUpdateContentBlockAppendText
     | ProcessingUpdateContentBlockReplaceText
+    | ProcessingUpdateContentBlockAppendToolRequest
+    | ProcessingUpdateContentBlockReplaceToolRequest
+    | ProcessingUpdateContentBlockAppendToolResult
     | ProcessingUpdateContentBlockAttachGenInfo
     | ProcessingUpdateContentBlockSetStyle
+    | ProcessingUpdateToolStatusCreate
+    | ProcessingUpdateToolStatusUpdate
+    | ProcessingUpdateToolStatusArgumentFragment
     | ProcessingUpdateSetSenderName
 )
-GeneratorUpdateDict = (
+PredictionLoopHandlerUpdateDict = (
     ProcessingUpdateSetSenderNameDict
+    | ProcessingUpdateToolStatusArgumentFragmentDict
+    | ProcessingUpdateToolStatusUpdateDict
+    | ProcessingUpdateToolStatusCreateDict
     | ProcessingUpdateContentBlockSetStyleDict
     | ProcessingUpdateContentBlockAttachGenInfoDict
+    | ProcessingUpdateContentBlockAppendToolResultDict
+    | ProcessingUpdateContentBlockReplaceToolRequestDict
+    | ProcessingUpdateContentBlockAppendToolRequestDict
     | ProcessingUpdateContentBlockReplaceTextDict
     | ProcessingUpdateContentBlockAppendTextDict
     | ProcessingUpdateContentBlockCreateDict
     | ProcessingUpdateDebugInfoBlockCreateDict
-    | ProcessingUpdateCitationBlockCreateDict
-    | ProcessingUpdateStatusRemoveDict
-    | ProcessingUpdateStatusCreateDict
-    | ProcessingUpdateStatusUpdateDict
-)
-PreprocessorUpdate = (
-    ProcessingUpdateStatusCreate
-    | ProcessingUpdateStatusUpdate
-    | ProcessingUpdateStatusRemove
-    | ProcessingUpdateCitationBlockCreate
-    | ProcessingUpdateDebugInfoBlockCreate
-)
-PreprocessorUpdateDict = (
-    ProcessingUpdateDebugInfoBlockCreateDict
     | ProcessingUpdateCitationBlockCreateDict
     | ProcessingUpdateStatusRemoveDict
     | ProcessingUpdateStatusCreateDict
@@ -6798,20 +9762,32 @@ ProcessingUpdate = (
     | ProcessingUpdateDebugInfoBlockCreate
     | ProcessingUpdateContentBlockCreate
     | ProcessingUpdateContentBlockAppendText
+    | ProcessingUpdateContentBlockAppendToolRequest
+    | ProcessingUpdateContentBlockReplaceToolRequest
+    | ProcessingUpdateContentBlockAppendToolResult
     | ProcessingUpdateContentBlockReplaceText
     | ProcessingUpdateContentBlockSetPrefix
     | ProcessingUpdateContentBlockSetSuffix
     | ProcessingUpdateContentBlockAttachGenInfo
     | ProcessingUpdateContentBlockSetStyle
+    | ProcessingUpdateToolStatusCreate
+    | ProcessingUpdateToolStatusUpdate
+    | ProcessingUpdateToolStatusArgumentFragment
     | ProcessingUpdateSetSenderName
 )
 ProcessingUpdateDict = (
     ProcessingUpdateSetSenderNameDict
+    | ProcessingUpdateToolStatusArgumentFragmentDict
+    | ProcessingUpdateToolStatusUpdateDict
+    | ProcessingUpdateToolStatusCreateDict
     | ProcessingUpdateContentBlockSetStyleDict
     | ProcessingUpdateContentBlockAttachGenInfoDict
     | ProcessingUpdateContentBlockSetSuffixDict
     | ProcessingUpdateContentBlockSetPrefixDict
     | ProcessingUpdateContentBlockReplaceTextDict
+    | ProcessingUpdateContentBlockAppendToolResultDict
+    | ProcessingUpdateContentBlockReplaceToolRequestDict
+    | ProcessingUpdateContentBlockAppendToolRequestDict
     | ProcessingUpdateContentBlockAppendTextDict
     | ProcessingUpdateContentBlockCreateDict
     | ProcessingUpdateDebugInfoBlockCreateDict
@@ -6820,6 +9796,86 @@ ProcessingUpdateDict = (
     | ProcessingUpdateStatusCreateDict
     | ProcessingUpdateStatusUpdateDict
 )
+
+
+class ModelManifest(
+    LMStudioStruct["ModelManifestDict"], kw_only=True, tag_field="type", tag="model"
+):
+    type: ClassVar[Annotated[Literal["model"], Meta(title="Type")]] = "model"
+    owner: KebabCase
+    name: Name
+    revision: Revision | None = None
+    dependencies: Dependencies | None = None
+    tags: Tags | None = None
+
+
+class ModelManifestDict(TypedDict):
+    """Corresponding typed dictionary definition for ModelManifest.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["model"]
+    owner: str
+    name: str
+    revision: NotRequired[int | None]
+    dependencies: NotRequired[Dependencies | None]
+    tags: NotRequired[Tags | None]
+
+
+class PluginManifest(
+    LMStudioStruct["PluginManifestDict"], kw_only=True, tag_field="type", tag="plugin"
+):
+    type: ClassVar[Annotated[Literal["plugin"], Meta(title="Type")]] = "plugin"
+    runner: PluginRunnerType
+    owner: KebabCase
+    name: Name
+    revision: Revision | None = None
+    dependencies: Dependencies | None = None
+    tags: Tags | None = None
+
+
+class PluginManifestDict(TypedDict):
+    """Corresponding typed dictionary definition for PluginManifest.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["plugin"]
+    runner: PluginRunnerType
+    owner: str
+    name: str
+    revision: NotRequired[int | None]
+    dependencies: NotRequired[Dependencies | None]
+    tags: NotRequired[Tags | None]
+
+
+class PresetManifest(
+    LMStudioStruct["PresetManifestDict"], kw_only=True, tag_field="type", tag="preset"
+):
+    type: ClassVar[Annotated[Literal["preset"], Meta(title="Type")]] = "preset"
+    owner: KebabCase
+    name: Name
+    revision: Revision | None = None
+    dependencies: Dependencies | None = None
+    tags: Tags | None = None
+
+
+class PresetManifestDict(TypedDict):
+    """Corresponding typed dictionary definition for PresetManifest.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["preset"]
+    owner: str
+    name: str
+    revision: NotRequired[int | None]
+    dependencies: NotRequired[Dependencies | None]
+    tags: NotRequired[Tags | None]
 
 
 class LlmRpcApplyPromptTemplateParameter(
@@ -6910,6 +9966,56 @@ class PseudoLlmChannelPredictDict(TypedDict):
     toServerPacket: LlmChannelPredictToServerPacketCancelDict
 
 
+class LlmChannelGenerateWithGeneratorCreationParameter(
+    LMStudioStruct["LlmChannelGenerateWithGeneratorCreationParameterDict"], kw_only=True
+):
+    plugin_identifier: str = field(name="pluginIdentifier")
+    plugin_config_stack: KvConfigStack = field(name="pluginConfigStack")
+    tools: Sequence[LlmTool]
+    working_directory_path: str | None = field(name="workingDirectoryPath")
+    history: ChatHistoryData
+
+
+class LlmChannelGenerateWithGeneratorCreationParameterDict(TypedDict):
+    """Corresponding typed dictionary definition for LlmChannelGenerateWithGeneratorCreationParameter.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    pluginIdentifier: str
+    pluginConfigStack: KvConfigStackDict
+    tools: Sequence[LlmToolFunctionDict]
+    workingDirectoryPath: NotRequired[str | None]
+    history: ChatHistoryDataDict
+
+
+class PseudoLlmChannelGenerateWithGenerator(
+    LMStudioStruct["PseudoLlmChannelGenerateWithGeneratorDict"], kw_only=True
+):
+    creation_parameter: LlmChannelGenerateWithGeneratorCreationParameter = field(
+        name="creationParameter"
+    )
+    to_client_packet: LlmChannelGenerateWithGeneratorToClientPacket = field(
+        name="toClientPacket"
+    )
+    to_server_packet: LlmChannelGenerateWithGeneratorToServerPacket = field(
+        name="toServerPacket"
+    )
+
+
+class PseudoLlmChannelGenerateWithGeneratorDict(TypedDict):
+    """Corresponding typed dictionary definition for PseudoLlmChannelGenerateWithGenerator.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    creationParameter: LlmChannelGenerateWithGeneratorCreationParameterDict
+    toClientPacket: LlmChannelGenerateWithGeneratorToClientPacketDict
+    toServerPacket: LlmChannelGenerateWithGeneratorToServerPacketCancelDict
+
+
 class PseudoLlm(LMStudioStruct["PseudoLlmDict"], kw_only=True):
     rpc_unload_model: PseudoLlmRpcUnloadModel = field(name="rpcUnloadModel")
     rpc_list_loaded: PseudoLlmRpcListLoaded = field(name="rpcListLoaded")
@@ -6926,6 +10032,9 @@ class PseudoLlm(LMStudioStruct["PseudoLlmDict"], kw_only=True):
     channel_load_model: PseudoLlmChannelLoadModel = field(name="channelLoadModel")
     channel_get_or_load: PseudoLlmChannelGetOrLoad = field(name="channelGetOrLoad")
     channel_predict: PseudoLlmChannelPredict = field(name="channelPredict")
+    channel_generate_with_generator: PseudoLlmChannelGenerateWithGenerator = field(
+        name="channelGenerateWithGenerator"
+    )
 
 
 class PseudoLlmDict(TypedDict):
@@ -6946,6 +10055,7 @@ class PseudoLlmDict(TypedDict):
     channelLoadModel: PseudoLlmChannelLoadModelDict
     channelGetOrLoad: PseudoLlmChannelGetOrLoadDict
     channelPredict: PseudoLlmChannelPredictDict
+    channelGenerateWithGenerator: PseudoLlmChannelGenerateWithGeneratorDict
 
 
 class PluginsRpcProcessingHandleUpdateParameter(
@@ -7018,6 +10128,49 @@ class PseudoPluginsRpcProcessingPullHistoryDict(TypedDict):
     returns: PluginsRpcProcessingPullHistoryReturnsDict
 
 
+class PluginsChannelRegisterDevelopmentPluginCreationParameter(
+    LMStudioStruct["PluginsChannelRegisterDevelopmentPluginCreationParameterDict"],
+    kw_only=True,
+):
+    manifest: PluginManifest
+
+
+class PluginsChannelRegisterDevelopmentPluginCreationParameterDict(TypedDict):
+    """Corresponding typed dictionary definition for PluginsChannelRegisterDevelopmentPluginCreationParameter.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    manifest: PluginManifestDict
+
+
+class PseudoPluginsChannelRegisterDevelopmentPlugin(
+    LMStudioStruct["PseudoPluginsChannelRegisterDevelopmentPluginDict"], kw_only=True
+):
+    creation_parameter: PluginsChannelRegisterDevelopmentPluginCreationParameter = (
+        field(name="creationParameter")
+    )
+    to_client_packet: PluginsChannelRegisterDevelopmentPluginToClientPacket = field(
+        name="toClientPacket"
+    )
+    to_server_packet: PluginsChannelRegisterDevelopmentPluginToServerPacket = field(
+        name="toServerPacket"
+    )
+
+
+class PseudoPluginsChannelRegisterDevelopmentPluginDict(TypedDict):
+    """Corresponding typed dictionary definition for PseudoPluginsChannelRegisterDevelopmentPlugin.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    creationParameter: PluginsChannelRegisterDevelopmentPluginCreationParameterDict
+    toClientPacket: PluginsChannelRegisterDevelopmentPluginToClientPacketReadyDict
+    toServerPacket: PluginsChannelRegisterDevelopmentPluginToServerPacketEndDict
+
+
 PluginsChannelSetPreprocessorToClientPacket = (
     PluginsChannelSetPreprocessorToClientPacketPreprocess
     | PluginsChannelSetPreprocessorToClientPacketAbort
@@ -7060,12 +10213,80 @@ class PseudoPluginsChannelSetPreprocessorDict(TypedDict):
     toServerPacket: PluginsChannelSetPreprocessorToServerPacketDict
 
 
+class PluginsChannelSetGeneratorToClientPacketGenerate(
+    LMStudioStruct["PluginsChannelSetGeneratorToClientPacketGenerateDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="generate",
+):
+    type: ClassVar[Annotated[Literal["generate"], Meta(title="Type")]] = "generate"
+    task_id: str = field(name="taskId")
+    input: PluginsRpcProcessingPullHistoryReturns
+    plugin_config: LlmRpcGetLoadConfigReturns = field(name="pluginConfig")
+    global_plugin_config: LlmRpcGetLoadConfigReturns = field(name="globalPluginConfig")
+    tool_definitions: Sequence[LlmTool] = field(name="toolDefinitions")
+    working_directory_path: str | None = field(name="workingDirectoryPath")
+
+
+class PluginsChannelSetGeneratorToClientPacketGenerateDict(TypedDict):
+    """Corresponding typed dictionary definition for PluginsChannelSetGeneratorToClientPacketGenerate.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["generate"]
+    taskId: str
+    input: PluginsRpcProcessingPullHistoryReturnsDict
+    pluginConfig: LlmRpcGetLoadConfigReturnsDict
+    globalPluginConfig: LlmRpcGetLoadConfigReturnsDict
+    toolDefinitions: Sequence[LlmToolFunctionDict]
+    workingDirectoryPath: NotRequired[str | None]
+
+
+ArtifactManifest = PluginManifest | PresetManifest | ModelManifest
+ArtifactManifestDict = ModelManifestDict | PluginManifestDict | PresetManifestDict
+PluginsChannelSetGeneratorToClientPacket = (
+    PluginsChannelSetGeneratorToClientPacketGenerate
+    | PluginsChannelSetGeneratorToClientPacketAbort
+)
+PluginsChannelSetGeneratorToClientPacketDict = (
+    PluginsChannelSetGeneratorToClientPacketGenerateDict
+    | PluginsChannelSetGeneratorToClientPacketAbortDict
+)
+
+
+class PseudoPluginsChannelSetGenerator(
+    LMStudioStruct["PseudoPluginsChannelSetGeneratorDict"], kw_only=True
+):
+    to_client_packet: PluginsChannelSetGeneratorToClientPacket = field(
+        name="toClientPacket"
+    )
+    to_server_packet: PluginsChannelSetGeneratorToServerPacket = field(
+        name="toServerPacket"
+    )
+
+
+class PseudoPluginsChannelSetGeneratorDict(TypedDict):
+    """Corresponding typed dictionary definition for PseudoPluginsChannelSetGenerator.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    toClientPacket: PluginsChannelSetGeneratorToClientPacketDict
+    toServerPacket: PluginsChannelSetGeneratorToServerPacketDict
+
+
 class PseudoPlugins(LMStudioStruct["PseudoPluginsDict"], kw_only=True):
     rpc_reindex_plugins: PseudoPluginsRpcReindexPlugins = field(
         name="rpcReindexPlugins"
     )
     rpc_processing_handle_update: PseudoPluginsRpcProcessingHandleUpdate = field(
         name="rpcProcessingHandleUpdate"
+    )
+    rpc_processing_handle_request: PseudoPluginsRpcProcessingHandleRequest = field(
+        name="rpcProcessingHandleRequest"
     )
     rpc_processing_pull_history: PseudoPluginsRpcProcessingPullHistory = field(
         name="rpcProcessingPullHistory"
@@ -7088,6 +10309,9 @@ class PseudoPlugins(LMStudioStruct["PseudoPluginsDict"], kw_only=True):
     rpc_set_config_schematics: PseudoPluginsRpcSetConfigSchematics = field(
         name="rpcSetConfigSchematics"
     )
+    rpc_set_global_config_schematics: PseudoPluginsRpcSetGlobalConfigSchematics = field(
+        name="rpcSetGlobalConfigSchematics"
+    )
     rpc_plugin_init_completed: PseudoPluginsRpcPluginInitCompleted = field(
         name="rpcPluginInitCompleted"
     )
@@ -7096,6 +10320,12 @@ class PseudoPlugins(LMStudioStruct["PseudoPluginsDict"], kw_only=True):
     )
     channel_set_preprocessor: PseudoPluginsChannelSetPreprocessor = field(
         name="channelSetPreprocessor"
+    )
+    channel_set_prediction_loop_handler: PseudoPluginsChannelSetPredictionLoopHandler = field(
+        name="channelSetPredictionLoopHandler"
+    )
+    channel_set_tools_provider: PseudoPluginsChannelSetToolsProvider = field(
+        name="channelSetToolsProvider"
     )
     channel_set_generator: PseudoPluginsChannelSetGenerator = field(
         name="channelSetGenerator"
@@ -7111,6 +10341,7 @@ class PseudoPluginsDict(TypedDict):
 
     rpcReindexPlugins: PseudoPluginsRpcReindexPlugins
     rpcProcessingHandleUpdate: PseudoPluginsRpcProcessingHandleUpdateDict
+    rpcProcessingHandleRequest: PseudoPluginsRpcProcessingHandleRequestDict
     rpcProcessingPullHistory: PseudoPluginsRpcProcessingPullHistoryDict
     rpcProcessingGetOrLoadModel: PseudoPluginsRpcProcessingGetOrLoadModelDict
     rpcProcessingHasStatus: PseudoPluginsRpcProcessingHasStatusDict
@@ -7118,31 +10349,13 @@ class PseudoPluginsDict(TypedDict):
     rpcProcessingSuggestName: PseudoPluginsRpcProcessingSuggestNameDict
     rpcProcessingSetSenderName: PseudoPluginsRpcProcessingSetSenderNameDict
     rpcSetConfigSchematics: PseudoPluginsRpcSetConfigSchematicsDict
+    rpcSetGlobalConfigSchematics: PseudoPluginsRpcSetGlobalConfigSchematicsDict
     rpcPluginInitCompleted: PseudoPluginsRpcPluginInitCompleted
     channelRegisterDevelopmentPlugin: PseudoPluginsChannelRegisterDevelopmentPluginDict
     channelSetPreprocessor: PseudoPluginsChannelSetPreprocessorDict
+    channelSetPredictionLoopHandler: PseudoPluginsChannelSetPredictionLoopHandlerDict
+    channelSetToolsProvider: PseudoPluginsChannelSetToolsProviderDict
     channelSetGenerator: PseudoPluginsChannelSetGeneratorDict
-
-
-class LlmToolUseSettingToolArray(
-    LMStudioStruct["LlmToolUseSettingToolArrayDict"],
-    kw_only=True,
-    tag_field="type",
-    tag="toolArray",
-):
-    type: ClassVar[Annotated[Literal["toolArray"], Meta(title="Type")]] = "toolArray"
-    tools: Sequence[LlmTool] | None = None
-
-
-class LlmToolUseSettingToolArrayDict(TypedDict):
-    """Corresponding typed dictionary definition for LlmToolUseSettingToolArray.
-
-    NOTE: Multi-word keys are defined using their camelCase form,
-    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
-    """
-
-    type: Literal["toolArray"]
-    tools: NotRequired[Sequence[LlmToolFunctionDict] | None]
 
 
 class Model(LMStudioStruct["ModelDict"], kw_only=True):
@@ -7169,202 +10382,3 @@ class ModelDict(TypedDict):
     plugins: PseudoPluginsDict
     repository: PseudoRepositoryDict
     system: PseudoSystemDict
-
-
-class LlmJinjaInputConfig(LMStudioStruct["LlmJinjaInputConfigDict"], kw_only=True):
-    messages_config: LlmJinjaInputMessagesConfig = field(name="messagesConfig")
-    use_tools: bool = field(name="useTools")
-
-
-class LlmJinjaInputConfigDict(TypedDict):
-    """Corresponding typed dictionary definition for LlmJinjaInputConfig.
-
-    NOTE: Multi-word keys are defined using their camelCase form,
-    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
-    """
-
-    messagesConfig: LlmJinjaInputMessagesConfigDict
-    useTools: bool
-
-
-class LlmJinjaPromptTemplate(
-    LMStudioStruct["LlmJinjaPromptTemplateDict"], kw_only=True
-):
-    template: str
-    bos_token: str = field(name="bosToken")
-    eos_token: str = field(name="eosToken")
-    input_config: LlmJinjaInputConfig = field(name="inputConfig")
-
-
-class LlmJinjaPromptTemplateDict(TypedDict):
-    """Corresponding typed dictionary definition for LlmJinjaPromptTemplate.
-
-    NOTE: Multi-word keys are defined using their camelCase form,
-    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
-    """
-
-    template: str
-    bosToken: str
-    eosToken: str
-    inputConfig: LlmJinjaInputConfigDict
-
-
-class LlmPromptTemplate(LMStudioStruct["LlmPromptTemplateDict"], kw_only=True):
-    type: LlmPromptTemplateType
-    stop_strings: Sequence[str] = field(name="stopStrings")
-    manual_prompt_template: LlmManualPromptTemplate | None = field(
-        name="manualPromptTemplate", default=None
-    )
-    jinja_prompt_template: LlmJinjaPromptTemplate | None = field(
-        name="jinjaPromptTemplate", default=None
-    )
-
-
-class LlmPromptTemplateDict(TypedDict):
-    """Corresponding typed dictionary definition for LlmPromptTemplate.
-
-    NOTE: Multi-word keys are defined using their camelCase form,
-    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
-    """
-
-    type: LlmPromptTemplateType
-    stopStrings: Sequence[str]
-    manualPromptTemplate: NotRequired[LlmManualPromptTemplateDict | None]
-    jinjaPromptTemplate: NotRequired[LlmJinjaPromptTemplateDict | None]
-
-
-LlmToolArray = Sequence[LlmTool]
-LlmToolUseSetting = LlmToolUseSettingNone | LlmToolUseSettingToolArray
-LlmToolUseSettingDict = LlmToolUseSettingNoneDict | LlmToolUseSettingToolArrayDict
-PromptTemplate = LlmPromptTemplate
-RawTools = LlmToolUseSetting
-
-
-class LlmPredictionConfigInput(
-    LMStudioStruct["LlmPredictionConfigInputDict"], kw_only=True
-):
-    max_tokens: Any | MaxTokens | bool | None = field(name="maxTokens", default=None)
-    temperature: Annotated[float, Meta(ge=0.0)] | None = None
-    stop_strings: Sequence[str] | None = field(name="stopStrings", default=None)
-    tool_call_stop_strings: Sequence[str] | None = field(
-        name="toolCallStopStrings", default=None
-    )
-    context_overflow_policy: LlmContextOverflowPolicy | None = field(
-        name="contextOverflowPolicy", default=None
-    )
-    structured: ZodSchema | LlmStructuredPredictionSetting | None = None
-    raw_tools: LlmToolUseSetting | None = field(name="rawTools", default=None)
-    top_k_sampling: float | None = field(name="topKSampling", default=None)
-    repeat_penalty: Any | float | bool | None = field(
-        name="repeatPenalty", default=None
-    )
-    min_p_sampling: Any | float | bool | None = field(name="minPSampling", default=None)
-    top_p_sampling: Any | float | bool | None = field(name="topPSampling", default=None)
-    cpu_threads: int | None = field(name="cpuThreads", default=None)
-    prompt_template: LlmPromptTemplate | None = field(
-        name="promptTemplate", default=None
-    )
-    draft_model: str | None = field(name="draftModel", default=None)
-    speculative_decoding_num_draft_tokens_exact: Annotated[int, Meta(ge=1)] | None = (
-        field(name="speculativeDecodingNumDraftTokensExact", default=None)
-    )
-    speculative_decoding_min_draft_length_to_consider: (
-        Annotated[int, Meta(ge=0)] | None
-    ) = field(name="speculativeDecodingMinDraftLengthToConsider", default=None)
-    speculative_decoding_min_continue_drafting_probability: float | None = field(
-        name="speculativeDecodingMinContinueDraftingProbability", default=None
-    )
-    reasoning_parsing: LlmReasoningParsing | None = field(
-        name="reasoningParsing", default=None
-    )
-
-
-class LlmPredictionConfigInputDict(TypedDict):
-    """Corresponding typed dictionary definition for LlmPredictionConfigInput.
-
-    NOTE: Multi-word keys are defined using their camelCase form,
-    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
-    """
-
-    maxTokens: NotRequired[Any | int | bool | None]
-    temperature: NotRequired[Annotated[float, Meta(ge=0.0)] | None]
-    stopStrings: NotRequired[Sequence[str] | None]
-    toolCallStopStrings: NotRequired[Sequence[str] | None]
-    contextOverflowPolicy: NotRequired[LlmContextOverflowPolicy | None]
-    structured: NotRequired[ZodSchema | LlmStructuredPredictionSettingDict | None]
-    rawTools: NotRequired[LlmToolUseSettingDict | None]
-    topKSampling: NotRequired[float | None]
-    repeatPenalty: NotRequired[Any | float | bool | None]
-    minPSampling: NotRequired[Any | float | bool | None]
-    topPSampling: NotRequired[Any | float | bool | None]
-    cpuThreads: NotRequired[int | None]
-    promptTemplate: NotRequired[LlmPromptTemplateDict | None]
-    draftModel: NotRequired[str | None]
-    speculativeDecodingNumDraftTokensExact: NotRequired[
-        Annotated[int, Meta(ge=1)] | None
-    ]
-    speculativeDecodingMinDraftLengthToConsider: NotRequired[
-        Annotated[int, Meta(ge=0)] | None
-    ]
-    speculativeDecodingMinContinueDraftingProbability: NotRequired[float | None]
-    reasoningParsing: NotRequired[LlmReasoningParsingDict | None]
-
-
-class LlmPredictionConfig(LMStudioStruct["LlmPredictionConfigDict"], kw_only=True):
-    max_tokens: MaxTokensModel | None = field(name="maxTokens", default=None)
-    temperature: Temperature | None = None
-    stop_strings: StopStrings | None = field(name="stopStrings", default=None)
-    tool_call_stop_strings: ToolCallStopStrings | None = field(
-        name="toolCallStopStrings", default=None
-    )
-    context_overflow_policy: ContextOverflowPolicy | None = field(
-        name="contextOverflowPolicy", default=None
-    )
-    structured: LlmStructuredPredictionSetting | None = None
-    raw_tools: RawTools | None = field(name="rawTools", default=None)
-    top_k_sampling: TopKSampling | None = field(name="topKSampling", default=None)
-    repeat_penalty: RepeatPenalty | None = field(name="repeatPenalty", default=None)
-    min_p_sampling: MinPSampling | None = field(name="minPSampling", default=None)
-    top_p_sampling: TopPSampling | None = field(name="topPSampling", default=None)
-    cpu_threads: CpuThreads | None = field(name="cpuThreads", default=None)
-    prompt_template: PromptTemplate | None = field(name="promptTemplate", default=None)
-    draft_model: DraftModel | None = field(name="draftModel", default=None)
-    speculative_decoding_num_draft_tokens_exact: (
-        SpeculativeDecodingNumDraftTokensExact | None
-    ) = field(name="speculativeDecodingNumDraftTokensExact", default=None)
-    speculative_decoding_min_draft_length_to_consider: (
-        SpeculativeDecodingMinDraftLengthToConsider | None
-    ) = field(name="speculativeDecodingMinDraftLengthToConsider", default=None)
-    speculative_decoding_min_continue_drafting_probability: (
-        SpeculativeDecodingMinContinueDraftingProbability | None
-    ) = field(name="speculativeDecodingMinContinueDraftingProbability", default=None)
-    reasoning_parsing: ReasoningParsing | None = field(
-        name="reasoningParsing", default=None
-    )
-
-
-class LlmPredictionConfigDict(TypedDict):
-    """Corresponding typed dictionary definition for LlmPredictionConfig.
-
-    NOTE: Multi-word keys are defined using their camelCase form,
-    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
-    """
-
-    maxTokens: NotRequired[MaxTokensModelDict | None]
-    temperature: NotRequired[float | None]
-    stopStrings: NotRequired[StopStrings | None]
-    toolCallStopStrings: NotRequired[ToolCallStopStrings | None]
-    contextOverflowPolicy: NotRequired[ContextOverflowPolicy | None]
-    structured: NotRequired[LlmStructuredPredictionSettingDict | None]
-    rawTools: NotRequired[LlmToolUseSettingDict | None]
-    topKSampling: NotRequired[float | None]
-    repeatPenalty: NotRequired[RepeatPenalty | None]
-    minPSampling: NotRequired[MinPSampling | None]
-    topPSampling: NotRequired[TopPSampling | None]
-    cpuThreads: NotRequired[int | None]
-    promptTemplate: NotRequired[LlmPromptTemplateDict | None]
-    draftModel: NotRequired[str | None]
-    speculativeDecodingNumDraftTokensExact: NotRequired[int | None]
-    speculativeDecodingMinDraftLengthToConsider: NotRequired[int | None]
-    speculativeDecodingMinContinueDraftingProbability: NotRequired[float | None]
-    reasoningParsing: NotRequired[LlmReasoningParsingDict | None]

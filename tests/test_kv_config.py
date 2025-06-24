@@ -76,6 +76,7 @@ LOAD_CONFIG_LLM: LlmLoadModelConfigDict = {
     "llamaKCacheQuantizationType": "q8_0",
     "llamaVCacheQuantizationType": "f32",
     "numExperts": 0,
+    "offloadKVCacheToGpu": False,
     "ropeFrequencyBase": 10.0,
     "ropeFrequencyScale": 1.5,
     "seed": 313,
@@ -93,6 +94,7 @@ SC_LOAD_CONFIG_LLM = {
     "llama_k_cache_quantization_type": "q8_0",
     "llama_v_cache_quantization_type": "f32",
     "num_experts": 0,
+    "offload_kv_cache_to_gpu": False,
     "rope_frequency_base": 10.0,
     "rope_frequency_scale": 1.5,
     "seed": 313,
@@ -221,6 +223,9 @@ STRICT_TYPES = (
     LlmPredictionConfigStrict,
 )
 
+# The "raw" debugging field is a special case, with TBD handling
+_NOT_YET_MAPPED = {"raw"}
+
 
 @pytest.mark.parametrize("config_dict,config_type", zip(CONFIG_DICTS, CONFIG_TYPES))
 def test_struct_field_coverage(
@@ -232,7 +237,7 @@ def test_struct_field_coverage(
     missing_keys = expected_keys - mapped_keys
     assert not missing_keys
     # Ensure no extra keys are mistakenly defined
-    unknown_keys = mapped_keys - expected_keys
+    unknown_keys = mapped_keys - expected_keys - _NOT_YET_MAPPED
     assert not unknown_keys
     # Ensure the config can be loaded
     config_struct = config_type._from_api_dict(config_dict)
@@ -260,7 +265,7 @@ def test_kv_stack_field_coverage(
     # Ensure all expected keys are covered (even those with default values)
     mapped_keys = keymap.keys()
     expected_keys = set(config_type.__struct_encode_fields__)
-    missing_keys = expected_keys - mapped_keys
+    missing_keys = expected_keys - mapped_keys - _NOT_YET_MAPPED
     assert not missing_keys
     # Ensure no extra keys are mistakenly defined
     unknown_keys = mapped_keys - expected_keys
@@ -342,6 +347,7 @@ EXPECTED_KV_STACK_LOAD_LLM: KvConfigStackDict = {
                     {"key": "llm.load.llama.tryMmap", "value": False},
                     {"key": "llm.load.llama.useFp16ForKVCache", "value": True},
                     {"key": "llm.load.numExperts", "value": 0},
+                    {"key": "llm.load.offloadKVCacheToGpu", "value": False},
                     {"key": "llm.load.seed", "value": {"checked": True, "value": 313}},
                     {"key": "load.gpuStrictVramCap", "value": False},
                 ]

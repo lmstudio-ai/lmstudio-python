@@ -287,5 +287,5 @@ def test_tool_using_agent_error_handling(caplog: LogCap) -> None:
         assert isinstance(tool_failure_exc.__cause__, ZeroDivisionError)
         # If the content checks prove too flaky in practice, they can be dropped
         completed_response = predictions[-1].content.lower()
-        assert "divid" in completed_response # Accepts both "divide" and "dividing"
+        assert "divid" in completed_response  # Accepts both "divide" and "dividing"
         assert "zero" in completed_response

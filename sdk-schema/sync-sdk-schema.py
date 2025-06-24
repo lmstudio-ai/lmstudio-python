@@ -22,6 +22,7 @@ Pass `--regen-schema` to request a full export from Typescript.
 import ast
 import builtins
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -410,11 +411,15 @@ def _generate_data_model_from_json_schema() -> None:
         raise RuntimeError(f"Failed to create {_MODEL_PATH!r}")
     # Generated source code post-processing:
     #
+    # * Fix up miscellaneous issues the code generator currently mishandles
     # * Fix up typed dicts to be defined in terms of nested dicts
     # * Add an `__all__` definition for wildcard imports (which also
     #   serves as a top level summary of the defined schemas)
     print("Post-processing generated source code...")
-    model_source = _MODEL_PATH.read_text()
+    # Replace unsupported regex character classes with `.`
+    # https://github.com/python/cpython/issues/95555
+    # https://github.com/jcrist/msgspec/issues/860
+    model_source = re.sub(r"\\\\p\{[^}]*\}", ".", _MODEL_PATH.read_text())
     model_ast = ast.parse(model_source)
     dict_token_replacements: dict[str, str] = {}
     exported_names: list[str] = []
