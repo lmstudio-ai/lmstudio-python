@@ -253,6 +253,7 @@ class Chat:
             return self.add_user_message(messages)
         # Assistant responses consist of a text response with zero or more tool requests
         if role == "assistant":
+            response: AssistantResponseInput
             if _is_chat_message_input(content):
                 response = cast(AssistantResponseInput, content)
                 return self.add_assistant_response(response)
@@ -262,7 +263,7 @@ class Chat:
                 raise LMStudioValueError(
                     f"Unable to parse assistant response content: {content}"
                 ) from None
-            response = cast(AssistantResponseInput, response_content)
+            response = response_content
             tool_requests = cast(Iterable[ToolCallRequest], tool_request_contents)
             return self.add_assistant_response(response, tool_requests)
 
