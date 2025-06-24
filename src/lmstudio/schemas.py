@@ -94,8 +94,9 @@ class BaseModel(Struct, omit_defaults=True, kw_only=True):
 
 
 _CAMEL_CASE_OVERRIDES = {
-    # This is the one key in the API that capitalizes the `V` in `KV`
+    # `_kv_` in snake_case becomes KV in camelCase
     "useFp16ForKvCache": "useFp16ForKVCache",
+    "offloadKvCacheToGpu": "offloadKVCacheToGpu",
 }
 
 _SKIP_FIELD_RECURSION = set(

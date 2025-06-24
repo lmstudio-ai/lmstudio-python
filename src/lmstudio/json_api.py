@@ -700,6 +700,8 @@ class ChannelEndpoint(Generic[T, TRxEvent, TWireFormat], ABC):
         return self._result
 
     def raise_unknown_message_error(self, unknown_message: Any) -> NoReturn:
+        # TODO: improve forward compatibility by switching this to use warnings.warn
+        # instead of failing immediately for all unknown messages
         raise LMStudioUnknownMessageError(
             f"{self._NOTICE_PREFIX} unexpected message contents: {unknown_message!r}"
         )
@@ -1234,10 +1236,12 @@ class PredictionEndpoint(
                     # Ignore status updates after cancellation (avoids race condition)
                     return
                 yield from self._update_prompt_processing_progress(progress)
-            case {
-                "type": "toolCallGenerationStart",
-            }:
+            case {"type": "toolCallGenerationStart"}:
                 self._logger.debug("Notified of pending tool call request generation.")
+            case {"type": "toolCallGenerationNameReceived"}:
+                pass  # UI event, currently ignored by Python SDK
+            case {"type": "toolCallGenerationArgumentFragmentGenerated"}:
+                pass  # UI event, currently ignored by Python SDK
             case {
                 "type": "toolCallGenerationEnd",
                 "toolCallRequest": tool_call_request,
@@ -1245,9 +1249,7 @@ class PredictionEndpoint(
                 yield PredictionToolCallEvent(
                     ToolCallRequest._from_api_dict(tool_call_request)
                 )
-            case {
-                "type": "toolCallGenerationFailed",
-            }:
+            case {"type": "toolCallGenerationFailed"}:
                 self._logger.warn("Tool call processing generation failed.")
                 yield PredictionToolCallAbortedEvent(None)
             case {"type": "error", "error": {} as error}:
