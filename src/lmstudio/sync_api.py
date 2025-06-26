@@ -1281,6 +1281,7 @@ class LLM(SyncModelHandle[SyncSessionLlm]):
         tools: Iterable[ToolDefinition],
         *,
         max_prediction_rounds: int | None = None,
+        max_parallel_tool_calls: int | None = 1,
         config: LlmPredictionConfig | LlmPredictionConfigDict | None = None,
         preset: str | None = None,
         on_message: Callable[[AssistantResponse | ToolResultMessage], Any]
@@ -1351,7 +1352,7 @@ class LLM(SyncModelHandle[SyncSessionLlm]):
             on_prompt_processing_for_endpoint = _wrapped_on_prompt_processing_progress
         # Request predictions until no more tool call requests are received in response
         # (or the maximum number of prediction rounds is reached)
-        with ThreadPoolExecutor() as pool:
+        with ThreadPoolExecutor(max_parallel_tool_calls) as pool:
             for round_index in round_counter:
                 self._logger.debug(
                     "Starting .act() prediction round", round_index=round_index
