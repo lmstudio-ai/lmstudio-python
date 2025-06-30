@@ -24,6 +24,7 @@ from lmstudio._sdk_models import (
     GpuSetting,
     GpuSettingDict,
     GpuSplitConfigDict,
+    KvConfigFieldDict,
     KvConfigStackDict,
     LlmLoadModelConfig,
     LlmLoadModelConfigDict,
@@ -469,27 +470,56 @@ def test_parse_server_config_load_llm() -> None:
     assert parse_server_config(server_config) == expected_client_config
 
 
-def _other_gpu_split_strategies() -> Iterator[LlmSplitStrategy]:
+def _gpu_split_strategies() -> Iterator[LlmSplitStrategy]:
     # Ensure all GPU split strategies are checked (these aren't simple structural transforms,
     # so the default test case doesn't provide adequate test coverage )
     for split_strategy in get_args(LlmSplitStrategy):
-        if split_strategy == GPU_CONFIG["splitStrategy"]:
-            continue
         yield split_strategy
 
 
-def _find_config_field(stack_dict: KvConfigStackDict, key: str) -> Any:
-    for field in stack_dict["layers"][0]["config"]["fields"]:
-        if field["key"] == key:
-            return field["value"]
+def _find_config_field(
+    stack_dict: KvConfigStackDict, key: str
+) -> tuple[int, KvConfigFieldDict]:
+    for enumerated_field in enumerate(stack_dict["layers"][0]["config"]["fields"]):
+        if enumerated_field[1]["key"] == key:
+            return enumerated_field
     raise KeyError(key)
 
 
-@pytest.mark.parametrize("split_strategy", _other_gpu_split_strategies())
-def test_other_gpu_split_strategy_config(split_strategy: LlmSplitStrategy) -> None:
+def _del_config_field(stack_dict: KvConfigStackDict, key: str) -> None:
+    field_index = _find_config_field(stack_dict, key)[0]
+    field_list = cast(list[Any], stack_dict["layers"][0]["config"]["fields"])
+    del field_list[field_index]
+
+
+def _find_config_value(stack_dict: KvConfigStackDict, key: str) -> Any:
+    return _find_config_field(stack_dict, key)[1]["value"]
+
+
+def _append_invalid_config_field(stack_dict: KvConfigStackDict, key: str) -> None:
+    field_list = cast(list[Any], stack_dict["layers"][0]["config"]["fields"])
+    field_list.append({"key": key})
+
+
+@pytest.mark.parametrize("split_strategy", _gpu_split_strategies())
+def test_gpu_split_strategy_config(split_strategy: LlmSplitStrategy) -> None:
+    # GPU config mapping is complex enough to need some additional testing
+    input_camelCase = deepcopy(LOAD_CONFIG_LLM)
+    input_snake_case = deepcopy(SC_LOAD_CONFIG_LLM)
+    gpu_camelCase: GpuSettingDict = cast(Any, input_camelCase["gpu"])
+    gpu_snake_case: dict[str, Any] = cast(Any, input_snake_case["gpu"])
     expected_stack = deepcopy(EXPECTED_KV_STACK_LOAD_LLM)
-    if split_strategy == "favorMainGpu":
-        expected_split_config: GpuSplitConfigDict = _find_config_field(
+    expected_server_config = expected_stack["layers"][0]["config"]
+    gpu_camelCase["splitStrategy"] = gpu_snake_case["split_strategy"] = split_strategy
+    if split_strategy == GPU_CONFIG["splitStrategy"]:
+        assert split_strategy == "evenly", (
+            "Unexpected default LLM GPU offload split strategy (missing test case update?)"
+        )
+        # There is no main GPU when the split strategy is even across GPUs
+        del gpu_camelCase["mainGpu"]
+        del gpu_snake_case["main_gpu"]
+    elif split_strategy == "favorMainGpu":
+        expected_split_config: GpuSplitConfigDict = _find_config_value(
             expected_stack, "load.gpuSplitConfig"
         )
         expected_split_config["strategy"] = "priorityOrder"
@@ -497,16 +527,30 @@ def test_other_gpu_split_strategy_config(split_strategy: LlmSplitStrategy) -> No
         assert main_gpu is not None
         expected_split_config["priority"] = [main_gpu]
     else:
-        assert split_strategy is None, "Unknown LLM GPU offset split strategy"
-    input_camelCase = deepcopy(LOAD_CONFIG_LLM)
-    input_snake_case = deepcopy(SC_LOAD_CONFIG_LLM)
-    gpu_camelCase: GpuSettingDict = cast(Any, input_camelCase["gpu"])
-    gpu_snake_case: dict[str, Any] = cast(Any, input_snake_case["gpu"])
-    gpu_camelCase["splitStrategy"] = gpu_snake_case["split_strategy"] = split_strategy
+        assert split_strategy is None, (
+            "Unknown LLM GPU offload split strategy (missing test case update?)"
+        )
+    # Check given GPU config maps as expected in both directions
     kv_stack = load_config_to_kv_config_stack(input_camelCase, LlmLoadModelConfig)
     assert kv_stack.to_dict() == expected_stack
     kv_stack = load_config_to_kv_config_stack(input_snake_case, LlmLoadModelConfig)
     assert kv_stack.to_dict() == expected_stack
+    assert parse_server_config(expected_server_config) == input_camelCase
+    # Check a malformed ratio field is tolerated
+    gpu_camelCase["ratio"] = gpu_snake_case["ratio"] = None
+    _del_config_field(expected_stack, "llm.load.llama.acceleration.offloadRatio")
+    _append_invalid_config_field(
+        expected_stack, "llm.load.llama.acceleration.offloadRatio"
+    )
+    assert parse_server_config(expected_server_config) == input_camelCase
+    # Check mapping works if no explicit offload ratio is specified
+    _del_config_field(expected_stack, "llm.load.llama.acceleration.offloadRatio")
+    kv_stack = load_config_to_kv_config_stack(input_camelCase, LlmLoadModelConfig)
+    assert kv_stack.to_dict() == expected_stack
+    kv_stack = load_config_to_kv_config_stack(input_snake_case, LlmLoadModelConfig)
+    assert kv_stack.to_dict() == expected_stack
+    del gpu_camelCase["ratio"]
+    assert parse_server_config(expected_server_config) == input_camelCase
 
 
 @pytest.mark.parametrize("config_dict", (PREDICTION_CONFIG, SC_PREDICTION_CONFIG))

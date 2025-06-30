@@ -75,7 +75,8 @@ class CheckboxField(ConfigField):
         self, client_config: MutableDictObject, value: DictObject
     ) -> None:
         if value.get("checked", False):
-            client_config[self.client_key] = value["value"]
+            # Tolerate 'value' being omitted
+            client_config[self.client_key] = value.get("value", None)
 
 
 @dataclass(frozen=True)
@@ -336,7 +337,7 @@ def parse_server_config(server_config: DictObject) -> DictObject:
         if config_field is None:
             # Skip unknown keys (server might be newer than the SDK)
             continue
-        value = kv["value"]
+        value = kv.get("value", None)  # Tolerate 'value' being omitted
         config_field.update_client_config(result, value)
     return result
 
