@@ -328,15 +328,11 @@ EXPECTED_KV_STACK_LOAD_LLM: KvConfigStackDict = {
                     },
                     {"key": "llm.load.llama.evalBatchSize", "value": 42},
                     {"key": "llm.load.llama.flashAttention", "value": False},
-                    {"key": "llm.load.llama.keepModelInMemory", "value": True},
                     {
-                        "key": "llm.load.llama.llamaKCacheQuantizationType",
+                        "key": "llm.load.llama.kCacheQuantizationType",
                         "value": {"checked": True, "value": "q8_0"},
                     },
-                    {
-                        "key": "llm.load.llama.llamaVCacheQuantizationType",
-                        "value": {"checked": True, "value": "f32"},
-                    },
+                    {"key": "llm.load.llama.keepModelInMemory", "value": True},
                     {
                         "key": "llm.load.llama.ropeFrequencyBase",
                         "value": {"checked": True, "value": 10.0},
@@ -347,6 +343,10 @@ EXPECTED_KV_STACK_LOAD_LLM: KvConfigStackDict = {
                     },
                     {"key": "llm.load.llama.tryMmap", "value": False},
                     {"key": "llm.load.llama.useFp16ForKVCache", "value": True},
+                    {
+                        "key": "llm.load.llama.vCacheQuantizationType",
+                        "value": {"checked": True, "value": "f32"},
+                    },
                     {"key": "llm.load.numExperts", "value": 0},
                     {"key": "llm.load.offloadKVCacheToGpu", "value": False},
                     {"key": "llm.load.seed", "value": {"checked": True, "value": 313}},
