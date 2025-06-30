@@ -10,9 +10,10 @@ import pytest
 from lmstudio.sdk_api import LMStudioOSError
 from lmstudio.schemas import DictObject
 from lmstudio.history import (
-    AnyChatMessageInput,
-    Chat,
     AnyChatMessageDict,
+    AnyChatMessageInput,
+    AssistantMultiPartInput,
+    Chat,
     ChatHistoryData,
     ChatHistoryDataDict,
     LocalFileInput,
@@ -28,6 +29,10 @@ from lmstudio.json_api import (
     LlmPredictionConfig,
     LlmPredictionStats,
     PredictionResult,
+)
+from lmstudio._sdk_models import (
+    ToolCallRequestDataDict,
+    ToolCallResultDataDict,
 )
 
 from .support import IMAGE_FILEPATH, check_sdk_error
@@ -125,6 +130,51 @@ INPUT_ENTRIES: list[DictObject] = [
         "role": "system",
         "content": [{"type": "text", "text": "Structured text system prompt"}],
     },
+    {
+        "role": "assistant",
+        "content": [
+            {"type": "text", "text": "Example tool call request"},
+            {
+                "type": "toolCallRequest",
+                "toolCallRequest": {
+                    "type": "function",
+                    "id": "114663647",
+                    "name": "example_tool_name",
+                    "arguments": {
+                        "n": 58013,
+                        "t": "value",
+                    },
+                },
+            },
+            {
+                "type": "toolCallRequest",
+                "toolCallRequest": {
+                    "type": "function",
+                    "id": "114663648",
+                    "name": "another_example_tool_name",
+                    "arguments": {
+                        "n": 23,
+                        "t": "some other value",
+                    },
+                },
+            },
+        ],
+    },
+    {
+        "role": "tool",
+        "content": [
+            {
+                "type": "toolCallResult",
+                "toolCallId": "114663647",
+                "content": "example tool call result",
+            },
+            {
+                "type": "toolCallResult",
+                "toolCallId": "114663648",
+                "content": "another example tool call result",
+            },
+        ],
+    },
 ]
 
 INPUT_HISTORY = {"messages": INPUT_ENTRIES}
@@ -214,6 +264,51 @@ EXPECTED_MESSAGES: list[AnyChatMessageDict] = [
         "role": "system",
         "content": [{"type": "text", "text": "Structured text system prompt"}],
     },
+    {
+        "role": "assistant",
+        "content": [
+            {"type": "text", "text": "Example tool call request"},
+            {
+                "type": "toolCallRequest",
+                "toolCallRequest": {
+                    "type": "function",
+                    "id": "114663647",
+                    "name": "example_tool_name",
+                    "arguments": {
+                        "n": 58013,
+                        "t": "value",
+                    },
+                },
+            },
+            {
+                "type": "toolCallRequest",
+                "toolCallRequest": {
+                    "type": "function",
+                    "id": "114663648",
+                    "name": "another_example_tool_name",
+                    "arguments": {
+                        "n": 23,
+                        "t": "some other value",
+                    },
+                },
+            },
+        ],
+    },
+    {
+        "role": "tool",
+        "content": [
+            {
+                "type": "toolCallResult",
+                "toolCallId": "114663647",
+                "content": "example tool call result",
+            },
+            {
+                "type": "toolCallResult",
+                "toolCallId": "114663648",
+                "content": "another example tool call result",
+            },
+        ],
+    },
 ]
 
 
@@ -271,6 +366,44 @@ INPUT_FILE_HANDLE_DICT: FileHandleDict = {
     "sizeBytes": 100,
     "fileType": "text/plain",
 }
+INPUT_TOOL_REQUESTS: list[ToolCallRequestDataDict] = [
+    {
+        "type": "toolCallRequest",
+        "toolCallRequest": {
+            "type": "function",
+            "id": "114663647",
+            "name": "example_tool_name",
+            "arguments": {
+                "n": 58013,
+                "t": "value",
+            },
+        },
+    },
+    {
+        "type": "toolCallRequest",
+        "toolCallRequest": {
+            "type": "function",
+            "id": "114663648",
+            "name": "another_example_tool_name",
+            "arguments": {
+                "n": 23,
+                "t": "some other value",
+            },
+        },
+    },
+]
+INPUT_TOOL_RESULTS: list[ToolCallResultDataDict] = [
+    {
+        "type": "toolCallResult",
+        "toolCallId": "114663647",
+        "content": "example tool call result",
+    },
+    {
+        "type": "toolCallResult",
+        "toolCallId": "114663648",
+        "content": "another example tool call result",
+    },
+]
 
 
 def test_get_history() -> None:
@@ -289,6 +422,8 @@ def test_get_history() -> None:
     chat.add_user_message("Avoid consecutive responses")
     chat.add_assistant_response(INPUT_FILE_HANDLE_DICT)
     chat.add_system_prompt(TextData(text="Structured text system prompt"))
+    chat.add_assistant_response("Example tool call request", INPUT_TOOL_REQUESTS)
+    chat.add_tool_results(INPUT_TOOL_RESULTS)
     assert chat._get_history_for_prediction() == EXPECTED_HISTORY
 
 
@@ -307,6 +442,19 @@ def test_add_entry() -> None:
     chat.add_entry("user", "Avoid consecutive responses")
     chat.add_entry("assistant", INPUT_FILE_HANDLE_DICT)
     chat.add_entry("system", TextData(text="Structured text system prompt"))
+    tool_call_message_contents: AssistantMultiPartInput = [
+        "Example tool call request",
+        *INPUT_TOOL_REQUESTS,
+    ]
+    chat.add_entry("assistant", tool_call_message_contents)
+    chat.add_entry("tool", INPUT_TOOL_RESULTS)
+    assert chat._get_history_for_prediction() == EXPECTED_HISTORY
+
+
+def test_append() -> None:
+    chat = Chat()
+    for message in INPUT_ENTRIES:
+        chat.append(cast(AnyChatMessageDict, message))
     assert chat._get_history_for_prediction() == EXPECTED_HISTORY
 
 

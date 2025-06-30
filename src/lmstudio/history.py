@@ -135,9 +135,13 @@ ToolCallRequestInput = (
     | ToolCallRequestData
     | ToolCallRequestDataDict
 )
+AssistantMultiPartInput = Iterable[AssistantResponseInput | ToolCallRequestInput]
 ToolCallResultInput = ToolCallResultData | ToolCallResultDataDict
+ToolCallResultMultiPartInput = Iterable[ToolCallResultInput]
 ChatMessageInput = str | ChatMessageContent | ChatMessageContentDict
-ChatMessageMultiPartInput = UserMessageMultiPartInput
+ChatMessageMultiPartInput = (
+    UserMessageMultiPartInput | AssistantMultiPartInput | ToolCallResultMultiPartInput
+)
 AnyChatMessageInput = ChatMessageInput | ChatMessageMultiPartInput
 
 
@@ -251,9 +255,12 @@ class Chat:
         if role == "user":
             messages = cast(AnyUserMessageInput, content)
             return self.add_user_message(messages)
+        # Tool results accept multi-part content, so just forward it to that method
+        if role == "tool":
+            tool_results = cast(Iterable[ToolCallResultInput], content)
+            return self.add_tool_results(tool_results)
         # Assistant responses consist of a text response with zero or more tool requests
         if role == "assistant":
-            response: AssistantResponseInput
             if _is_chat_message_input(content):
                 response = cast(AssistantResponseInput, content)
                 return self.add_assistant_response(response)
@@ -263,7 +270,7 @@ class Chat:
                 raise LMStudioValueError(
                     f"Unable to parse assistant response content: {content}"
                 ) from None
-            response = response_content
+            response = cast(AssistantResponseInput, response_content)
             tool_requests = cast(Iterable[ToolCallRequest], tool_request_contents)
             return self.add_assistant_response(response, tool_requests)
 
@@ -276,7 +283,7 @@ class Chat:
             content_item = content
         else:
             try:
-                (content_item,) = content
+                (content_item,) = cast(Iterable[ChatMessageInput], content)
             except ValueError:
                 err_msg = f"{role!r} role does not support multi-part message content."
                 raise LMStudioValueError(err_msg) from None
@@ -284,9 +291,6 @@ class Chat:
             case "system":
                 prompt = cast(SystemPromptInput, content_item)
                 result = self.add_system_prompt(prompt)
-            case "tool":
-                tool_result = cast(ToolCallResultInput, content_item)
-                result = self.add_tool_result(tool_result)
             case _:
                 raise LMStudioValueError(f"Unknown history role: {role}")
         return result
