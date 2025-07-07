@@ -445,6 +445,21 @@
         "propertyName": "type"
       }
     },
+    "toolCallResult": {
+      "type": "object",
+      "properties": {
+        "content": {
+          "type": "string"
+        },
+        "toolCallId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "content"
+      ],
+      "additionalProperties": false
+    },
     "citationSource": {
       "type": "object",
       "properties": {
@@ -1992,35 +2007,6 @@
         "propertyName": "type"
       }
     },
-    "preprocessorUpdate": {
-      "anyOf": [
-        {
-          "$ref": "#/definitions/processingUpdateStatusCreate"
-        },
-        {
-          "$ref": "#/definitions/processingUpdateStatusUpdate"
-        },
-        {
-          "$ref": "#/definitions/processingUpdateStatusRemove"
-        },
-        {
-          "$ref": "#/definitions/processingUpdateCitationBlockCreate"
-        },
-        {
-          "$ref": "#/definitions/processingUpdateDebugInfoBlockCreate"
-        }
-      ],
-      "discriminator": {
-        "mapping": {
-          "status.create": "#/definitions/processingUpdateStatusCreate",
-          "status.update": "#/definitions/processingUpdateStatusUpdate",
-          "status.remove": "#/definitions/processingUpdateStatusRemove",
-          "citationBlock.create": "#/definitions/processingUpdateCitationBlockCreate",
-          "debugInfoBlock.create": "#/definitions/processingUpdateDebugInfoBlockCreate"
-        },
-        "propertyName": "type"
-      }
-    },
     "processingRequestConfirmToolCall": {
       "type": "object",
       "properties": {
@@ -2894,6 +2880,35 @@
         }
       },
       "additionalProperties": false
+    },
+    "promptPreprocessorUpdate": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/processingUpdateStatusCreate"
+        },
+        {
+          "$ref": "#/definitions/processingUpdateStatusUpdate"
+        },
+        {
+          "$ref": "#/definitions/processingUpdateStatusRemove"
+        },
+        {
+          "$ref": "#/definitions/processingUpdateCitationBlockCreate"
+        },
+        {
+          "$ref": "#/definitions/processingUpdateDebugInfoBlockCreate"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "status.create": "#/definitions/processingUpdateStatusCreate",
+          "status.update": "#/definitions/processingUpdateStatusUpdate",
+          "status.remove": "#/definitions/processingUpdateStatusRemove",
+          "citationBlock.create": "#/definitions/processingUpdateCitationBlockCreate",
+          "debugInfoBlock.create": "#/definitions/processingUpdateDebugInfoBlockCreate"
+        },
+        "propertyName": "type"
+      }
     },
     "modelCompatibilityType": {
       "type": "string",
@@ -6064,52 +6079,52 @@
       ],
       "additionalProperties": false
     },
-    "plugins/channel/setPreprocessor/toClientPacket": {
+    "plugins/channel/setPromptPreprocessor/toClientPacket": {
       "anyOf": [
         {
-          "$ref": "#/definitions/plugins/channel/setPreprocessor/toClientPacketPreprocess"
+          "$ref": "#/definitions/plugins/channel/setPromptPreprocessor/toClientPacketPreprocess"
         },
         {
-          "$ref": "#/definitions/plugins/channel/setPreprocessor/toClientPacketAbort"
+          "$ref": "#/definitions/plugins/channel/setPromptPreprocessor/toClientPacketAbort"
         }
       ],
       "discriminator": {
         "mapping": {
-          "preprocess": "#/definitions/plugins/channel/setPreprocessor/toClientPacketPreprocess",
-          "abort": "#/definitions/plugins/channel/setPreprocessor/toClientPacketAbort"
+          "preprocess": "#/definitions/plugins/channel/setPromptPreprocessor/toClientPacketPreprocess",
+          "abort": "#/definitions/plugins/channel/setPromptPreprocessor/toClientPacketAbort"
         },
         "propertyName": "type"
       }
     },
-    "plugins/channel/setPreprocessor/toServerPacket": {
+    "plugins/channel/setPromptPreprocessor/toServerPacket": {
       "anyOf": [
         {
-          "$ref": "#/definitions/plugins/channel/setPreprocessor/toServerPacketComplete"
+          "$ref": "#/definitions/plugins/channel/setPromptPreprocessor/toServerPacketComplete"
         },
         {
-          "$ref": "#/definitions/plugins/channel/setPreprocessor/toServerPacketAborted"
+          "$ref": "#/definitions/plugins/channel/setPromptPreprocessor/toServerPacketAborted"
         },
         {
-          "$ref": "#/definitions/plugins/channel/setPreprocessor/toServerPacketError"
+          "$ref": "#/definitions/plugins/channel/setPromptPreprocessor/toServerPacketError"
         }
       ],
       "discriminator": {
         "mapping": {
-          "complete": "#/definitions/plugins/channel/setPreprocessor/toServerPacketComplete",
-          "aborted": "#/definitions/plugins/channel/setPreprocessor/toServerPacketAborted",
-          "error": "#/definitions/plugins/channel/setPreprocessor/toServerPacketError"
+          "complete": "#/definitions/plugins/channel/setPromptPreprocessor/toServerPacketComplete",
+          "aborted": "#/definitions/plugins/channel/setPromptPreprocessor/toServerPacketAborted",
+          "error": "#/definitions/plugins/channel/setPromptPreprocessor/toServerPacketError"
         },
         "propertyName": "type"
       }
     },
-    "pseudo/plugins/channel/setPreprocessor": {
+    "pseudo/plugins/channel/setPromptPreprocessor": {
       "type": "object",
       "properties": {
         "toClientPacket": {
-          "$ref": "#/definitions/plugins/channel/setPreprocessor/toClientPacket"
+          "$ref": "#/definitions/plugins/channel/setPromptPreprocessor/toClientPacket"
         },
         "toServerPacket": {
-          "$ref": "#/definitions/plugins/channel/setPreprocessor/toServerPacket"
+          "$ref": "#/definitions/plugins/channel/setPromptPreprocessor/toServerPacket"
         }
       },
       "required": [
@@ -6366,8 +6381,8 @@
         "channelRegisterDevelopmentPlugin": {
           "$ref": "#/definitions/pseudo/plugins/channel/registerDevelopmentPlugin"
         },
-        "channelSetPreprocessor": {
-          "$ref": "#/definitions/pseudo/plugins/channel/setPreprocessor"
+        "channelSetPromptPreprocessor": {
+          "$ref": "#/definitions/pseudo/plugins/channel/setPromptPreprocessor"
         },
         "channelSetPredictionLoopHandler": {
           "$ref": "#/definitions/pseudo/plugins/channel/setPredictionLoopHandler"
@@ -6393,7 +6408,7 @@
         "rpcSetGlobalConfigSchematics",
         "rpcPluginInitCompleted",
         "channelRegisterDevelopmentPlugin",
-        "channelSetPreprocessor",
+        "channelSetPromptPreprocessor",
         "channelSetPredictionLoopHandler",
         "channelSetToolsProvider",
         "channelSetGenerator"
@@ -9299,7 +9314,7 @@
       ],
       "additionalProperties": false
     },
-    "plugins/channel/setPreprocessor/toClientPacketPreprocess": {
+    "plugins/channel/setPromptPreprocessor/toClientPacketPreprocess": {
       "type": "object",
       "properties": {
         "type": {
@@ -9349,7 +9364,7 @@
       ],
       "additionalProperties": false
     },
-    "plugins/channel/setPreprocessor/toClientPacketAbort": {
+    "plugins/channel/setPromptPreprocessor/toClientPacketAbort": {
       "type": "object",
       "properties": {
         "type": {
@@ -9368,7 +9383,7 @@
       ],
       "additionalProperties": false
     },
-    "plugins/channel/setPreprocessor/toServerPacketComplete": {
+    "plugins/channel/setPromptPreprocessor/toServerPacketComplete": {
       "type": "object",
       "properties": {
         "type": {
@@ -9391,7 +9406,7 @@
       ],
       "additionalProperties": false
     },
-    "plugins/channel/setPreprocessor/toServerPacketAborted": {
+    "plugins/channel/setPromptPreprocessor/toServerPacketAborted": {
       "type": "object",
       "properties": {
         "type": {
@@ -9410,7 +9425,7 @@
       ],
       "additionalProperties": false
     },
-    "plugins/channel/setPreprocessor/toServerPacketError": {
+    "plugins/channel/setPromptPreprocessor/toServerPacketError": {
       "type": "object",
       "properties": {
         "type": {

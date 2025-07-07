@@ -420,16 +420,16 @@ __all__ = [
     "PluginsChannelSetPredictionLoopHandlerToServerPacketCompleteDict",
     "PluginsChannelSetPredictionLoopHandlerToServerPacketError",
     "PluginsChannelSetPredictionLoopHandlerToServerPacketErrorDict",
-    "PluginsChannelSetPreprocessorToClientPacketAbort",
-    "PluginsChannelSetPreprocessorToClientPacketAbortDict",
-    "PluginsChannelSetPreprocessorToClientPacketPreprocess",
-    "PluginsChannelSetPreprocessorToClientPacketPreprocessDict",
-    "PluginsChannelSetPreprocessorToServerPacketAborted",
-    "PluginsChannelSetPreprocessorToServerPacketAbortedDict",
-    "PluginsChannelSetPreprocessorToServerPacketComplete",
-    "PluginsChannelSetPreprocessorToServerPacketCompleteDict",
-    "PluginsChannelSetPreprocessorToServerPacketError",
-    "PluginsChannelSetPreprocessorToServerPacketErrorDict",
+    "PluginsChannelSetPromptPreprocessorToClientPacketAbort",
+    "PluginsChannelSetPromptPreprocessorToClientPacketAbortDict",
+    "PluginsChannelSetPromptPreprocessorToClientPacketPreprocess",
+    "PluginsChannelSetPromptPreprocessorToClientPacketPreprocessDict",
+    "PluginsChannelSetPromptPreprocessorToServerPacketAborted",
+    "PluginsChannelSetPromptPreprocessorToServerPacketAbortedDict",
+    "PluginsChannelSetPromptPreprocessorToServerPacketComplete",
+    "PluginsChannelSetPromptPreprocessorToServerPacketCompleteDict",
+    "PluginsChannelSetPromptPreprocessorToServerPacketError",
+    "PluginsChannelSetPromptPreprocessorToServerPacketErrorDict",
     "PluginsChannelSetToolsProviderToClientPacketAbortToolCall",
     "PluginsChannelSetToolsProviderToClientPacketAbortToolCallDict",
     "PluginsChannelSetToolsProviderToClientPacketCallTool",
@@ -599,8 +599,8 @@ __all__ = [
     "PseudoPluginsChannelSetGeneratorDict",
     "PseudoPluginsChannelSetPredictionLoopHandler",
     "PseudoPluginsChannelSetPredictionLoopHandlerDict",
-    "PseudoPluginsChannelSetPreprocessor",
-    "PseudoPluginsChannelSetPreprocessorDict",
+    "PseudoPluginsChannelSetPromptPreprocessor",
+    "PseudoPluginsChannelSetPromptPreprocessorDict",
     "PseudoPluginsChannelSetToolsProvider",
     "PseudoPluginsChannelSetToolsProviderDict",
     "PseudoPluginsDict",
@@ -749,8 +749,10 @@ __all__ = [
     "ToolCallRequestData",
     "ToolCallRequestDataDict",
     "ToolCallRequestDict",
+    "ToolCallResult",
     "ToolCallResultData",
     "ToolCallResultDataDict",
+    "ToolCallResultDict",
     "ToolResultMessage",
     "ToolResultMessageDict",
     "ToolStatusStepState",
@@ -860,6 +862,24 @@ class ToolCallResultDataDict(TypedDict):
 
 
 ChatMessageRoleData = Literal["assistant", "user", "system", "tool"]
+
+
+class ToolCallResult(LMStudioStruct["ToolCallResultDict"], kw_only=True):
+    content: str
+    tool_call_id: str | None = field(name="toolCallId", default=None)
+
+
+class ToolCallResultDict(TypedDict):
+    """Corresponding typed dictionary definition for ToolCallResult.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    content: str
+    toolCallId: NotRequired[str | None]
+
+
 PageNumber = Sequence[int]
 LineNumber = Sequence[int]
 
@@ -5020,8 +5040,8 @@ class PluginsChannelRegisterDevelopmentPluginToServerPacketEndDict(TypedDict):
     type: Annotated[Literal["end"], Meta(title="Type")]
 
 
-class PluginsChannelSetPreprocessorToClientPacketAbort(
-    LMStudioStruct["PluginsChannelSetPreprocessorToClientPacketAbortDict"],
+class PluginsChannelSetPromptPreprocessorToClientPacketAbort(
+    LMStudioStruct["PluginsChannelSetPromptPreprocessorToClientPacketAbortDict"],
     kw_only=True,
     tag_field="type",
     tag="abort",
@@ -5030,8 +5050,8 @@ class PluginsChannelSetPreprocessorToClientPacketAbort(
     task_id: str = field(name="taskId")
 
 
-class PluginsChannelSetPreprocessorToClientPacketAbortDict(TypedDict):
-    """Corresponding typed dictionary definition for PluginsChannelSetPreprocessorToClientPacketAbort.
+class PluginsChannelSetPromptPreprocessorToClientPacketAbortDict(TypedDict):
+    """Corresponding typed dictionary definition for PluginsChannelSetPromptPreprocessorToClientPacketAbort.
 
     NOTE: Multi-word keys are defined using their camelCase form,
     as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
@@ -5041,8 +5061,8 @@ class PluginsChannelSetPreprocessorToClientPacketAbortDict(TypedDict):
     taskId: str
 
 
-class PluginsChannelSetPreprocessorToServerPacketAborted(
-    LMStudioStruct["PluginsChannelSetPreprocessorToServerPacketAbortedDict"],
+class PluginsChannelSetPromptPreprocessorToServerPacketAborted(
+    LMStudioStruct["PluginsChannelSetPromptPreprocessorToServerPacketAbortedDict"],
     kw_only=True,
     tag_field="type",
     tag="aborted",
@@ -5051,8 +5071,8 @@ class PluginsChannelSetPreprocessorToServerPacketAborted(
     task_id: str = field(name="taskId")
 
 
-class PluginsChannelSetPreprocessorToServerPacketAbortedDict(TypedDict):
-    """Corresponding typed dictionary definition for PluginsChannelSetPreprocessorToServerPacketAborted.
+class PluginsChannelSetPromptPreprocessorToServerPacketAbortedDict(TypedDict):
+    """Corresponding typed dictionary definition for PluginsChannelSetPromptPreprocessorToServerPacketAborted.
 
     NOTE: Multi-word keys are defined using their camelCase form,
     as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
@@ -5062,8 +5082,8 @@ class PluginsChannelSetPreprocessorToServerPacketAbortedDict(TypedDict):
     taskId: str
 
 
-class PluginsChannelSetPreprocessorToServerPacketError(
-    LMStudioStruct["PluginsChannelSetPreprocessorToServerPacketErrorDict"],
+class PluginsChannelSetPromptPreprocessorToServerPacketError(
+    LMStudioStruct["PluginsChannelSetPromptPreprocessorToServerPacketErrorDict"],
     kw_only=True,
     tag_field="type",
     tag="error",
@@ -5073,8 +5093,8 @@ class PluginsChannelSetPreprocessorToServerPacketError(
     error: SerializedLMSExtendedError
 
 
-class PluginsChannelSetPreprocessorToServerPacketErrorDict(TypedDict):
-    """Corresponding typed dictionary definition for PluginsChannelSetPreprocessorToServerPacketError.
+class PluginsChannelSetPromptPreprocessorToServerPacketErrorDict(TypedDict):
+    """Corresponding typed dictionary definition for PluginsChannelSetPromptPreprocessorToServerPacketError.
 
     NOTE: Multi-word keys are defined using their camelCase form,
     as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
@@ -8330,6 +8350,20 @@ class ToolStatusStepStateDict(TypedDict):
     customWarnings: Sequence[str]
 
 
+PromptPreprocessorUpdate = (
+    ProcessingUpdateStatusCreate
+    | ProcessingUpdateStatusUpdate
+    | ProcessingUpdateStatusRemove
+    | ProcessingUpdateCitationBlockCreate
+    | ProcessingUpdateDebugInfoBlockCreate
+)
+PromptPreprocessorUpdateDict = (
+    ProcessingUpdateDebugInfoBlockCreateDict
+    | ProcessingUpdateCitationBlockCreateDict
+    | ProcessingUpdateStatusRemoveDict
+    | ProcessingUpdateStatusCreateDict
+    | ProcessingUpdateStatusUpdateDict
+)
 ModelSpecifier = ModelSpecifierQuery | ModelSpecifierInstanceReference
 ModelSpecifierDict = ModelSpecifierQueryDict | ModelSpecifierInstanceReferenceDict
 
@@ -9397,20 +9431,6 @@ class LlmApplyPromptTemplateOptsDict(TypedDict):
 LlmToolArray = Sequence[LlmTool]
 LlmToolUseSetting = LlmToolUseSettingNone | LlmToolUseSettingToolArray
 LlmToolUseSettingDict = LlmToolUseSettingNoneDict | LlmToolUseSettingToolArrayDict
-PreprocessorUpdate = (
-    ProcessingUpdateStatusCreate
-    | ProcessingUpdateStatusUpdate
-    | ProcessingUpdateStatusRemove
-    | ProcessingUpdateCitationBlockCreate
-    | ProcessingUpdateDebugInfoBlockCreate
-)
-PreprocessorUpdateDict = (
-    ProcessingUpdateDebugInfoBlockCreateDict
-    | ProcessingUpdateCitationBlockCreateDict
-    | ProcessingUpdateStatusRemoveDict
-    | ProcessingUpdateStatusCreateDict
-    | ProcessingUpdateStatusUpdateDict
-)
 
 
 class ProcessingUpdateToolStatusCreate(
@@ -9505,8 +9525,8 @@ class PseudoPluginsChannelSetToolsProviderDict(TypedDict):
     toServerPacket: PluginsChannelSetToolsProviderToServerPacketDict
 
 
-class PluginsChannelSetPreprocessorToClientPacketPreprocess(
-    LMStudioStruct["PluginsChannelSetPreprocessorToClientPacketPreprocessDict"],
+class PluginsChannelSetPromptPreprocessorToClientPacketPreprocess(
+    LMStudioStruct["PluginsChannelSetPromptPreprocessorToClientPacketPreprocessDict"],
     kw_only=True,
     tag_field="type",
     tag="preprocess",
@@ -9522,8 +9542,8 @@ class PluginsChannelSetPreprocessorToClientPacketPreprocess(
     token: str
 
 
-class PluginsChannelSetPreprocessorToClientPacketPreprocessDict(TypedDict):
-    """Corresponding typed dictionary definition for PluginsChannelSetPreprocessorToClientPacketPreprocess.
+class PluginsChannelSetPromptPreprocessorToClientPacketPreprocessDict(TypedDict):
+    """Corresponding typed dictionary definition for PluginsChannelSetPromptPreprocessorToClientPacketPreprocess.
 
     NOTE: Multi-word keys are defined using their camelCase form,
     as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
@@ -9540,8 +9560,8 @@ class PluginsChannelSetPreprocessorToClientPacketPreprocessDict(TypedDict):
     token: str
 
 
-class PluginsChannelSetPreprocessorToServerPacketComplete(
-    LMStudioStruct["PluginsChannelSetPreprocessorToServerPacketCompleteDict"],
+class PluginsChannelSetPromptPreprocessorToServerPacketComplete(
+    LMStudioStruct["PluginsChannelSetPromptPreprocessorToServerPacketCompleteDict"],
     kw_only=True,
     tag_field="type",
     tag="complete",
@@ -9551,8 +9571,8 @@ class PluginsChannelSetPreprocessorToServerPacketComplete(
     processed: AnyChatMessage
 
 
-class PluginsChannelSetPreprocessorToServerPacketCompleteDict(TypedDict):
-    """Corresponding typed dictionary definition for PluginsChannelSetPreprocessorToServerPacketComplete.
+class PluginsChannelSetPromptPreprocessorToServerPacketCompleteDict(TypedDict):
+    """Corresponding typed dictionary definition for PluginsChannelSetPromptPreprocessorToServerPacketComplete.
 
     NOTE: Multi-word keys are defined using their camelCase form,
     as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
@@ -10171,46 +10191,46 @@ class PseudoPluginsChannelRegisterDevelopmentPluginDict(TypedDict):
     toServerPacket: PluginsChannelRegisterDevelopmentPluginToServerPacketEndDict
 
 
-PluginsChannelSetPreprocessorToClientPacket = (
-    PluginsChannelSetPreprocessorToClientPacketPreprocess
-    | PluginsChannelSetPreprocessorToClientPacketAbort
+PluginsChannelSetPromptPreprocessorToClientPacket = (
+    PluginsChannelSetPromptPreprocessorToClientPacketPreprocess
+    | PluginsChannelSetPromptPreprocessorToClientPacketAbort
 )
-PluginsChannelSetPreprocessorToClientPacketDict = (
-    PluginsChannelSetPreprocessorToClientPacketPreprocessDict
-    | PluginsChannelSetPreprocessorToClientPacketAbortDict
+PluginsChannelSetPromptPreprocessorToClientPacketDict = (
+    PluginsChannelSetPromptPreprocessorToClientPacketPreprocessDict
+    | PluginsChannelSetPromptPreprocessorToClientPacketAbortDict
 )
-PluginsChannelSetPreprocessorToServerPacket = (
-    PluginsChannelSetPreprocessorToServerPacketComplete
-    | PluginsChannelSetPreprocessorToServerPacketAborted
-    | PluginsChannelSetPreprocessorToServerPacketError
+PluginsChannelSetPromptPreprocessorToServerPacket = (
+    PluginsChannelSetPromptPreprocessorToServerPacketComplete
+    | PluginsChannelSetPromptPreprocessorToServerPacketAborted
+    | PluginsChannelSetPromptPreprocessorToServerPacketError
 )
-PluginsChannelSetPreprocessorToServerPacketDict = (
-    PluginsChannelSetPreprocessorToServerPacketErrorDict
-    | PluginsChannelSetPreprocessorToServerPacketCompleteDict
-    | PluginsChannelSetPreprocessorToServerPacketAbortedDict
+PluginsChannelSetPromptPreprocessorToServerPacketDict = (
+    PluginsChannelSetPromptPreprocessorToServerPacketErrorDict
+    | PluginsChannelSetPromptPreprocessorToServerPacketCompleteDict
+    | PluginsChannelSetPromptPreprocessorToServerPacketAbortedDict
 )
 
 
-class PseudoPluginsChannelSetPreprocessor(
-    LMStudioStruct["PseudoPluginsChannelSetPreprocessorDict"], kw_only=True
+class PseudoPluginsChannelSetPromptPreprocessor(
+    LMStudioStruct["PseudoPluginsChannelSetPromptPreprocessorDict"], kw_only=True
 ):
-    to_client_packet: PluginsChannelSetPreprocessorToClientPacket = field(
+    to_client_packet: PluginsChannelSetPromptPreprocessorToClientPacket = field(
         name="toClientPacket"
     )
-    to_server_packet: PluginsChannelSetPreprocessorToServerPacket = field(
+    to_server_packet: PluginsChannelSetPromptPreprocessorToServerPacket = field(
         name="toServerPacket"
     )
 
 
-class PseudoPluginsChannelSetPreprocessorDict(TypedDict):
-    """Corresponding typed dictionary definition for PseudoPluginsChannelSetPreprocessor.
+class PseudoPluginsChannelSetPromptPreprocessorDict(TypedDict):
+    """Corresponding typed dictionary definition for PseudoPluginsChannelSetPromptPreprocessor.
 
     NOTE: Multi-word keys are defined using their camelCase form,
     as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
     """
 
-    toClientPacket: PluginsChannelSetPreprocessorToClientPacketDict
-    toServerPacket: PluginsChannelSetPreprocessorToServerPacketDict
+    toClientPacket: PluginsChannelSetPromptPreprocessorToClientPacketDict
+    toServerPacket: PluginsChannelSetPromptPreprocessorToServerPacketDict
 
 
 class PluginsChannelSetGeneratorToClientPacketGenerate(
@@ -10318,8 +10338,8 @@ class PseudoPlugins(LMStudioStruct["PseudoPluginsDict"], kw_only=True):
     channel_register_development_plugin: PseudoPluginsChannelRegisterDevelopmentPlugin = field(
         name="channelRegisterDevelopmentPlugin"
     )
-    channel_set_preprocessor: PseudoPluginsChannelSetPreprocessor = field(
-        name="channelSetPreprocessor"
+    channel_set_prompt_preprocessor: PseudoPluginsChannelSetPromptPreprocessor = field(
+        name="channelSetPromptPreprocessor"
     )
     channel_set_prediction_loop_handler: PseudoPluginsChannelSetPredictionLoopHandler = field(
         name="channelSetPredictionLoopHandler"
@@ -10352,7 +10372,7 @@ class PseudoPluginsDict(TypedDict):
     rpcSetGlobalConfigSchematics: PseudoPluginsRpcSetGlobalConfigSchematicsDict
     rpcPluginInitCompleted: PseudoPluginsRpcPluginInitCompleted
     channelRegisterDevelopmentPlugin: PseudoPluginsChannelRegisterDevelopmentPluginDict
-    channelSetPreprocessor: PseudoPluginsChannelSetPreprocessorDict
+    channelSetPromptPreprocessor: PseudoPluginsChannelSetPromptPreprocessorDict
     channelSetPredictionLoopHandler: PseudoPluginsChannelSetPredictionLoopHandlerDict
     channelSetToolsProvider: PseudoPluginsChannelSetToolsProviderDict
     channelSetGenerator: PseudoPluginsChannelSetGeneratorDict

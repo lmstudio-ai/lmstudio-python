@@ -484,6 +484,21 @@
         }
       ]
     },
+    "toolCallResult": {
+      "type": "object",
+      "properties": {
+        "content": {
+          "type": "string"
+        },
+        "toolCallId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "content"
+      ],
+      "additionalProperties": false
+    },
     "citationSource": {
       "type": "object",
       "properties": {
@@ -2421,25 +2436,6 @@
         }
       ]
     },
-    "preprocessorUpdate": {
-      "anyOf": [
-        {
-          "$ref": "#/definitions/processingUpdateStatusCreate"
-        },
-        {
-          "$ref": "#/definitions/processingUpdateStatusUpdate"
-        },
-        {
-          "$ref": "#/definitions/processingUpdateStatusRemove"
-        },
-        {
-          "$ref": "#/definitions/processingUpdateCitationBlockCreate"
-        },
-        {
-          "$ref": "#/definitions/processingUpdateDebugInfoBlockCreate"
-        }
-      ]
-    },
     "processingRequestConfirmToolCall": {
       "type": "object",
       "properties": {
@@ -3378,6 +3374,25 @@
         }
       },
       "additionalProperties": false
+    },
+    "promptPreprocessorUpdate": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/processingUpdateStatusCreate"
+        },
+        {
+          "$ref": "#/definitions/processingUpdateStatusUpdate"
+        },
+        {
+          "$ref": "#/definitions/processingUpdateStatusRemove"
+        },
+        {
+          "$ref": "#/definitions/processingUpdateCitationBlockCreate"
+        },
+        {
+          "$ref": "#/definitions/processingUpdateDebugInfoBlockCreate"
+        }
+      ]
     },
     "modelCompatibilityType": {
       "type": "string",
@@ -7268,7 +7283,7 @@
       ],
       "additionalProperties": false
     },
-    "plugins/channel/setPreprocessor/toClientPacket": {
+    "plugins/channel/setPromptPreprocessor/toClientPacket": {
       "anyOf": [
         {
           "type": "object",
@@ -7337,7 +7352,7 @@
         }
       ]
     },
-    "plugins/channel/setPreprocessor/toServerPacket": {
+    "plugins/channel/setPromptPreprocessor/toServerPacket": {
       "anyOf": [
         {
           "type": "object",
@@ -7400,14 +7415,14 @@
         }
       ]
     },
-    "pseudo/plugins/channel/setPreprocessor": {
+    "pseudo/plugins/channel/setPromptPreprocessor": {
       "type": "object",
       "properties": {
         "toClientPacket": {
-          "$ref": "#/definitions/plugins/channel/setPreprocessor/toClientPacket"
+          "$ref": "#/definitions/plugins/channel/setPromptPreprocessor/toClientPacket"
         },
         "toServerPacket": {
-          "$ref": "#/definitions/plugins/channel/setPreprocessor/toServerPacket"
+          "$ref": "#/definitions/plugins/channel/setPromptPreprocessor/toServerPacket"
         }
       },
       "required": [
@@ -8131,8 +8146,8 @@
         "channelRegisterDevelopmentPlugin": {
           "$ref": "#/definitions/pseudo/plugins/channel/registerDevelopmentPlugin"
         },
-        "channelSetPreprocessor": {
-          "$ref": "#/definitions/pseudo/plugins/channel/setPreprocessor"
+        "channelSetPromptPreprocessor": {
+          "$ref": "#/definitions/pseudo/plugins/channel/setPromptPreprocessor"
         },
         "channelSetPredictionLoopHandler": {
           "$ref": "#/definitions/pseudo/plugins/channel/setPredictionLoopHandler"
@@ -8158,7 +8173,7 @@
         "rpcSetGlobalConfigSchematics",
         "rpcPluginInitCompleted",
         "channelRegisterDevelopmentPlugin",
-        "channelSetPreprocessor",
+        "channelSetPromptPreprocessor",
         "channelSetPredictionLoopHandler",
         "channelSetToolsProvider",
         "channelSetGenerator"
