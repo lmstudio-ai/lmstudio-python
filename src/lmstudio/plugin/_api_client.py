@@ -1,10 +1,13 @@
 """Plugin API client implementation."""
 
+# Plugins are expected to maintain multiple concurrently open channels and handle
+# multiple concurrent server requests, so plugin implementations are always async
+
 import os
 import warnings
 
 from ..schemas import DictObject
-from ..sync_api import Client, SyncSession
+from ..async_api import AsyncClient, AsyncSession
 from ..json_api import (
     ChannelCommonRxEvent,
     ChannelEndpoint,
@@ -75,21 +78,27 @@ Note the plugin API is not yet stable and may change without notice in future re
 """
 
 
-class SyncSessionPlugins(SyncSession):
-    """Sync client session for the plugins namespace."""
+class AsyncSessionPlugins(AsyncSession):
+    """Async client session for the plugins namespace."""
 
     API_NAMESPACE = "plugins"
 
 
-class PluginClient(Client):
+class PluginClient(AsyncClient):
     def __init__(self) -> None:
         warnings.warn(_PLUGIN_API_STABILITY_WARNING, FutureWarning)
         super().__init__()
 
+    _ALL_SESSIONS = (
+        # Possible TODO: add other sessions here if necessary
+        # *ASyncSession._ALL_SESSIONS,
+        AsyncSessionPlugins,
+    )
+
     @property
-    def plugins(self) -> SyncSessionPlugins:
-        """Return the LLM API client session."""
-        return self._get_session(SyncSessionPlugins)
+    def plugins(self) -> AsyncSessionPlugins:
+        """Return the plugins API client session."""
+        return self._get_session(AsyncSessionPlugins)
 
 
 ENV_CLIENT_ID = "LMS_PLUGIN_CLIENT_IDENTIFIER"

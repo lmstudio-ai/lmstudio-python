@@ -1,11 +1,13 @@
 """Plugin dev client implementation."""
 
+import asyncio
 import os
 import subprocess
 import sys
 
-from contextlib import contextmanager
-from typing import Iterable, Generator, TypeAlias, assert_never
+from contextlib import asynccontextmanager
+from functools import partial
+from typing import AsyncGenerator, Iterable, TypeAlias, assert_never
 
 from ._api_client import (
     ENV_CLIENT_ID,
@@ -93,22 +95,26 @@ class DevPluginClient(PluginClient):
     def _get_registration_endpoint(self) -> DevPluginRegistrationEndpoint:
         return DevPluginRegistrationEndpoint()
 
-    @contextmanager
-    def register_dev_plugin(self) -> Generator[tuple[str, str], None, None]:
+    @asynccontextmanager
+    async def register_dev_plugin(self) -> AsyncGenerator[tuple[str, str], None]:
         """Register a dev plugin on entry, deregister it on exit."""
         endpoint = self._get_registration_endpoint()
-        with self.plugins._create_channel(endpoint) as channel:
+        async with self.plugins._create_channel(endpoint) as channel:
             try:
-                yield channel.wait_for_result()
+                yield await channel.wait_for_result()
             finally:
                 message: DevPluginRegistrationEndDict = {"type": "end"}
-                channel.send_message(message)
+                await channel.send_message(message)
 
-    def run_plugin(
+    async def run_plugin(
         self, plugin_path: str | os.PathLike[str]
     ) -> subprocess.CompletedProcess[str]:
-        with self.register_dev_plugin() as (client_id, client_key):
-            return _run_plugin_in_child_process(plugin_path, client_id, client_key)
+        async with self.register_dev_plugin() as (client_id, client_key):
+            return await asyncio.to_thread(
+                partial(
+                    _run_plugin_in_child_process, plugin_path, client_id, client_key
+                )
+            )
 
 
 # TODO: support the same subprocess monitoring features as `lms dev`
@@ -129,9 +135,14 @@ def _run_plugin_in_child_process(
     return subprocess.run(command, text=True, env=env)
 
 
-def run_plugin(plugin_path: str | os.PathLike[str]) -> int:
-    """Execute a plugin in development mode."""
-    with DevPluginClient() as dev_client:
-        result = dev_client.run_plugin(plugin_path)
+async def run_plugin_async(plugin_path: str | os.PathLike[str]) -> int:
+    """Asynchronously execute a plugin in development mode."""
+    async with DevPluginClient() as dev_client:
+        result = await dev_client.run_plugin(plugin_path)
         result.check_returncode()
         return result.returncode
+
+
+def run_plugin(plugin_path: str | os.PathLike[str]) -> int:
+    """Execute a plugin in development mode."""
+    return asyncio.run(run_plugin_async(plugin_path))

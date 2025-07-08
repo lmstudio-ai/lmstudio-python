@@ -39,6 +39,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     warnings.filterwarnings(
         "ignore", ".*the plugin API is not yet stable", FutureWarning
     )
+    warnings.filterwarnings(
+        "ignore", ".*the async API is not yet stable", FutureWarning
+    )
     if not args.dev:
         return _api_client.run_plugin(plugin_path)
     # Retrieve args from API host, spawn plugin in subprocess
