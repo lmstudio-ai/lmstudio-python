@@ -106,15 +106,15 @@ class DevPluginClient(PluginClient):
                 message: DevPluginRegistrationEndDict = {"type": "end"}
                 await channel.send_message(message)
 
-    async def run_plugin(
-        self, plugin_path: str | os.PathLike[str]
-    ) -> subprocess.CompletedProcess[str]:
+    async def run_plugin(self, plugin_path: str | os.PathLike[str]) -> int:
         async with self.register_dev_plugin() as (client_id, client_key):
-            return await asyncio.to_thread(
+            result = await asyncio.to_thread(
                 partial(
                     _run_plugin_in_child_process, plugin_path, client_id, client_key
                 )
             )
+            result.check_returncode()
+            return result.returncode
 
 
 # TODO: support the same subprocess monitoring features as `lms dev`
@@ -138,9 +138,7 @@ def _run_plugin_in_child_process(
 async def run_plugin_async(plugin_path: str | os.PathLike[str]) -> int:
     """Asynchronously execute a plugin in development mode."""
     async with DevPluginClient() as dev_client:
-        result = await dev_client.run_plugin(plugin_path)
-        result.check_returncode()
-        return result.returncode
+        return await dev_client.run_plugin(plugin_path)
 
 
 def run_plugin(plugin_path: str | os.PathLike[str]) -> int:

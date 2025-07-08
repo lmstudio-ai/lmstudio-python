@@ -11,6 +11,7 @@ from typing import (
     Protocol,
     Sequence,
     TypeAlias,
+    TypedDict,
     TypeVar,
     cast,
     runtime_checkable,
@@ -224,3 +225,15 @@ class LMStudioStruct(Generic[TWireFormat], Struct, omit_defaults=True, kw_only=T
 
 
 AnyLMStudioStruct = LMStudioStruct[Any]
+
+
+class EmptyStruct(LMStudioStruct["EmptyDict"]):
+    """LM Studio struct with no defined fields."""
+
+    pass
+
+
+class EmptyDict(TypedDict):
+    """Wire format with no defined fields."""
+
+    pass
