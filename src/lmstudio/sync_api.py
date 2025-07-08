@@ -173,6 +173,10 @@ class SyncChannel(Generic[T]):
         """Get the message to send to create this channel."""
         return self._api_channel.get_creation_message()
 
+    def send_message(self, message: DictObject) -> None:
+        wrapped_message = self._api_channel.wrap_message(message)
+        self._send_json(wrapped_message)
+
     def cancel(self) -> None:
         """Cancel the channel."""
         if self._is_finished:

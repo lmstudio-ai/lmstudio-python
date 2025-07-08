@@ -1622,10 +1622,14 @@ class ChannelHandler(Generic[TEndpoint]):
 
     def get_cancel_message(self) -> DictObject:
         """Get the message to send to cancel this channel."""
+        return self.wrap_message({"type": "cancel"})
+
+    def wrap_message(self, message: DictObject) -> DictObject:
+        """Wrap a message for sending on this channel."""
         return {
             "type": "channelSend",
             "channelId": self._channel_id,
-            "message": {"type": "cancel"},
+            "message": message,
         }
 
     # This runs in the context of the background demultiplexing task
