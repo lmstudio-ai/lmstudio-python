@@ -6,6 +6,7 @@ import subprocess
 import sys
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 from functools import partial
 from typing import AsyncGenerator, Iterable, TypeAlias, assert_never
 
@@ -49,16 +50,15 @@ class DevPluginRegistrationEndpoint(
     _API_ENDPOINT = "registerDevelopmentPlugin"
     _NOTICE_PREFIX = "Register development plugin"
 
-    def __init__(self) -> None:
+    def __init__(self, owner: str, name: str) -> None:
         # TODO: Set "python" as the type once LM Studio supports that
-        # TODO: Accept plugin name and owner info as parameters
         params = DevPluginRegistrationRequest._from_api_dict(
             {
                 "manifest": {
                     "type": "plugin",
                     "runner": "node",
-                    "owner": "ancoghlan",
-                    "name": "example-plugin",
+                    "owner": owner,
+                    "name": name,
                 }
             }
         )
@@ -93,7 +93,7 @@ class DevPluginRegistrationEndpoint(
 
 class DevPluginClient(PluginClient):
     def _get_registration_endpoint(self) -> DevPluginRegistrationEndpoint:
-        return DevPluginRegistrationEndpoint()
+        return DevPluginRegistrationEndpoint(self._owner, self._name)
 
     @asynccontextmanager
     async def register_dev_plugin(self) -> AsyncGenerator[tuple[str, str], None]:
@@ -106,11 +106,16 @@ class DevPluginClient(PluginClient):
                 message: DevPluginRegistrationEndDict = {"type": "end"}
                 await channel.send_message(message)
 
-    async def run_plugin(self, plugin_path: str | os.PathLike[str]) -> int:
+    async def run_plugin(self, *, allow_local_imports: bool = True) -> int:
+        if not allow_local_imports:
+            raise ValueError("Local imports are always permitted for dev plugins")
         async with self.register_dev_plugin() as (client_id, client_key):
             result = await asyncio.to_thread(
                 partial(
-                    _run_plugin_in_child_process, plugin_path, client_id, client_key
+                    _run_plugin_in_child_process,
+                    self._plugin_path,
+                    client_id,
+                    client_key,
                 )
             )
             result.check_returncode()
@@ -119,7 +124,7 @@ class DevPluginClient(PluginClient):
 
 # TODO: support the same subprocess monitoring features as `lms dev`
 def _run_plugin_in_child_process(
-    plugin_path: str | os.PathLike[str], client_id: str, client_key: str
+    plugin_path: Path, client_id: str, client_key: str
 ) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
     env[ENV_CLIENT_ID] = client_id
@@ -135,12 +140,12 @@ def _run_plugin_in_child_process(
     return subprocess.run(command, text=True, env=env)
 
 
-async def run_plugin_async(plugin_path: str | os.PathLike[str]) -> int:
+async def run_plugin_async(plugin_dir: str | os.PathLike[str]) -> int:
     """Asynchronously execute a plugin in development mode."""
-    async with DevPluginClient() as dev_client:
-        return await dev_client.run_plugin(plugin_path)
+    async with DevPluginClient(plugin_dir) as dev_client:
+        return await dev_client.run_plugin()
 
 
-def run_plugin(plugin_path: str | os.PathLike[str]) -> int:
+def run_plugin(plugin_dir: str | os.PathLike[str]) -> int:
     """Execute a plugin in development mode."""
-    return asyncio.run(run_plugin_async(plugin_path))
+    return asyncio.run(run_plugin_async(plugin_dir))

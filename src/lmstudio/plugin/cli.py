@@ -47,6 +47,6 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     logging.basicConfig(level=logging.DEBUG)
     if not args.dev:
-        return _api_client.run_plugin(plugin_path)
+        return _api_client.run_plugin(plugin_path, allow_local_imports=True)
     # Retrieve args from API host, spawn plugin in subprocess
     return _dev_client.run_plugin(plugin_path)
