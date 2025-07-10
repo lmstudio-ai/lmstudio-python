@@ -152,7 +152,7 @@ WS_CLOSING_STATES = (WS_STATE_LOCAL_CLOSING, WS_STATE_CLOSED)
 @pytest.mark.lmstudio
 async def test_websocket_cm_async(caplog: LogCap) -> None:
     caplog.set_level(logging.DEBUG)
-    auth_details = AsyncClient._create_auth_message()
+    auth_details = AsyncClient._format_auth_message()
     lmsws = AsyncLMStudioWebsocket(f"http://{LOCAL_API_HOST}/system", auth_details)
     # SDK client websockets start out disconnected
     assert not lmsws.connected
@@ -190,7 +190,7 @@ def ws_thread() -> Generator[AsyncWebsocketThread, None, None]:
 @pytest.mark.lmstudio
 def test_websocket_cm_sync(ws_thread: AsyncWebsocketThread, caplog: LogCap) -> None:
     caplog.set_level(logging.DEBUG)
-    auth_details = Client._create_auth_message()
+    auth_details = Client._format_auth_message()
     lmsws = SyncLMStudioWebsocket(
         ws_thread, f"http://{LOCAL_API_HOST}/system", auth_details
     )

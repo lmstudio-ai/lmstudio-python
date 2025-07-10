@@ -42,6 +42,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     warnings.filterwarnings(
         "ignore", ".*the async API is not yet stable", FutureWarning
     )
+    # TODO: Accept options to configure the verbosity
+    import logging
+
+    logging.basicConfig(level=logging.DEBUG)
     if not args.dev:
         return _api_client.run_plugin(plugin_path)
     # Retrieve args from API host, spawn plugin in subprocess

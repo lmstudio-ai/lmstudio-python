@@ -1844,7 +1844,10 @@ class ClientBase:
         self.api_host = api_host if api_host else DEFAULT_API_HOST
         self._auth_details = self._create_auth_message()
 
-    def _create_auth_message(self) -> DictObject:
+    @staticmethod
+    def _format_auth_message(
+        client_id: str | None = None, client_key: str | None = None
+    ) -> DictObject:
         """Create an LM Studio websocket authentication message."""
         # Note: authentication (in its current form) is primarily a cooperative
         # resource management mechanism that allows the server to appropriately
@@ -1854,13 +1857,17 @@ class ClientBase:
         # sufficient to prevent accidental conflicts and, in combination with secure
         # websocket support, would be sufficient to ensure that access to the running
         # client was required to extract the auth details.
-        client_identifier = str(uuid.uuid4())
-        client_passkey = str(uuid.uuid4())
+        client_identifier = client_id if client_id is not None else str(uuid.uuid4())
+        client_passkey = client_key if client_key is not None else str(uuid.uuid4())
         return {
             "authVersion": 1,
             "clientIdentifier": client_identifier,
             "clientPasskey": client_passkey,
         }
+
+    def _create_auth_message(self) -> DictObject:
+        """Create an LM Studio websocket authentication message."""
+        return self._format_auth_message()
 
 
 TClient = TypeVar("TClient", bound=ClientBase)

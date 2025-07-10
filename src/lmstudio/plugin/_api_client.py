@@ -45,16 +45,10 @@ from .._sdk_models import (
     # PluginsChannelSetGeneratorToServerPacketToolCallGenerationNameReceivedDict as ToolCallGenerationNameReceivedDict,
     # PluginsChannelSetGeneratorToServerPacketToolCallGenerationStarted as ToolCallGenerationStarted,
     # PluginsChannelSetGeneratorToServerPacketToolCallGenerationStartedDict as ToolCallGenerationStartedDict,
-    PluginsChannelSetPromptPreprocessorToClientPacketAbort as PromptPreprocessingAbort,
-    PluginsChannelSetPromptPreprocessorToClientPacketAbortDict as PromptPreprocessingAbortDict,
     PluginsChannelSetPromptPreprocessorToClientPacketPreprocess as PromptPreprocessingRequest,
-    PluginsChannelSetPromptPreprocessorToClientPacketPreprocessDict as PromptPreprocessingRequestDict,
-    PluginsChannelSetPromptPreprocessorToServerPacketAborted as PromptPreprocessingAbortedDict,
-    PluginsChannelSetPromptPreprocessorToServerPacketAbortedDict as PromptPreprocessing,
-    PluginsChannelSetPromptPreprocessorToServerPacketComplete as PromptPreprocessingComplete,
+    # PluginsChannelSetPromptPreprocessorToServerPacketAbortedDict as PromptPreprocessingAbortedDict,
     PluginsChannelSetPromptPreprocessorToServerPacketCompleteDict as PromptPreprocessingCompleteDict,
-    PluginsChannelSetPromptPreprocessorToServerPacketError as PromptPreprocessingError,
-    PluginsChannelSetPromptPreprocessorToServerPacketErrorDict as PromptPreprocessingErrorDict,
+    # PluginsChannelSetPromptPreprocessorToServerPacketErrorDict as PromptPreprocessingErrorDict,
     # PluginsChannelSetToolsProviderToClientPacketAbortToolCall as ProvideToolsAbort,
     # PluginsChannelSetToolsProviderToClientPacketAbortToolCallDict as ProvideToolsAbortDict,
     # PluginsChannelSetToolsProviderToClientPacketCallTool as ProvideToolsCallRequest,
@@ -121,7 +115,7 @@ class PromptPreprocessingEndpoint(
                 )
             case {"type": "abort", "task_id": str(task_id)}:
                 yield PromptPreprocessingAbortEvent(task_id)
-            case PromptPreprocessingRequestDict() as request_dict:
+            case {"type": "preprocess"} as request_dict:
                 parsed_request = PromptPreprocessingRequest._from_any_api_dict(
                     request_dict
                 )
@@ -135,7 +129,9 @@ class PromptPreprocessingEndpoint(
                 self._logger.info(f"Aborting {task_id}", task_id=task_id)
             case PromptPreprocessingRequestEvent(request):
                 task_id = request.task_id
-                self._logger.info(f"Processing {task_id}", task_id=task_id)
+                self._logger.info(
+                    "Received prompt preprocessing request", task_id=task_id
+                )
             case ChannelFinishedEvent(_):
                 pass
             case _:
@@ -149,12 +145,18 @@ class AsyncSessionPlugins(AsyncSession):
 
 
 class PluginClient(AsyncClient):
-    def __init__(self, client_id: str|None = None, client_key: str|None=None) -> None:
+    def __init__(
+        self, client_id: str | None = None, client_key: str | None = None
+    ) -> None:
         warnings.warn(_PLUGIN_API_STABILITY_WARNING, FutureWarning)
         self._client_id = client_id
         self._client_key = client_key
         super().__init__()
-        self._prompt_processing_ready = asyncio.Event()
+        self._hook_ready_events = {
+            "prompt_preprocessor": asyncio.Event(),
+            "token_generator": asyncio.Event(),
+            "tools_provider": asyncio.Event(),
+        }
 
     _ALL_SESSIONS = (
         # Possible TODO: add other sessions here if necessary
@@ -178,11 +180,17 @@ class PluginClient(AsyncClient):
         """Return the plugins API client session."""
         return self._get_session(AsyncSessionPlugins)
 
-    async def handle_prompt_preprocessing(self) -> None:
+    async def run_hook_prompt_preprocessor(self) -> bool:
         """Accept prompt preprocessing requests."""
+        hook_ready_event = self._hook_ready_events["prompt_preprocessor"]
+        # TODO: Retrieve hook definition from plugin
+        hook_defined = True
+        if not hook_defined:
+            hook_ready_event.set()
+            return False
         endpoint = PromptPreprocessingEndpoint()
         async with self.plugins._create_channel(endpoint) as channel:
-            self._prompt_processing_ready.set()
+            hook_ready_event.set()
             async for contents in channel.rx_stream():
                 for event in endpoint.iter_message_events(contents):
                     endpoint.handle_rx_event(event)
@@ -207,14 +215,44 @@ class PluginClient(AsyncClient):
                             )
                 if endpoint.is_finished:
                     break
+        return True
+
+    async def run_hook_token_generator(self) -> bool:
+        """Accept token generation requests."""
+        hook_ready_event = self._hook_ready_events["token_generator"]
+        # TODO: Retrieve hook definition from plugin
+        hook_defined = False
+        if not hook_defined:
+            # Plugin doesn't define this hook -> nothing to be set up
+            hook_ready_event.set()
+            return False
+        # TODO: Dispatch to plugin defined token generation hook
+        return True
+
+    async def run_hook_tools_provider(self) -> bool:
+        """Accept token generation requests."""
+        # TODO: Retrieve hook definition from plugin
+        hook_ready_event = self._hook_ready_events["tools_provider"]
+        hook_defined = False
+        if not hook_defined:
+            # Plugin doesn't define this hook -> nothing to be set up
+            hook_ready_event.set()
+            return False
+        # TODO: Dispatch to plugin defined tools provision hook
+        return True
 
     async def run_plugin(self, plugin_path: str | os.PathLike[str]) -> int:
         # Use anyio and exceptiongroup to handle the lack of native task
         # and exception groups prior to Python 3.11
         print("Running example plugin")
         async with create_task_group() as tg:
-            tg.start_soon(self.handle_prompt_preprocessing)
-            await self._prompt_processing_ready.wait()
+            tg.start_soon(self.run_hook_prompt_preprocessor)
+            tg.start_soon(self.run_hook_token_generator)
+            tg.start_soon(self.run_hook_tools_provider)
+            # Should this have a time limit set to guard against SDK bugs?
+            await asyncio.gather(*(e.wait() for e in self._hook_ready_events.values()))
+            await self.plugins.remote_call("pluginInitCompleted")
+            # Indicate that prompt processing is ready
             # Terminate all running tasks when termination is requested
             try:
                 await asyncio.to_thread(partial(input, "Press Enter to terminate..."))
