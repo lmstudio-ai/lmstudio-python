@@ -3,12 +3,12 @@
 from msgspec import Struct
 
 from ..schemas import BaseModel
+from .._sdk_models import (
+    SerializedKVConfigSchematics,
+    SerializedKVConfigSchematicsField,
+)
 
-
-class BaseConfig(BaseModel, omit_defaults=False):
-    """Base class for plugin configuration schema definitions."""
-
-    pass
+from .sdk_api import LMStudioPluginInitError
 
 
 class ConfigField(Struct, omit_defaults=True, kw_only=True, frozen=True):
@@ -25,3 +25,36 @@ class ConfigString(ConfigField, frozen=True):
 
 
 # TODO: Cover additional config field types
+
+
+class BaseConfigSchema(BaseModel, omit_defaults=False):
+    """Base class for plugin configuration schema definitions."""
+
+    def _to_kv_config_schematics(self) -> SerializedKVConfigSchematics:
+        """Convert to wire format for transmission to the app server."""
+        fields: list[SerializedKVConfigSchematicsField] = []
+        for attr in self.__struct_fields__:
+            field_spec = getattr(self, attr, None)
+            kv_field: SerializedKVConfigSchematicsField
+            match field_spec:
+                case ConfigString(label=label, hint=hint, default=default):
+                    kv_field = SerializedKVConfigSchematicsField(
+                        short_key=attr,
+                        full_key=attr,
+                        type_key="string",
+                        type_params={
+                            "displayName": label,
+                            "hint": hint,
+                        },
+                        default_value=default,
+                    )
+
+                case ConfigField():
+                    err_msg = f"{field_spec!r} is not an instance of a known {ConfigField!r} subclass"
+                    raise LMStudioPluginInitError(err_msg)
+                case unmatched:
+                    raise LMStudioPluginInitError(
+                        f"Expected {ConfigField!r} instance, not {unmatched!r}"
+                    )
+            fields.append(kv_field)
+        return SerializedKVConfigSchematics(fields=fields)

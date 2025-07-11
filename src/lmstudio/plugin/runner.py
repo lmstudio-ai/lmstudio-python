@@ -75,9 +75,10 @@ from .._sdk_models import (
     # PluginsChannelSetToolsProviderToServerPacketToolCallStatusDict as ProvideToolsCallStatusDict,
     # PluginsChannelSetToolsProviderToServerPacketToolCallWarn as ProvideToolsCallWarn,
     # PluginsChannelSetToolsProviderToServerPacketToolCallWarnDict as ProvideToolsCallWarnDict,
+    PluginsRpcSetConfigSchematicsParameter,
 )
 from .sdk_api import LMStudioPluginInitError
-from .config_schemas import BaseConfig
+from .config_schemas import BaseConfigSchema
 
 __all__ = [
     "PromptPreprocessorController",
@@ -312,10 +313,18 @@ class PluginClient(AsyncClient):
         prompt_preprocessor: PromptPreprocessorHook | None = plugin_ns.get(
             "prompt_preprocessor", None
         )
-        config_model = plugin_ns.get("ConfigSchematics", None)
-        if config_model is not None and not isinstance(config_model, BaseConfig):
-            LMStudioPluginInitError(
-                f"Expected {BaseConfig!r} instance, not {type(config_model)!r}"
+        config_model = plugin_ns.get("ConfigSchema", None)
+        if config_model is not None:
+            if not issubclass(config_model, BaseConfigSchema):
+                raise LMStudioPluginInitError(
+                    f"Expected {BaseConfigSchema!r} subclass definition, not {config_model!r}"
+                )
+
+            await self.plugins.remote_call(
+                "setConfigSchematics",
+                PluginsRpcSetConfigSchematicsParameter(
+                    schematics=config_model()._to_kv_config_schematics(),
+                ),
             )
         # TODO: register config schematic
         # Use anyio and exceptiongroup to handle the lack of native task

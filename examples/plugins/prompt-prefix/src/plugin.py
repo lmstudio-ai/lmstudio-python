@@ -1,9 +1,9 @@
 """Example plugin that adds a prefix to all user prompts."""
 
-from lmstudio.plugin import BaseConfig, ConfigString, PromptPreprocessorController
+from lmstudio.plugin import BaseConfigSchema, ConfigString, PromptPreprocessorController
 from lmstudio import AnyChatMessage, AnyChatMessageDict, TextDataDict
 
-class ConfigSchematic(BaseConfig):
+class ConfigSchema(BaseConfigSchema):
     """Naming the class 'ConfigSchematic' implicitly registers it."""
     # Assigning ConfigSchematic = SomeOtherSchemaClass also works
     prefix: ConfigString = ConfigString(

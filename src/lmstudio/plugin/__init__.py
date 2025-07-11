@@ -6,6 +6,3 @@
 from .sdk_api import *
 from .config_schemas import *
 from .runner import *
-
-# TODO: Define `sdk_plugin_type` to fix up reported class modules,
-#       as well as `sdk_plugin_api*` decorators
