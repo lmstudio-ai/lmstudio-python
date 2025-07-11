@@ -10,7 +10,7 @@ from pathlib import Path
 from functools import partial
 from typing import AsyncGenerator, Iterable, TypeAlias, assert_never
 
-from ._api_client import (
+from .runner import (
     ENV_CLIENT_ID,
     ENV_CLIENT_KEY,
     PluginClient,

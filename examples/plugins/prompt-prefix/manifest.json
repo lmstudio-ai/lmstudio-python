@@ -2,6 +2,6 @@
   "type": "plugin",
   "runner": "node",
   "owner": "lmstudio",
-  "name": "pyprompt",
+  "name": "prompt-prefix",
   "revision": 1
 }

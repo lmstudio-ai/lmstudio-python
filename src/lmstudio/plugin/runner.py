@@ -51,9 +51,9 @@ from .._sdk_models import (
     # PluginsChannelSetGeneratorToServerPacketToolCallGenerationNameReceivedDict as ToolCallGenerationNameReceivedDict,
     # PluginsChannelSetGeneratorToServerPacketToolCallGenerationStarted as ToolCallGenerationStarted,
     # PluginsChannelSetGeneratorToServerPacketToolCallGenerationStartedDict as ToolCallGenerationStartedDict,
-    PluginsChannelSetPromptPreprocessorToClientPacketPreprocess as PromptPreprocessingRequest,
     # PluginsChannelSetPromptPreprocessorToServerPacketAbortedDict as PromptPreprocessingAbortedDict,
-    PluginsChannelSetPromptPreprocessorToServerPacketCompleteDict as PromptPreprocessingCompleteDict,
+    PromptPreprocessingRequest,
+    PromptPreprocessingCompleteDict,
     # PluginsChannelSetPromptPreprocessorToServerPacketErrorDict as PromptPreprocessingErrorDict,
     # PluginsChannelSetToolsProviderToClientPacketAbortToolCall as ProvideToolsAbort,
     # PluginsChannelSetToolsProviderToClientPacketAbortToolCallDict as ProvideToolsAbortDict,
@@ -76,6 +76,8 @@ from .._sdk_models import (
     # PluginsChannelSetToolsProviderToServerPacketToolCallWarn as ProvideToolsCallWarn,
     # PluginsChannelSetToolsProviderToServerPacketToolCallWarnDict as ProvideToolsCallWarnDict,
 )
+from .sdk_api import LMStudioPluginInitError
+from .config_schemas import BaseConfig
 
 __all__ = [
     "PromptPreprocessorController",
@@ -206,11 +208,13 @@ class PluginClient(AsyncClient):
         manifest_path = plugin_path / "manifest.json"
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         if manifest["type"] != "plugin":
-            raise Exception(f"Invalid manifest type: {manifest['type']}")
+            raise LMStudioPluginInitError(f"Invalid manifest type: {manifest['type']}")
         if (
             manifest["runner"] != "node"
         ):  # TODO: Change to "python" once that is supported
-            raise Exception(f"Invalid manifest runner: {manifest['runner']}")
+            raise LMStudioPluginInitError(
+                f"Invalid manifest runner: {manifest['runner']}"
+            )
         self._owner = manifest["owner"]
         self._name = manifest["name"]
 
@@ -308,6 +312,12 @@ class PluginClient(AsyncClient):
         prompt_preprocessor: PromptPreprocessorHook | None = plugin_ns.get(
             "prompt_preprocessor", None
         )
+        config_model = plugin_ns.get("ConfigSchematics", None)
+        if config_model is not None and not isinstance(config_model, BaseConfig):
+            LMStudioPluginInitError(
+                f"Expected {BaseConfig!r} instance, not {type(config_model)!r}"
+            )
+        # TODO: register config schematic
         # Use anyio and exceptiongroup to handle the lack of native task
         # and exception groups prior to Python 3.11
         async with create_task_group() as tg:

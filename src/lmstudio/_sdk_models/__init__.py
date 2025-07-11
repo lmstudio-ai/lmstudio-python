@@ -324,8 +324,6 @@ __all__ = [
     "LlmRpcCountTokensReturnsDict",
     "LlmRpcGetLoadConfigParameter",
     "LlmRpcGetLoadConfigParameterDict",
-    "LlmRpcGetLoadConfigReturns",
-    "LlmRpcGetLoadConfigReturnsDict",
     "LlmRpcGetModelInfoParameter",
     "LlmRpcGetModelInfoParameterDict",
     "LlmRpcPreloadDraftModelParameter",
@@ -422,12 +420,8 @@ __all__ = [
     "PluginsChannelSetPredictionLoopHandlerToServerPacketErrorDict",
     "PluginsChannelSetPromptPreprocessorToClientPacketAbort",
     "PluginsChannelSetPromptPreprocessorToClientPacketAbortDict",
-    "PluginsChannelSetPromptPreprocessorToClientPacketPreprocess",
-    "PluginsChannelSetPromptPreprocessorToClientPacketPreprocessDict",
     "PluginsChannelSetPromptPreprocessorToServerPacketAborted",
     "PluginsChannelSetPromptPreprocessorToServerPacketAbortedDict",
-    "PluginsChannelSetPromptPreprocessorToServerPacketComplete",
-    "PluginsChannelSetPromptPreprocessorToServerPacketCompleteDict",
     "PluginsChannelSetPromptPreprocessorToServerPacketError",
     "PluginsChannelSetPromptPreprocessorToServerPacketErrorDict",
     "PluginsChannelSetToolsProviderToClientPacketAbortToolCall",
@@ -530,6 +524,10 @@ __all__ = [
     "ProcessingUpdateToolStatusCreateDict",
     "ProcessingUpdateToolStatusUpdate",
     "ProcessingUpdateToolStatusUpdateDict",
+    "PromptPreprocessingComplete",
+    "PromptPreprocessingCompleteDict",
+    "PromptPreprocessingRequest",
+    "PromptPreprocessingRequestDict",
     "PseudoDiagnostics",
     "PseudoDiagnosticsChannelStreamLogs",
     "PseudoDiagnosticsChannelStreamLogsDict",
@@ -731,6 +729,8 @@ __all__ = [
     "SerializedKVConfigSchematicsDict",
     "SerializedKVConfigSchematicsField",
     "SerializedKVConfigSchematicsFieldDict",
+    "SerializedKVConfigSettings",
+    "SerializedKVConfigSettingsDict",
     "SerializedLMSExtendedError",
     "SerializedLMSExtendedErrorDict",
     "StatusStepState",
@@ -7069,13 +7069,13 @@ class PseudoLlmRpcListLoadedDict(TypedDict):
     parameter: NotRequired[LlmRpcListLoadedParameter | None]
 
 
-class LlmRpcGetLoadConfigReturns(
-    LMStudioStruct["LlmRpcGetLoadConfigReturnsDict"], kw_only=True
+class SerializedKVConfigSettings(
+    LMStudioStruct["SerializedKVConfigSettingsDict"], kw_only=True
 ):
     fields: Fields
 
 
-class LlmRpcGetLoadConfigReturnsDict(TypedDict):
+class SerializedKVConfigSettingsDict(TypedDict):
     """Corresponding typed dictionary definition for LlmRpcGetLoadConfigReturns.
 
     NOTE: Multi-word keys are defined using their camelCase form,
@@ -7864,8 +7864,8 @@ class LlmChannelPredictToClientPacketSuccess(
     type: ClassVar[Annotated[Literal["success"], Meta(title="Type")]] = "success"
     stats: LlmPredictionStats
     model_info: LlmInstanceInfo = field(name="modelInfo")
-    load_model_config: LlmRpcGetLoadConfigReturns = field(name="loadModelConfig")
-    prediction_config: LlmRpcGetLoadConfigReturns = field(name="predictionConfig")
+    load_model_config: SerializedKVConfigSettings = field(name="loadModelConfig")
+    prediction_config: SerializedKVConfigSettings = field(name="predictionConfig")
 
 
 class LlmChannelPredictToClientPacketSuccessDict(TypedDict):
@@ -7878,8 +7878,8 @@ class LlmChannelPredictToClientPacketSuccessDict(TypedDict):
     type: Literal["success"]
     stats: LlmPredictionStatsDict
     modelInfo: LlmInstanceInfoDict
-    loadModelConfig: LlmRpcGetLoadConfigReturnsDict
-    predictionConfig: LlmRpcGetLoadConfigReturnsDict
+    loadModelConfig: SerializedKVConfigSettingsDict
+    predictionConfig: SerializedKVConfigSettingsDict
 
 
 class LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationEnd(
@@ -7919,9 +7919,9 @@ class PluginsChannelSetPredictionLoopHandlerToClientPacketHandlePredictionLoop(
         "handlePredictionLoop"
     )
     task_id: str = field(name="taskId")
-    config: LlmRpcGetLoadConfigReturns
-    plugin_config: LlmRpcGetLoadConfigReturns = field(name="pluginConfig")
-    global_plugin_config: LlmRpcGetLoadConfigReturns = field(name="globalPluginConfig")
+    config: SerializedKVConfigSettings
+    plugin_config: SerializedKVConfigSettings = field(name="pluginConfig")
+    global_plugin_config: SerializedKVConfigSettings = field(name="globalPluginConfig")
     working_directory_path: str | None = field(name="workingDirectoryPath")
     pci: str
     token: str
@@ -7938,9 +7938,9 @@ class PluginsChannelSetPredictionLoopHandlerToClientPacketHandlePredictionLoopDi
 
     type: Literal["handlePredictionLoop"]
     taskId: str
-    config: LlmRpcGetLoadConfigReturnsDict
-    pluginConfig: LlmRpcGetLoadConfigReturnsDict
-    globalPluginConfig: LlmRpcGetLoadConfigReturnsDict
+    config: SerializedKVConfigSettingsDict
+    pluginConfig: SerializedKVConfigSettingsDict
+    globalPluginConfig: SerializedKVConfigSettingsDict
     workingDirectoryPath: NotRequired[str | None]
     pci: str
     token: str
@@ -7955,8 +7955,8 @@ class PluginsChannelSetToolsProviderToClientPacketInitSession(
     type: ClassVar[Annotated[Literal["initSession"], Meta(title="Type")]] = (
         "initSession"
     )
-    plugin_config: LlmRpcGetLoadConfigReturns = field(name="pluginConfig")
-    global_plugin_config: LlmRpcGetLoadConfigReturns = field(name="globalPluginConfig")
+    plugin_config: SerializedKVConfigSettings = field(name="pluginConfig")
+    global_plugin_config: SerializedKVConfigSettings = field(name="globalPluginConfig")
     working_directory_path: str | None = field(name="workingDirectoryPath")
     session_id: str = field(name="sessionId")
 
@@ -7969,8 +7969,8 @@ class PluginsChannelSetToolsProviderToClientPacketInitSessionDict(TypedDict):
     """
 
     type: Literal["initSession"]
-    pluginConfig: LlmRpcGetLoadConfigReturnsDict
-    globalPluginConfig: LlmRpcGetLoadConfigReturnsDict
+    pluginConfig: SerializedKVConfigSettingsDict
+    globalPluginConfig: SerializedKVConfigSettingsDict
     workingDirectoryPath: NotRequired[str | None]
     sessionId: str
 
@@ -8830,7 +8830,7 @@ class PseudoLlmRpcGetLoadConfig(
     LMStudioStruct["PseudoLlmRpcGetLoadConfigDict"], kw_only=True
 ):
     parameter: LlmRpcGetLoadConfigParameter
-    returns: LlmRpcGetLoadConfigReturns
+    returns: SerializedKVConfigSettings
 
 
 class PseudoLlmRpcGetLoadConfigDict(TypedDict):
@@ -8841,7 +8841,7 @@ class PseudoLlmRpcGetLoadConfigDict(TypedDict):
     """
 
     parameter: LlmRpcGetLoadConfigParameterDict
-    returns: LlmRpcGetLoadConfigReturnsDict
+    returns: SerializedKVConfigSettingsDict
 
 
 class LlmRpcTokenizeParameter(
@@ -9525,8 +9525,8 @@ class PseudoPluginsChannelSetToolsProviderDict(TypedDict):
     toServerPacket: PluginsChannelSetToolsProviderToServerPacketDict
 
 
-class PluginsChannelSetPromptPreprocessorToClientPacketPreprocess(
-    LMStudioStruct["PluginsChannelSetPromptPreprocessorToClientPacketPreprocessDict"],
+class PromptPreprocessingRequest(
+    LMStudioStruct["PromptPreprocessingRequestDict"],
     kw_only=True,
     tag_field="type",
     tag="preprocess",
@@ -9534,15 +9534,15 @@ class PluginsChannelSetPromptPreprocessorToClientPacketPreprocess(
     type: ClassVar[Annotated[Literal["preprocess"], Meta(title="Type")]] = "preprocess"
     task_id: str = field(name="taskId")
     input: AnyChatMessage
-    config: LlmRpcGetLoadConfigReturns
-    plugin_config: LlmRpcGetLoadConfigReturns = field(name="pluginConfig")
-    global_plugin_config: LlmRpcGetLoadConfigReturns = field(name="globalPluginConfig")
+    config: SerializedKVConfigSettings
+    plugin_config: SerializedKVConfigSettings = field(name="pluginConfig")
+    global_plugin_config: SerializedKVConfigSettings = field(name="globalPluginConfig")
     working_directory_path: str | None = field(name="workingDirectoryPath")
     pci: str
     token: str
 
 
-class PluginsChannelSetPromptPreprocessorToClientPacketPreprocessDict(TypedDict):
+class PromptPreprocessingRequestDict(TypedDict):
     """Corresponding typed dictionary definition for PluginsChannelSetPromptPreprocessorToClientPacketPreprocess.
 
     NOTE: Multi-word keys are defined using their camelCase form,
@@ -9552,16 +9552,16 @@ class PluginsChannelSetPromptPreprocessorToClientPacketPreprocessDict(TypedDict)
     type: Literal["preprocess"]
     taskId: str
     input: AnyChatMessageDict
-    config: LlmRpcGetLoadConfigReturnsDict
-    pluginConfig: LlmRpcGetLoadConfigReturnsDict
-    globalPluginConfig: LlmRpcGetLoadConfigReturnsDict
+    config: SerializedKVConfigSettingsDict
+    pluginConfig: SerializedKVConfigSettingsDict
+    globalPluginConfig: SerializedKVConfigSettingsDict
     workingDirectoryPath: NotRequired[str | None]
     pci: str
     token: str
 
 
-class PluginsChannelSetPromptPreprocessorToServerPacketComplete(
-    LMStudioStruct["PluginsChannelSetPromptPreprocessorToServerPacketCompleteDict"],
+class PromptPreprocessingComplete(
+    LMStudioStruct["PromptPreprocessingCompleteDict"],
     kw_only=True,
     tag_field="type",
     tag="complete",
@@ -9571,7 +9571,7 @@ class PluginsChannelSetPromptPreprocessorToServerPacketComplete(
     processed: AnyChatMessage
 
 
-class PluginsChannelSetPromptPreprocessorToServerPacketCompleteDict(TypedDict):
+class PromptPreprocessingCompleteDict(TypedDict):
     """Corresponding typed dictionary definition for PluginsChannelSetPromptPreprocessorToServerPacketComplete.
 
     NOTE: Multi-word keys are defined using their camelCase form,
@@ -10192,21 +10192,20 @@ class PseudoPluginsChannelRegisterDevelopmentPluginDict(TypedDict):
 
 
 PluginsChannelSetPromptPreprocessorToClientPacket = (
-    PluginsChannelSetPromptPreprocessorToClientPacketPreprocess
-    | PluginsChannelSetPromptPreprocessorToClientPacketAbort
+    PromptPreprocessingRequest | PluginsChannelSetPromptPreprocessorToClientPacketAbort
 )
 PluginsChannelSetPromptPreprocessorToClientPacketDict = (
-    PluginsChannelSetPromptPreprocessorToClientPacketPreprocessDict
+    PromptPreprocessingRequestDict
     | PluginsChannelSetPromptPreprocessorToClientPacketAbortDict
 )
 PluginsChannelSetPromptPreprocessorToServerPacket = (
-    PluginsChannelSetPromptPreprocessorToServerPacketComplete
+    PromptPreprocessingComplete
     | PluginsChannelSetPromptPreprocessorToServerPacketAborted
     | PluginsChannelSetPromptPreprocessorToServerPacketError
 )
 PluginsChannelSetPromptPreprocessorToServerPacketDict = (
     PluginsChannelSetPromptPreprocessorToServerPacketErrorDict
-    | PluginsChannelSetPromptPreprocessorToServerPacketCompleteDict
+    | PromptPreprocessingCompleteDict
     | PluginsChannelSetPromptPreprocessorToServerPacketAbortedDict
 )
 
@@ -10242,8 +10241,8 @@ class PluginsChannelSetGeneratorToClientPacketGenerate(
     type: ClassVar[Annotated[Literal["generate"], Meta(title="Type")]] = "generate"
     task_id: str = field(name="taskId")
     input: PluginsRpcProcessingPullHistoryReturns
-    plugin_config: LlmRpcGetLoadConfigReturns = field(name="pluginConfig")
-    global_plugin_config: LlmRpcGetLoadConfigReturns = field(name="globalPluginConfig")
+    plugin_config: SerializedKVConfigSettings = field(name="pluginConfig")
+    global_plugin_config: SerializedKVConfigSettings = field(name="globalPluginConfig")
     tool_definitions: Sequence[LlmTool] = field(name="toolDefinitions")
     working_directory_path: str | None = field(name="workingDirectoryPath")
 
@@ -10258,8 +10257,8 @@ class PluginsChannelSetGeneratorToClientPacketGenerateDict(TypedDict):
     type: Literal["generate"]
     taskId: str
     input: PluginsRpcProcessingPullHistoryReturnsDict
-    pluginConfig: LlmRpcGetLoadConfigReturnsDict
-    globalPluginConfig: LlmRpcGetLoadConfigReturnsDict
+    pluginConfig: SerializedKVConfigSettingsDict
+    globalPluginConfig: SerializedKVConfigSettingsDict
     toolDefinitions: Sequence[LlmToolFunctionDict]
     workingDirectoryPath: NotRequired[str | None]
 
