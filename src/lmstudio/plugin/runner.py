@@ -12,7 +12,15 @@ import warnings
 
 from functools import partial
 from pathlib import Path
-from typing import Awaitable, Callable, Iterable, TypeAlias, assert_never
+from typing import (
+    Awaitable,
+    Callable,
+    Generic,
+    Iterable,
+    TypeAlias,
+    TypeVar,
+    assert_never,
+)
 
 from anyio import create_task_group
 
@@ -27,11 +35,12 @@ from ..json_api import (
     ToolDefinition,
 )
 from ..async_api import AsyncClient, AsyncSession
+from .._kv_config import dict_from_kvconfig
 from .._sdk_models import (
     # TODO: Define aliases at schema generation time
     # PluginsChannelSetGeneratorToClientPacketAbort as TokenGenerationAbort,
     # PluginsChannelSetGeneratorToClientPacketAbortDict as TokenGenerationAbortDict,
-    # PluginsChannelSetGeneratorToClientPacketGenerate as TokenGenerationRequest,
+    PluginsChannelSetGeneratorToClientPacketGenerate as TokenGenerationRequest,
     # PluginsChannelSetGeneratorToClientPacketGenerateDict as TokenGenerationRequestDict,
     # PluginsChannelSetGeneratorToServerPacketAborted as TokenGenerationAborted,
     # PluginsChannelSetGeneratorToServerPacketAbortedDict as TokenGenerationAbortedDict,
@@ -61,7 +70,7 @@ from .._sdk_models import (
     # PluginsChannelSetToolsProviderToClientPacketCallToolDict as ProvideToolsCallRequestDict,
     # PluginsChannelSetToolsProviderToClientPacketDiscardSession as ProvideToolsDiscardSession,
     # PluginsChannelSetToolsProviderToClientPacketDiscardSessionDict as ProvideToolsDiscardSessionDict,
-    # PluginsChannelSetToolsProviderToClientPacketInitSession as ProvideToolsInitSession,
+    PluginsChannelSetToolsProviderToClientPacketInitSession as ProvideToolsInitSession,
     # PluginsChannelSetToolsProviderToClientPacketInitSessionDict as ProvideToolsInitSessionDict,
     # PluginsChannelSetToolsProviderToServerPacketSessionInitializationFailed as ProvideToolsSessionInitFailed,
     # PluginsChannelSetToolsProviderToServerPacketSessionInitializationFailedDict as ProvideToolsSessionInitFailedDict,
@@ -157,10 +166,40 @@ class AsyncSessionPlugins(AsyncSession):
     API_NAMESPACE = "plugins"
 
 
-class PromptPreprocessorController:
-    """Utility class for prompt preprocessor hook implementations."""
+PluginRequest: TypeAlias = (
+    PromptPreprocessingRequest | TokenGenerationRequest | ProvideToolsInitSession
+)
+TPluginRequest = TypeVar("TPluginRequest", bound=PluginRequest)
 
-    pass
+
+class HookController(Generic[TPluginRequest]):
+    """Common base class for plugin hook API access controllers."""
+
+    def __init__(
+        self, request: TPluginRequest, plugin_config: type[BaseConfigSchema] | None
+    ) -> None:
+        """Initialize common hook controller settings."""
+        self.plugin_config = (
+            plugin_config._parse(request.plugin_config) if plugin_config else {}
+        )
+        self.global_config = dict_from_kvconfig(request.global_plugin_config)
+        work_dir = request.working_directory_path
+        self.working_path = Path(work_dir) if work_dir else None
+
+
+class PromptPreprocessorController(HookController[PromptPreprocessingRequest]):
+    """API access for prompt preprocessor hook implementations."""
+
+    def __init__(
+        self,
+        request: PromptPreprocessingRequest,
+        plugin_config: type[BaseConfigSchema] | None,
+    ) -> None:
+        """Initialize prompt preprocessor hook controller."""
+        super().__init__(request, plugin_config)
+        self._tbd_config = dict_from_kvconfig(request.config)  # TODO: check contents
+        self.pci = request.pci
+        self.token = request.token
 
 
 PromptPreprocessorHook = Callable[
@@ -168,19 +207,15 @@ PromptPreprocessorHook = Callable[
 ]
 
 
-class TokenGeneratorController:
-    """Utility class for token generator hook implementations."""
-
-    pass
+class TokenGeneratorController(HookController[TokenGenerationRequest]):
+    """API access for token generator hook implementations."""
 
 
 TokenGeneratorHook = Callable[[TokenGeneratorController], Awaitable[None]]
 
 
-class ToolsProviderController:
-    """Utility class for tools provider hook implementations."""
-
-    pass
+class ToolsProviderController(HookController[ProvideToolsInitSession]):
+    """API access for tools provider hook implementations."""
 
 
 ToolsProviderHook = Callable[
@@ -239,20 +274,24 @@ class PluginClient(AsyncClient):
         return self._get_session(AsyncSessionPlugins)
 
     async def run_hook_prompt_preprocessor(
-        self, hook_impl: PromptPreprocessorHook | None
+        self,
+        hook_impl: PromptPreprocessorHook | None,
+        plugin_config: type[BaseConfigSchema] | None,
     ) -> bool:
         """Accept prompt preprocessing requests."""
         hook_ready_event = self._hook_ready_events["prompt_preprocessor"]
         if hook_impl is None:
+            print("No hook defined for prompt preprocessing requests")
             hook_ready_event.set()
             return False
         endpoint = PromptPreprocessingEndpoint()
         async with self.plugins._create_channel(endpoint) as channel:
             hook_ready_event.set()
-            hook_controller = PromptPreprocessorController()
+            print("Opened channel to receive prompt preprocessing requests...")
 
             async def _invoke_hook(request: PromptPreprocessingRequest) -> None:
                 message = request.input
+                hook_controller = PromptPreprocessorController(request, plugin_config)
                 # TODO once stable: use sdk_api_callback context manager
                 response = await hook_impl(hook_controller, message)
                 if response is None:
@@ -266,39 +305,50 @@ class PluginClient(AsyncClient):
                 )
 
             async with create_task_group() as tg:
+                print("Waiting for prompt preprocessing requests...")
                 async for contents in channel.rx_stream():
+                    print(f"Handling prompt preprocessing channel message: {contents}")
                     for event in endpoint.iter_message_events(contents):
+                        print("Handling prompt preprocessing channel event")
                         endpoint.handle_rx_event(event)
                         match event:
                             case PromptPreprocessingRequestEvent():
+                                print("Running prompt preprocessing request hook")
                                 tg.start_soon(_invoke_hook, event.arg)
                     if endpoint.is_finished:
                         break
         return True
 
     async def run_hook_token_generator(
-        self, hook_impl: TokenGeneratorHook | None
+        self,
+        hook_impl: TokenGeneratorHook | None,
+        plugin_config: type[BaseConfigSchema] | None,
     ) -> bool:
         """Accept token generation requests."""
         hook_ready_event = self._hook_ready_events["token_generator"]
         if hook_impl is None:
+            print("No hook defined for token generation requests")
             hook_ready_event.set()
             return False
         # TODO: Dispatch to plugin defined token generation hook
         return True
 
     async def run_hook_tools_provider(
-        self, hook_impl: ToolsProviderHook | None
+        self,
+        hook_impl: ToolsProviderHook | None,
+        plugin_config: type[BaseConfigSchema] | None,
     ) -> bool:
-        """Accept token generation requests."""
+        """Accept tools provider requests."""
         # TODO: Retrieve hook definition from plugin
         hook_ready_event = self._hook_ready_events["tools_provider"]
         if hook_impl is None:
+            print("No hook defined for tools provider requests")
             hook_ready_event.set()
             return False
         # TODO: Dispatch to plugin defined tools provision hook
         return True
 
+    # TODO: Cleanup the assorted debugging prints (either remove or migrate to logging)
     async def run_plugin(self, *, allow_local_imports: bool = False) -> int:
         # TODO: Nicer error handling
         source_path = self._plugin_path / "src"
@@ -311,28 +361,30 @@ class PluginClient(AsyncClient):
             sys.path.insert(0, str(source_path))
         plugin_ns = runpy.run_path(str(plugin_path), run_name="__lms_plugin__")
         prompt_preprocessor: PromptPreprocessorHook | None = plugin_ns.get(
-            "prompt_preprocessor", None
+            "preprocess_prompt", None
         )
-        config_model = plugin_ns.get("ConfigSchema", None)
-        if config_model is not None:
-            if not issubclass(config_model, BaseConfigSchema):
+        config_schema: type[BaseConfigSchema] | None = plugin_ns.get(
+            "ConfigSchema", None
+        )
+        if config_schema is not None:
+            if not issubclass(config_schema, BaseConfigSchema):
                 raise LMStudioPluginInitError(
-                    f"Expected {BaseConfigSchema!r} subclass definition, not {config_model!r}"
+                    f"Expected {BaseConfigSchema!r} subclass definition, not {config_schema!r}"
                 )
-
             await self.plugins.remote_call(
                 "setConfigSchematics",
                 PluginsRpcSetConfigSchematicsParameter(
-                    schematics=config_model()._to_kv_config_schematics(),
+                    schematics=config_schema._to_kv_config_schematics(),
                 ),
             )
-        # TODO: register config schematic
         # Use anyio and exceptiongroup to handle the lack of native task
         # and exception groups prior to Python 3.11
         async with create_task_group() as tg:
-            tg.start_soon(self.run_hook_prompt_preprocessor, prompt_preprocessor)
-            tg.start_soon(self.run_hook_token_generator, None)
-            tg.start_soon(self.run_hook_tools_provider, None)
+            tg.start_soon(
+                self.run_hook_prompt_preprocessor, prompt_preprocessor, config_schema
+            )
+            tg.start_soon(self.run_hook_token_generator, None, config_schema)
+            tg.start_soon(self.run_hook_tools_provider, None, config_schema)
             # Should this have a time limit set to guard against SDK bugs?
             await asyncio.gather(*(e.wait() for e in self._hook_ready_events.values()))
             await self.plugins.remote_call("pluginInitCompleted")
