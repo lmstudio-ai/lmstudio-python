@@ -10,275 +10,36 @@ import runpy
 import sys
 import warnings
 
-from datetime import datetime, UTC
 from functools import partial
 from pathlib import Path
-from random import randrange
-from typing import (
-    Any,
-    Awaitable,
-    Callable,
-    Generic,
-    Iterable,
-    TypeAlias,
-    TypeVar,
-    assert_never,
-)
 
 from anyio import create_task_group
 
-from ..schemas import DictObject, EmptyDict
-from ..history import AnyChatMessage, AnyChatMessageDict
-from ..json_api import (
-    ChannelCommonRxEvent,
-    ChannelEndpoint,
-    ChannelFinishedEvent,
-    ChannelRxEvent,
-    LMStudioChannelClosedError,
-    ToolDefinition,
-)
-from ..async_api import AsyncClient, AsyncSession
-from .._kv_config import dict_from_kvconfig
+from ..schemas import DictObject
+from ..async_api import AsyncClient
 from .._sdk_models import (
     # TODO: Define aliases at schema generation time
-    PluginsChannelSetGeneratorToClientPacketGenerate as TokenGenerationRequest,
-    PluginsChannelSetToolsProviderToClientPacketInitSession as ProvideToolsInitSession,
-    PluginsRpcProcessingHandleUpdateParameter,
     PluginsRpcSetConfigSchematicsParameter,
-    ProcessingUpdate,
-    ProcessingUpdateStatusCreate,
-    ProcessingUpdateStatusUpdate,
-    PromptPreprocessingRequest,
-    PromptPreprocessingCompleteDict,
-    StatusStepState,
-    StatusStepStatus,
 )
 from .sdk_api import LMStudioPluginInitError
 from .config_schemas import BaseConfigSchema
+from .hooks import (
+    AsyncSessionPlugins,
+    PromptPreprocessorHook,
+    TokenGeneratorHook,
+    ToolsProviderHook,
+    run_prompt_preprocessor,
+)
 
 __all__ = [
-    "PromptPreprocessorController",
+    "run_plugin",
+    "run_plugin_async",
 ]
 
 # Warn about the plugin API stability, since it is still experimental
 _PLUGIN_API_STABILITY_WARNING = """\
 Note the plugin API is not yet stable and may change without notice in future releases
 """
-
-# TODO: Separate out the specifics of each hook channel to dedicated submodules
-
-
-class PromptPreprocessingAbortEvent(ChannelRxEvent[str]):
-    pass
-
-
-class PromptPreprocessingRequestEvent(ChannelRxEvent[PromptPreprocessingRequest]):
-    pass
-
-
-PromptPreprocessingRxEvent: TypeAlias = (
-    PromptPreprocessingAbortEvent
-    | PromptPreprocessingRequestEvent
-    | ChannelCommonRxEvent
-)
-
-
-class PromptPreprocessingEndpoint(
-    ChannelEndpoint[tuple[str, str], PromptPreprocessingRxEvent, EmptyDict]
-):
-    """API channel endpoint to register a development plugin and receive credentials."""
-
-    _API_ENDPOINT = "setPromptPreprocessor"
-    _NOTICE_PREFIX = "Prompt preprocessing"
-
-    def __init__(self) -> None:
-        super().__init__({})
-
-    def iter_message_events(
-        self, contents: DictObject | None
-    ) -> Iterable[PromptPreprocessingRxEvent]:
-        match contents:
-            case None:
-                raise LMStudioChannelClosedError(
-                    "Server failed to complete development plugin registration."
-                )
-            case {"type": "abort", "task_id": str(task_id)}:
-                yield PromptPreprocessingAbortEvent(task_id)
-            case {"type": "preprocess"} as request_dict:
-                parsed_request = PromptPreprocessingRequest._from_any_api_dict(
-                    request_dict
-                )
-                yield PromptPreprocessingRequestEvent(parsed_request)
-            case unmatched:
-                self.report_unknown_message(unmatched)
-
-    def handle_rx_event(self, event: PromptPreprocessingRxEvent) -> None:
-        match event:
-            case PromptPreprocessingAbortEvent(task_id):
-                self._logger.info(f"Aborting {task_id}", task_id=task_id)
-            case PromptPreprocessingRequestEvent(request):
-                task_id = request.task_id
-                self._logger.info(
-                    "Received prompt preprocessing request", task_id=task_id
-                )
-            case ChannelFinishedEvent(_):
-                pass
-            case _:
-                assert_never(event)
-
-
-class AsyncSessionPlugins(AsyncSession):
-    """Async client session for the plugins namespace."""
-
-    API_NAMESPACE = "plugins"
-
-
-PluginRequest: TypeAlias = (
-    PromptPreprocessingRequest | TokenGenerationRequest | ProvideToolsInitSession
-)
-TPluginRequest = TypeVar("TPluginRequest", bound=PluginRequest)
-
-
-class HookController(Generic[TPluginRequest]):
-    """Common base class for plugin hook API access controllers."""
-
-    def __init__(
-        self,
-        session: AsyncSessionPlugins,
-        request: TPluginRequest,
-        plugin_config: type[BaseConfigSchema] | None,
-    ) -> None:
-        """Initialize common hook controller settings."""
-        self.session = session
-        self.plugin_config = (
-            plugin_config._parse(request.plugin_config) if plugin_config else {}
-        )
-        self.global_config = dict_from_kvconfig(request.global_plugin_config)
-        work_dir = request.working_directory_path
-        self.working_path = Path(work_dir) if work_dir else None
-
-    @classmethod
-    def _create_ui_block_id(self) -> str:
-        return f"{datetime.now(UTC)}-{randrange(-sys.maxsize, sys.maxsize)}"
-
-
-StatusUpdateCallback: TypeAlias = Callable[[str, StatusStepStatus, str], Any]
-
-
-class StatusBlockController:
-    """API access to update a UI status block in-place."""
-
-    def __init__(
-        self,
-        block_id: str,
-        update_ui: StatusUpdateCallback,
-    ) -> None:
-        """Initialize status block controller."""
-        self._id = block_id
-        self._update_ui = update_ui
-
-    async def notify_waiting(self, message: str) -> None:
-        """Report task is waiting (static icon) in the status block."""
-        await self._update_ui(self._id, "waiting", message)
-
-    async def notify_working(self, message: str) -> None:
-        """Report task is working (dynamic icon) in the status block."""
-        await self._update_ui(self._id, "loading", message)
-
-    async def notify_error(self, message: str) -> None:
-        """Report task error in the status block."""
-        await self._update_ui(self._id, "error", message)
-
-    async def notify_canceled(self, message: str) -> None:
-        """Report task cancellation in the status block."""
-        await self._update_ui(self._id, "canceled", message)
-
-    async def notify_done(self, message: str) -> None:
-        """Report task completion in the status block."""
-        await self._update_ui(self._id, "done", message)
-
-
-class PromptPreprocessorController(HookController[PromptPreprocessingRequest]):
-    """API access for prompt preprocessor hook implementations."""
-
-    def __init__(
-        self,
-        session: AsyncSessionPlugins,
-        request: PromptPreprocessingRequest,
-        plugin_config: type[BaseConfigSchema] | None,
-    ) -> None:
-        """Initialize prompt preprocessor hook controller."""
-        super().__init__(session, request, plugin_config)
-        self.pci = request.pci
-        self.token = request.token
-
-    async def _send_handle_update(self, update: ProcessingUpdate) -> Any:
-        handle_update = PluginsRpcProcessingHandleUpdateParameter(
-            pci=self.pci,
-            token=self.token,
-            update=update,
-        )
-        return await self.session.remote_call("processingHandleUpdate", handle_update)
-
-    async def _create_status_block(
-        self, block_id: str, status: StatusStepStatus, message: str
-    ) -> None:
-        await self._send_handle_update(
-            ProcessingUpdateStatusCreate(
-                id=block_id,
-                state=StatusStepState(
-                    status=status,
-                    text=message,
-                ),
-            ),
-        )
-
-    async def _send_status_update(
-        self, block_id: str, status: StatusStepStatus, message: str
-    ) -> None:
-        await self._send_handle_update(
-            ProcessingUpdateStatusUpdate(
-                id=block_id,
-                state=StatusStepState(
-                    status=status,
-                    text=message,
-                ),
-            ),
-        )
-
-    async def notify_start(self, message: str) -> StatusBlockController:
-        """Report task initiation in a new UI status block, return controller for updates."""
-        status_block = StatusBlockController(
-            self._create_ui_block_id(),
-            self._send_status_update,
-        )
-        await self._create_status_block(status_block._id, "waiting", message)
-        return status_block
-
-    async def notify_done(self, message: str) -> None:
-        """Report task completion in a new UI status block."""
-        await self._create_status_block(self._create_ui_block_id(), "done", message)
-
-
-PromptPreprocessorHook = Callable[
-    [PromptPreprocessorController, AnyChatMessage], Awaitable[AnyChatMessageDict | None]
-]
-
-
-class TokenGeneratorController(HookController[TokenGenerationRequest]):
-    """API access for token generator hook implementations."""
-
-
-TokenGeneratorHook = Callable[[TokenGeneratorController], Awaitable[None]]
-
-
-class ToolsProviderController(HookController[ProvideToolsInitSession]):
-    """API access for tools provider hook implementations."""
-
-
-ToolsProviderHook = Callable[
-    [ToolsProviderController], Awaitable[Iterable[ToolDefinition]]
-]
 
 
 class PluginClient(AsyncClient):
@@ -342,42 +103,9 @@ class PluginClient(AsyncClient):
             print("No hook defined for prompt preprocessing requests")
             hook_ready_event.set()
             return False
-        endpoint = PromptPreprocessingEndpoint()
-        session = self.plugins
-        async with session._create_channel(endpoint) as channel:
-            hook_ready_event.set()
-            print("Opened channel to receive prompt preprocessing requests...")
-
-            async def _invoke_hook(request: PromptPreprocessingRequest) -> None:
-                message = request.input
-                hook_controller = PromptPreprocessorController(
-                    session, request, plugin_config
-                )
-                # TODO once stable: use sdk_api_callback context manager
-                response = await hook_impl(hook_controller, message)
-                if response is None:
-                    response = message.to_dict()
-                await channel.send_message(
-                    PromptPreprocessingCompleteDict(
-                        type="complete",
-                        taskId=request.task_id,
-                        processed=response,
-                    )
-                )
-
-            async with create_task_group() as tg:
-                print("Waiting for prompt preprocessing requests...")
-                async for contents in channel.rx_stream():
-                    print(f"Handling prompt preprocessing channel message: {contents}")
-                    for event in endpoint.iter_message_events(contents):
-                        print("Handling prompt preprocessing channel event")
-                        endpoint.handle_rx_event(event)
-                        match event:
-                            case PromptPreprocessingRequestEvent():
-                                print("Running prompt preprocessing request hook")
-                                tg.start_soon(_invoke_hook, event.arg)
-                    if endpoint.is_finished:
-                        break
+        await run_prompt_preprocessor(
+            hook_impl, plugin_config, self.plugins, hook_ready_event.set
+        )
         return True
 
     async def run_hook_token_generator(

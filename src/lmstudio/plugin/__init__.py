@@ -5,12 +5,12 @@
 
 from .sdk_api import *
 from .config_schemas import *
+from .hooks import *
 from .runner import *
 
 # Initial Python plugin SDK TODO list
 #
 # General tasks
-# * refactor hook channel and controller definitions out to a submodule
 # * refactor hook registration to be data driven instead of hardcoded in the runner
 # * refactor to allow "Abort" request handling to be common across hook invocation tasks
 # * refactor to allow hook invocation error handling to be common across hook invocation tasks
