@@ -46,11 +46,12 @@ from .._sdk_models import (
     PluginsRpcProcessingHandleUpdateParameter,
     PluginsRpcSetConfigSchematicsParameter,
     ProcessingUpdate,
-    ProcessingUpdateDebugInfoBlockCreate,
     ProcessingUpdateStatusCreate,
+    ProcessingUpdateStatusUpdate,
     PromptPreprocessingRequest,
     PromptPreprocessingCompleteDict,
     StatusStepState,
+    StatusStepStatus,
 )
 from .sdk_api import LMStudioPluginInitError
 from .config_schemas import BaseConfigSchema
@@ -156,6 +157,46 @@ class HookController(Generic[TPluginRequest]):
         work_dir = request.working_directory_path
         self.working_path = Path(work_dir) if work_dir else None
 
+    @classmethod
+    def _create_ui_block_id(self) -> str:
+        return f"{datetime.now(UTC)}-{randrange(-sys.maxsize, sys.maxsize)}"
+
+
+StatusUpdateCallback: TypeAlias = Callable[[str, StatusStepStatus, str], Any]
+
+
+class StatusBlockController:
+    """API access to update a UI status block in-place."""
+
+    def __init__(
+        self,
+        block_id: str,
+        update_ui: StatusUpdateCallback,
+    ) -> None:
+        """Initialize status block controller."""
+        self._id = block_id
+        self._update_ui = update_ui
+
+    async def notify_waiting(self, message: str) -> None:
+        """Report task is waiting (static icon) in the status block."""
+        await self._update_ui(self._id, "waiting", message)
+
+    async def notify_working(self, message: str) -> None:
+        """Report task is working (dynamic icon) in the status block."""
+        await self._update_ui(self._id, "loading", message)
+
+    async def notify_error(self, message: str) -> None:
+        """Report task error in the status block."""
+        await self._update_ui(self._id, "error", message)
+
+    async def notify_canceled(self, message: str) -> None:
+        """Report task cancellation in the status block."""
+        await self._update_ui(self._id, "canceled", message)
+
+    async def notify_done(self, message: str) -> None:
+        """Report task completion in the status block."""
+        await self._update_ui(self._id, "done", message)
+
 
 class PromptPreprocessorController(HookController[PromptPreprocessingRequest]):
     """API access for prompt preprocessor hook implementations."""
@@ -168,13 +209,8 @@ class PromptPreprocessorController(HookController[PromptPreprocessingRequest]):
     ) -> None:
         """Initialize prompt preprocessor hook controller."""
         super().__init__(session, request, plugin_config)
-        self._tbd_config = dict_from_kvconfig(request.config)  # TODO: check contents
         self.pci = request.pci
         self.token = request.token
-
-    @classmethod
-    def _create_block_id(self) -> str:
-        return f"{datetime.now(UTC)}-{randrange(-sys.maxsize, sys.maxsize)}"
 
     async def _send_handle_update(self, update: ProcessingUpdate) -> Any:
         handle_update = PluginsRpcProcessingHandleUpdateParameter(
@@ -184,18 +220,44 @@ class PromptPreprocessorController(HookController[PromptPreprocessingRequest]):
         )
         return await self.session.remote_call("processingHandleUpdate", handle_update)
 
-    # TODO: Provide a structured API for manipulating UI status blocks in-place
-    async def notify_done(self, message: str) -> None:
-        """Report task completion in a new UI status block."""
+    async def _create_status_block(
+        self, block_id: str, status: StatusStepStatus, message: str
+    ) -> None:
         await self._send_handle_update(
             ProcessingUpdateStatusCreate(
-                id=self._create_block_id(),
+                id=block_id,
                 state=StatusStepState(
-                    status="done",
+                    status=status,
                     text=message,
                 ),
             ),
         )
+
+    async def _send_status_update(
+        self, block_id: str, status: StatusStepStatus, message: str
+    ) -> None:
+        await self._send_handle_update(
+            ProcessingUpdateStatusUpdate(
+                id=block_id,
+                state=StatusStepState(
+                    status=status,
+                    text=message,
+                ),
+            ),
+        )
+
+    async def notify_start(self, message: str) -> StatusBlockController:
+        """Report task initiation in a new UI status block, return controller for updates."""
+        status_block = StatusBlockController(
+            self._create_ui_block_id(),
+            self._send_status_update,
+        )
+        await self._create_status_block(status_block._id, "waiting", message)
+        return status_block
+
+    async def notify_done(self, message: str) -> None:
+        """Report task completion in a new UI status block."""
+        await self._create_status_block(self._create_ui_block_id(), "done", message)
 
 
 PromptPreprocessorHook = Callable[
