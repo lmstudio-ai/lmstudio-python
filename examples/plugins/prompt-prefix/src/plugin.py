@@ -20,11 +20,13 @@ async def preprocess_prompt(ctl: PromptPreprocessorController, message: AnyChatM
     print(f"Running prompt preprocessor hook from {__file__} with {ctl.plugin_config}")
     modified_message = message.to_dict()
     # Add a prefix to all user messages
+    prefix_text = ctl.plugin_config["prefix"]
     prefix: TextDataDict = {
         "type": "text",
-        "text": ctl.plugin_config["prefix"],
+        "text": prefix_text,
     }
     modified_message["content"] = [prefix, *modified_message["content"]]
+    await ctl.notify_done(f"Added prefix {prefix_text!r} to user message.")
     return modified_message
 
 print(f"{__name__} initialized from {__file__}")

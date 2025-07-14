@@ -10,9 +10,12 @@ import runpy
 import sys
 import warnings
 
+from datetime import datetime, UTC
 from functools import partial
 from pathlib import Path
+from random import randrange
 from typing import (
+    Any,
     Awaitable,
     Callable,
     Generic,
@@ -38,53 +41,16 @@ from ..async_api import AsyncClient, AsyncSession
 from .._kv_config import dict_from_kvconfig
 from .._sdk_models import (
     # TODO: Define aliases at schema generation time
-    # PluginsChannelSetGeneratorToClientPacketAbort as TokenGenerationAbort,
-    # PluginsChannelSetGeneratorToClientPacketAbortDict as TokenGenerationAbortDict,
     PluginsChannelSetGeneratorToClientPacketGenerate as TokenGenerationRequest,
-    # PluginsChannelSetGeneratorToClientPacketGenerateDict as TokenGenerationRequestDict,
-    # PluginsChannelSetGeneratorToServerPacketAborted as TokenGenerationAborted,
-    # PluginsChannelSetGeneratorToServerPacketAbortedDict as TokenGenerationAbortedDict,
-    # PluginsChannelSetGeneratorToServerPacketComplete as TokenGenerationComplete,
-    # PluginsChannelSetGeneratorToServerPacketCompleteDict as TokenGenerationCompleteDict,
-    # PluginsChannelSetGeneratorToServerPacketError as TokenGenerationError,
-    # PluginsChannelSetGeneratorToServerPacketErrorDict as TokenGenerationErrorDict,
-    # PluginsChannelSetGeneratorToServerPacketFragmentGenerated as TokenGenerationFragment,
-    # PluginsChannelSetGeneratorToServerPacketFragmentGeneratedDict as TokenGenerationFragmentDict,
-    # PluginsChannelSetGeneratorToServerPacketToolCallGenerationArgumentFragmentGenerated as ToolCallGenerationFragment,
-    # PluginsChannelSetGeneratorToServerPacketToolCallGenerationArgumentFragmentGeneratedDict as ToolCallGenerationFragmentDict,
-    # PluginsChannelSetGeneratorToServerPacketToolCallGenerationEnded as ToolCallGenerationEnded,
-    # PluginsChannelSetGeneratorToServerPacketToolCallGenerationEndedDict as ToolCallGenerationEndedDict,
-    # PluginsChannelSetGeneratorToServerPacketToolCallGenerationFailed as ToolCallGenerationFailed,
-    # PluginsChannelSetGeneratorToServerPacketToolCallGenerationFailedDict as ToolCallGenerationFailedDict,
-    # PluginsChannelSetGeneratorToServerPacketToolCallGenerationNameReceived as ToolCallGenerationNameReceived,
-    # PluginsChannelSetGeneratorToServerPacketToolCallGenerationNameReceivedDict as ToolCallGenerationNameReceivedDict,
-    # PluginsChannelSetGeneratorToServerPacketToolCallGenerationStarted as ToolCallGenerationStarted,
-    # PluginsChannelSetGeneratorToServerPacketToolCallGenerationStartedDict as ToolCallGenerationStartedDict,
-    # PluginsChannelSetPromptPreprocessorToServerPacketAbortedDict as PromptPreprocessingAbortedDict,
+    PluginsChannelSetToolsProviderToClientPacketInitSession as ProvideToolsInitSession,
+    PluginsRpcProcessingHandleUpdateParameter,
+    PluginsRpcSetConfigSchematicsParameter,
+    ProcessingUpdate,
+    ProcessingUpdateDebugInfoBlockCreate,
+    ProcessingUpdateStatusCreate,
     PromptPreprocessingRequest,
     PromptPreprocessingCompleteDict,
-    # PluginsChannelSetPromptPreprocessorToServerPacketErrorDict as PromptPreprocessingErrorDict,
-    # PluginsChannelSetToolsProviderToClientPacketAbortToolCall as ProvideToolsAbort,
-    # PluginsChannelSetToolsProviderToClientPacketAbortToolCallDict as ProvideToolsAbortDict,
-    # PluginsChannelSetToolsProviderToClientPacketCallTool as ProvideToolsCallRequest,
-    # PluginsChannelSetToolsProviderToClientPacketCallToolDict as ProvideToolsCallRequestDict,
-    # PluginsChannelSetToolsProviderToClientPacketDiscardSession as ProvideToolsDiscardSession,
-    # PluginsChannelSetToolsProviderToClientPacketDiscardSessionDict as ProvideToolsDiscardSessionDict,
-    PluginsChannelSetToolsProviderToClientPacketInitSession as ProvideToolsInitSession,
-    # PluginsChannelSetToolsProviderToClientPacketInitSessionDict as ProvideToolsInitSessionDict,
-    # PluginsChannelSetToolsProviderToServerPacketSessionInitializationFailed as ProvideToolsSessionInitFailed,
-    # PluginsChannelSetToolsProviderToServerPacketSessionInitializationFailedDict as ProvideToolsSessionInitFailedDict,
-    # PluginsChannelSetToolsProviderToServerPacketSessionInitialized as ProvideToolsSessionInitialized,
-    # PluginsChannelSetToolsProviderToServerPacketSessionInitializedDict as ProvideToolsSessionInitializedDict,
-    # PluginsChannelSetToolsProviderToServerPacketToolCallComplete as ProvideToolsCallComplete,
-    # PluginsChannelSetToolsProviderToServerPacketToolCallCompleteDict as ProvideToolsCallCompleteDict,
-    # PluginsChannelSetToolsProviderToServerPacketToolCallError as ProvideToolsCallError,
-    # PluginsChannelSetToolsProviderToServerPacketToolCallErrorDict as ProvideToolsCallErrorDict,
-    # PluginsChannelSetToolsProviderToServerPacketToolCallStatus as ProvideToolsCallStatus,
-    # PluginsChannelSetToolsProviderToServerPacketToolCallStatusDict as ProvideToolsCallStatusDict,
-    # PluginsChannelSetToolsProviderToServerPacketToolCallWarn as ProvideToolsCallWarn,
-    # PluginsChannelSetToolsProviderToServerPacketToolCallWarnDict as ProvideToolsCallWarnDict,
-    PluginsRpcSetConfigSchematicsParameter,
+    StatusStepState,
 )
 from .sdk_api import LMStudioPluginInitError
 from .config_schemas import BaseConfigSchema
@@ -176,9 +142,13 @@ class HookController(Generic[TPluginRequest]):
     """Common base class for plugin hook API access controllers."""
 
     def __init__(
-        self, request: TPluginRequest, plugin_config: type[BaseConfigSchema] | None
+        self,
+        session: AsyncSessionPlugins,
+        request: TPluginRequest,
+        plugin_config: type[BaseConfigSchema] | None,
     ) -> None:
         """Initialize common hook controller settings."""
+        self.session = session
         self.plugin_config = (
             plugin_config._parse(request.plugin_config) if plugin_config else {}
         )
@@ -192,14 +162,40 @@ class PromptPreprocessorController(HookController[PromptPreprocessingRequest]):
 
     def __init__(
         self,
+        session: AsyncSessionPlugins,
         request: PromptPreprocessingRequest,
         plugin_config: type[BaseConfigSchema] | None,
     ) -> None:
         """Initialize prompt preprocessor hook controller."""
-        super().__init__(request, plugin_config)
+        super().__init__(session, request, plugin_config)
         self._tbd_config = dict_from_kvconfig(request.config)  # TODO: check contents
         self.pci = request.pci
         self.token = request.token
+
+    @classmethod
+    def _create_block_id(self) -> str:
+        return f"{datetime.now(UTC)}-{randrange(-sys.maxsize, sys.maxsize)}"
+
+    async def _send_handle_update(self, update: ProcessingUpdate) -> Any:
+        handle_update = PluginsRpcProcessingHandleUpdateParameter(
+            pci=self.pci,
+            token=self.token,
+            update=update,
+        )
+        return await self.session.remote_call("processingHandleUpdate", handle_update)
+
+    # TODO: Provide a structured API for manipulating UI status blocks in-place
+    async def notify_done(self, message: str) -> None:
+        """Report task completion in a new UI status block."""
+        await self._send_handle_update(
+            ProcessingUpdateStatusCreate(
+                id=self._create_block_id(),
+                state=StatusStepState(
+                    status="done",
+                    text=message,
+                ),
+            ),
+        )
 
 
 PromptPreprocessorHook = Callable[
@@ -285,13 +281,16 @@ class PluginClient(AsyncClient):
             hook_ready_event.set()
             return False
         endpoint = PromptPreprocessingEndpoint()
-        async with self.plugins._create_channel(endpoint) as channel:
+        session = self.plugins
+        async with session._create_channel(endpoint) as channel:
             hook_ready_event.set()
             print("Opened channel to receive prompt preprocessing requests...")
 
             async def _invoke_hook(request: PromptPreprocessingRequest) -> None:
                 message = request.input
-                hook_controller = PromptPreprocessorController(request, plugin_config)
+                hook_controller = PromptPreprocessorController(
+                    session, request, plugin_config
+                )
                 # TODO once stable: use sdk_api_callback context manager
                 response = await hook_impl(hook_controller, message)
                 if response is None:

@@ -15,9 +15,10 @@ from .runner import *
 # * refactor to allow "Abort" request handling to be common across hook invocation tasks
 # * refactor to allow hook invocation error handling to be common across hook invocation tasks
 # * add common controller APIs for hook invocation status reporting
+# * gracefully handle app termination while a dev plugin is still running
+# * gracefully handle using Ctrl-C to terminate a running dev plugin
 #
 # Prompt preprocessing hook
-# * emit a status notification block when the demo plugin fires
 # * handle "Abort" requests from server (including sending "Aborted" responses)
 # * catch hook invocation failures and send "Error" responses
 # * this includes adding runtime checks for the hook returning the wrong type
