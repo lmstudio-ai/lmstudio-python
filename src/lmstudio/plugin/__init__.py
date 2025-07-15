@@ -12,7 +12,7 @@ from .runner import *
 #
 # General tasks
 # * [DONE] refactor hook channel and controller definitions out to a submodule
-# * refactor hook registration to be data driven instead of hardcoded in the runner
+# * [DONE] refactor hook registration to be data driven instead of hardcoded in the runner
 # * refactor to allow "Abort" request handling to be common across hook invocation tasks
 # * refactor to allow hook invocation error handling to be common across hook invocation tasks
 # * gracefully handle app termination while a dev plugin is still running

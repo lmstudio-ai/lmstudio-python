@@ -1,6 +1,6 @@
 {
   "type": "plugin",
-  "runner": "node",
+  "runner": "python",
   "owner": "lmstudio",
   "name": "prompt-prefix",
   "revision": 1

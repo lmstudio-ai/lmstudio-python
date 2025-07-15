@@ -12,23 +12,23 @@ import warnings
 
 from functools import partial
 from pathlib import Path
+from typing import Any, Awaitable, Callable, TypeAlias, TypeVar
 
 from anyio import create_task_group
 
 from ..schemas import DictObject
 from ..async_api import AsyncClient
 from .._sdk_models import (
-    # TODO: Define aliases at schema generation time
-    PluginsRpcSetConfigSchematicsParameter,
+    PluginsRpcSetConfigSchematicsParameter as SetConfigSchematicsParam,
+    PluginsRpcSetGlobalConfigSchematicsParameter as SetGlobalConfigSchematicsParam,
 )
 from .sdk_api import LMStudioPluginInitError
 from .config_schemas import BaseConfigSchema
 from .hooks import (
     AsyncSessionPlugins,
-    PromptPreprocessorHook,
-    TokenGeneratorHook,
-    ToolsProviderHook,
     run_prompt_preprocessor,
+    # run_token_generator,
+    # run_tools_provider,
 )
 
 __all__ = [
@@ -40,6 +40,20 @@ __all__ = [
 _PLUGIN_API_STABILITY_WARNING = """\
 Note the plugin API is not yet stable and may change without notice in future releases
 """
+
+AnyHookImpl: TypeAlias = Callable[..., Awaitable[Any]]
+THookImpl = TypeVar("THookImpl", bound=AnyHookImpl)
+ReadyCallback: TypeAlias = Callable[[], Any]
+HookRunner: TypeAlias = Callable[
+    [THookImpl, type[BaseConfigSchema] | None, AsyncSessionPlugins, ReadyCallback],
+    Awaitable[Any],
+]
+
+_HOOK_RUNNERS: dict[str, HookRunner[Any]] = {
+    "preprocess_prompt": run_prompt_preprocessor,
+    # "generate_tokens": run_token_generator,
+    # "list_provided_tools": run_tools_provider,
+}
 
 
 class PluginClient(AsyncClient):
@@ -53,30 +67,23 @@ class PluginClient(AsyncClient):
         self._client_id = client_id
         self._client_key = client_key
         super().__init__()
-        self._hook_ready_events = {
-            "prompt_preprocessor": asyncio.Event(),
-            "token_generator": asyncio.Event(),
-            "tools_provider": asyncio.Event(),
-        }
         # TODO: Nicer error handling, move file reading to class method and make this a data class
         self._plugin_path = plugin_path = Path(plugin_dir)
         manifest_path = plugin_path / "manifest.json"
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         if manifest["type"] != "plugin":
             raise LMStudioPluginInitError(f"Invalid manifest type: {manifest['type']}")
-        if (
-            manifest["runner"] != "node"
-        ):  # TODO: Change to "python" once that is supported
+        if manifest["runner"] != "python":
+            # This works (even though the app doesn't natively support Python plugins yet),
+            # as LM Studio doesn't check the runner type when requesting dev credentials.
             raise LMStudioPluginInitError(
-                f"Invalid manifest runner: {manifest['runner']}"
+                f'Invalid manifest runner: {manifest["runner"]} (expected "python")'
             )
         self._owner = manifest["owner"]
         self._name = manifest["name"]
 
     _ALL_SESSIONS = (
-        # Possible TODO: add other sessions here if
-        # necessary for controller implementations
-        # *ASyncSession._ALL_SESSIONS,
+        # Plugin controller access all runs through a dedicated endpoint
         AsyncSessionPlugins,
     )
 
@@ -92,50 +99,45 @@ class PluginClient(AsyncClient):
         """Return the plugins API client session."""
         return self._get_session(AsyncSessionPlugins)
 
-    async def run_hook_prompt_preprocessor(
+    async def _run_hook_impl(
         self,
-        hook_impl: PromptPreprocessorHook | None,
-        plugin_config: type[BaseConfigSchema] | None,
-    ) -> bool:
-        """Accept prompt preprocessing requests."""
-        hook_ready_event = self._hook_ready_events["prompt_preprocessor"]
-        if hook_impl is None:
-            print("No hook defined for prompt preprocessing requests")
-            hook_ready_event.set()
-            return False
-        await run_prompt_preprocessor(
-            hook_impl, plugin_config, self.plugins, hook_ready_event.set
+        hook_runner: HookRunner[THookImpl],
+        hook_impl: THookImpl,
+        plugin_config_schema: type[BaseConfigSchema] | None,
+        global_config_schema: type[BaseConfigSchema] | None,
+        notify_ready: ReadyCallback,
+    ) -> None:
+        """Run the given hook implementation."""
+        await hook_runner(hook_impl, plugin_config_schema, self.plugins, notify_ready)
+
+    _CONFIG_SCHEMA_SCOPES = {
+        "plugin": ("ConfigSchema", "setConfigSchematics", SetConfigSchematicsParam),
+        "global": (
+            "GlobalSchema",
+            "setGlobalConfigSchematics",
+            SetGlobalConfigSchematicsParam,
+        ),
+    }
+
+    async def _load_config_schema(
+        self, ns: DictObject, scope: str
+    ) -> type[BaseConfigSchema] | None:
+        config_name, endpoint, param_type = self._CONFIG_SCHEMA_SCOPES[scope]
+        maybe_config_schema = ns.get(config_name, None)
+        if maybe_config_schema is None:
+            return None
+        if not issubclass(maybe_config_schema, BaseConfigSchema):
+            raise LMStudioPluginInitError(
+                f"{config_name}: Expected {BaseConfigSchema!r} subclass definition, not {maybe_config_schema!r}"
+            )
+        config_schema: type[BaseConfigSchema] = maybe_config_schema
+        await self.plugins.remote_call(
+            endpoint,
+            param_type(
+                schematics=maybe_config_schema._to_kv_config_schematics(),
+            ),
         )
-        return True
-
-    async def run_hook_token_generator(
-        self,
-        hook_impl: TokenGeneratorHook | None,
-        plugin_config: type[BaseConfigSchema] | None,
-    ) -> bool:
-        """Accept token generation requests."""
-        hook_ready_event = self._hook_ready_events["token_generator"]
-        if hook_impl is None:
-            print("No hook defined for token generation requests")
-            hook_ready_event.set()
-            return False
-        # TODO: Dispatch to plugin defined token generation hook
-        return True
-
-    async def run_hook_tools_provider(
-        self,
-        hook_impl: ToolsProviderHook | None,
-        plugin_config: type[BaseConfigSchema] | None,
-    ) -> bool:
-        """Accept tools provider requests."""
-        # TODO: Retrieve hook definition from plugin
-        hook_ready_event = self._hook_ready_events["tools_provider"]
-        if hook_impl is None:
-            print("No hook defined for tools provider requests")
-            hook_ready_event.set()
-            return False
-        # TODO: Dispatch to plugin defined tools provision hook
-        return True
+        return config_schema
 
     # TODO: Cleanup the assorted debugging prints (either remove or migrate to logging)
     async def run_plugin(self, *, allow_local_imports: bool = False) -> int:
@@ -149,33 +151,36 @@ class PluginClient(AsyncClient):
             # We don't try to revert the path change, as that can have odd side-effects
             sys.path.insert(0, str(source_path))
         plugin_ns = runpy.run_path(str(plugin_path), run_name="__lms_plugin__")
-        prompt_preprocessor: PromptPreprocessorHook | None = plugin_ns.get(
-            "preprocess_prompt", None
-        )
-        config_schema: type[BaseConfigSchema] | None = plugin_ns.get(
-            "ConfigSchema", None
-        )
-        if config_schema is not None:
-            if not issubclass(config_schema, BaseConfigSchema):
-                raise LMStudioPluginInitError(
-                    f"Expected {BaseConfigSchema!r} subclass definition, not {config_schema!r}"
+        # Look up config schemas in the namespace
+        plugin_schema = await self._load_config_schema(plugin_ns, "plugin")
+        global_schema = await self._load_config_schema(plugin_ns, "global")
+        # Look up hook implementations in the namespace
+        implemented_hooks: list[Callable[[], Awaitable[Any]]] = []
+        hook_ready_events: list[asyncio.Event] = []
+        for hook_name, hook_runner in _HOOK_RUNNERS.items():
+            hook_impl = plugin_ns.get(hook_name, None)
+            if hook_impl is None:
+                print(f"Plugin does not define the {hook_name!r} hook")
+                continue
+            hook_ready_event = asyncio.Event()
+            hook_ready_events.append(hook_ready_event)
+            implemented_hooks.append(
+                partial(
+                    self._run_hook_impl,
+                    hook_runner,
+                    hook_impl,
+                    plugin_schema,
+                    global_schema,
+                    hook_ready_event.set,
                 )
-            await self.plugins.remote_call(
-                "setConfigSchematics",
-                PluginsRpcSetConfigSchematicsParameter(
-                    schematics=config_schema._to_kv_config_schematics(),
-                ),
             )
         # Use anyio and exceptiongroup to handle the lack of native task
         # and exception groups prior to Python 3.11
         async with create_task_group() as tg:
-            tg.start_soon(
-                self.run_hook_prompt_preprocessor, prompt_preprocessor, config_schema
-            )
-            tg.start_soon(self.run_hook_token_generator, None, config_schema)
-            tg.start_soon(self.run_hook_tools_provider, None, config_schema)
+            for implemented_hook in implemented_hooks:
+                tg.start_soon(implemented_hook)
             # Should this have a time limit set to guard against SDK bugs?
-            await asyncio.gather(*(e.wait() for e in self._hook_ready_events.values()))
+            await asyncio.gather(*(e.wait() for e in hook_ready_events))
             await self.plugins.remote_call("pluginInitCompleted")
             # Indicate that prompt processing is ready
             # Terminate all running tasks when termination is requested
