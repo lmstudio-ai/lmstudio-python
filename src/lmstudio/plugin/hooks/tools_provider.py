@@ -1,6 +1,6 @@
 """Invoking and supporting tools provider hook implementations."""
 
-from typing import Awaitable, Callable, Iterable
+from typing import Any, Awaitable, Callable, Iterable
 
 from ...json_api import (
     ToolDefinition,
@@ -11,7 +11,11 @@ from ..._sdk_models import (
     PluginsChannelSetToolsProviderToClientPacketInitSession as ProvideToolsInitSession,
 )
 
-from .common import HookController
+from .common import (
+    HookController,
+    TPluginConfigSchema,
+    TGlobalConfigSchema,
+)
 
 __all__ = [
     "ToolsProviderController",
@@ -19,10 +23,12 @@ __all__ = [
 ]
 
 
-class ToolsProviderController(HookController[ProvideToolsInitSession]):
+class ToolsProviderController(
+    HookController[ProvideToolsInitSession, TPluginConfigSchema, TGlobalConfigSchema]
+):
     """API access for tools provider hook implementations."""
 
 
 ToolsProviderHook = Callable[
-    [ToolsProviderController], Awaitable[Iterable[ToolDefinition]]
+    [ToolsProviderController[Any, Any]], Awaitable[Iterable[ToolDefinition]]
 ]

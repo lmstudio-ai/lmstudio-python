@@ -31,7 +31,13 @@ from ..._sdk_models import (
     StatusStepStatus,
 )
 from ..config_schemas import BaseConfigSchema
-from .common import AsyncSessionPlugins, HookController, StatusBlockController
+from .common import (
+    AsyncSessionPlugins,
+    HookController,
+    StatusBlockController,
+    TPluginConfigSchema,
+    TGlobalConfigSchema,
+)
 
 
 __all__ = [
@@ -100,17 +106,20 @@ class PromptPreprocessingEndpoint(
                 assert_never(event)
 
 
-class PromptPreprocessorController(HookController[PromptPreprocessingRequest]):
+class PromptPreprocessorController(
+    HookController[PromptPreprocessingRequest, TPluginConfigSchema, TGlobalConfigSchema]
+):
     """API access for prompt preprocessor hook implementations."""
 
     def __init__(
         self,
         session: AsyncSessionPlugins,
         request: PromptPreprocessingRequest,
-        plugin_config: type[BaseConfigSchema] | None,
+        plugin_config_schema: type[TPluginConfigSchema],
+        global_config_schema: type[TGlobalConfigSchema],
     ) -> None:
         """Initialize prompt preprocessor hook controller."""
-        super().__init__(session, request, plugin_config)
+        super().__init__(session, request, plugin_config_schema, global_config_schema)
         self.pci = request.pci
         self.token = request.token
 
@@ -163,13 +172,15 @@ class PromptPreprocessorController(HookController[PromptPreprocessingRequest]):
 
 
 PromptPreprocessorHook = Callable[
-    [PromptPreprocessorController, AnyChatMessage], Awaitable[AnyChatMessageDict | None]
+    [PromptPreprocessorController[Any, Any], AnyChatMessage],
+    Awaitable[AnyChatMessageDict | None],
 ]
 
 
 async def run_prompt_preprocessor(
     hook_impl: PromptPreprocessorHook,
-    plugin_config: type[BaseConfigSchema] | None,
+    plugin_config_schema: type[BaseConfigSchema],
+    global_config_schema: type[BaseConfigSchema],
     session: AsyncSessionPlugins,
     notify_ready: Callable[[], Any],
 ) -> None:
@@ -182,7 +193,7 @@ async def run_prompt_preprocessor(
         async def _invoke_hook(request: PromptPreprocessingRequest) -> None:
             message = request.input
             hook_controller = PromptPreprocessorController(
-                session, request, plugin_config
+                session, request, plugin_config_schema, global_config_schema
             )
             # TODO once stable: use sdk_api_callback context manager
             response = await hook_impl(hook_controller, message)

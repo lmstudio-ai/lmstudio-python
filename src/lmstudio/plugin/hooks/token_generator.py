@@ -1,12 +1,16 @@
 """Invoking and supporting token generator hook implementations."""
 
-from typing import Awaitable, Callable
+from typing import Any, Awaitable, Callable
 from ..._sdk_models import (
     # TODO: Define aliases at schema generation time
     PluginsChannelSetGeneratorToClientPacketGenerate as TokenGenerationRequest,
 )
 
-from .common import HookController
+from .common import (
+    HookController,
+    TPluginConfigSchema,
+    TGlobalConfigSchema,
+)
 
 __all__ = [
     "TokenGeneratorController",
@@ -14,8 +18,10 @@ __all__ = [
 ]
 
 
-class TokenGeneratorController(HookController[TokenGenerationRequest]):
+class TokenGeneratorController(
+    HookController[TokenGenerationRequest, TPluginConfigSchema, TGlobalConfigSchema]
+):
     """API access for token generator hook implementations."""
 
 
-TokenGeneratorHook = Callable[[TokenGeneratorController], Awaitable[None]]
+TokenGeneratorHook = Callable[[TokenGeneratorController[Any, Any]], Awaitable[None]]

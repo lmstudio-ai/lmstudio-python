@@ -1,10 +1,17 @@
 """Define plugin config schemas."""
 
-from typing import Any
+from dataclasses import Field, dataclass, fields
+from typing import (
+    Any,
+    ClassVar,
+    Generic,
+    Self,
+    Sequence,
+    TypeVar,
+    cast,
+    dataclass_transform,
+)
 
-from msgspec import Struct
-
-from ..schemas import BaseModel, DictObject
 from .._kv_config import dict_from_kvconfig
 from .._sdk_models import (
     SerializedKVConfigSchematics,
@@ -14,72 +21,205 @@ from .._sdk_models import (
 
 from .sdk_api import LMStudioPluginInitError
 
+_T = TypeVar("_T")
 
-class ConfigField(Struct, omit_defaults=True, kw_only=True, frozen=True):
-    """String config field."""
+_CONFIG_FIELDS_KEY = "__kv_config_fields__"
+
+
+@dataclass(frozen=True, slots=True)
+class _ConfigField(Generic[_T]):
+    """Plugin config field specification."""
 
     label: str
     hint: str
 
     @property
-    def default(self) -> Any:
+    def default(self) -> _T:
         """The default value for this config field."""
+        # Defaults must be static values, as the UI isn't directly running any plugin code
+        raise NotImplementedError
+
+    # This never actually gets called (as __set_name__ switches to the default value at runtime)
+    # However, it's here so type checkers accept field definitions as matching their value type
+    def __get__(
+        self, _obj: "BaseConfigSchema | None", _obj_type: type["BaseConfigSchema"]
+    ) -> _T:
+        return self.default
+
+    def __set_name__(self, obj_type: type["BaseConfigSchema"], name: str) -> None:
+        if not issubclass(obj_type, BaseConfigSchema):
+            msg = f"Plugin config fields must be defined on {BaseConfigSchema.__name__} instances"
+            raise LMStudioPluginInitError(msg)
+        # Append this field to the config fields for this schema, creating the list if necessary
+        config_fields: list[SerializedKVConfigSchematicsField]
+        config_fields = obj_type.__dict__.get(_CONFIG_FIELDS_KEY, None)
+        if config_fields is None:
+            # First config field defined for this schema, so create the config field list
+            config_fields = []
+            try:
+                inherited_fields = getattr(obj_type, _CONFIG_FIELDS_KEY)
+            except AttributeError:
+                pass
+            else:
+                # Any inherited fields are included first
+                config_fields.extend(inherited_fields)
+            setattr(obj_type, _CONFIG_FIELDS_KEY, config_fields)
+        config_fields.append(self._to_kv_field(name))
+        # Replace the UI config field spec with a regular dataclass default value
+        setattr(obj_type, name, self.default)
+
+    def _to_kv_field(self, name: str) -> SerializedKVConfigSchematicsField:
         raise NotImplementedError
 
 
-class ConfigString(ConfigField, frozen=True):
+@dataclass(frozen=True, slots=True)
+class _ConfigBool(_ConfigField[bool]):
+    """Boolean config field."""
+
+    default: bool
+
+    def _to_kv_field(self, name: str) -> SerializedKVConfigSchematicsField:
+        return SerializedKVConfigSchematicsField(
+            short_key=name,
+            full_key=name,
+            type_key="boolean",
+            type_params={
+                "displayName": self.label,
+                "hint": self.hint,
+            },
+            default_value=self.default,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class _ConfigInt(_ConfigField[int]):
+    """Integer config field."""
+
+    default: int
+
+    def _to_kv_field(self, name: str) -> SerializedKVConfigSchematicsField:
+        return SerializedKVConfigSchematicsField(
+            short_key=name,
+            full_key=name,
+            type_key="numeric",
+            type_params={
+                "displayName": self.label,
+                "hint": self.hint,
+                "int": True,
+            },
+            default_value=self.default,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class _ConfigFloat(_ConfigField[float]):
+    """Floating point config field."""
+
+    default: float
+
+    def _to_kv_field(self, name: str) -> SerializedKVConfigSchematicsField:
+        return SerializedKVConfigSchematicsField(
+            short_key=name,
+            full_key=name,
+            type_key="numeric",
+            type_params={
+                "displayName": self.label,
+                "hint": self.hint,
+                "int": False,
+            },
+            default_value=self.default,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class _ConfigString(_ConfigField[str]):
     """String config field."""
 
     default: str
 
+    def _to_kv_field(self, name: str) -> SerializedKVConfigSchematicsField:
+        return SerializedKVConfigSchematicsField(
+            short_key=name,
+            full_key=name,
+            type_key="string",
+            type_params={
+                "displayName": self.label,
+                "hint": self.hint,
+            },
+            default_value=self.default,
+        )
+
+
+def config_field(*, label: str, hint: str, default: _T) -> _T:
+    """Define a plugin config field to be displayed and updated via the app UI."""
+    # This type hint intentionally doesn't match the actual returned type
+    # (the relevant ConfigField[_T] subclass). This is to ensure that
+    # type checkers will accept config field initialisations like
+    # "attr: int = config_field(...)".
+    descriptor: _ConfigField[Any]
+    match default:
+        case bool():
+            descriptor = _ConfigBool(label, hint, default)
+        case float():
+            descriptor = _ConfigFloat(label, hint, default)
+        case int():
+            descriptor = _ConfigInt(label, hint, default)
+        case str():
+            descriptor = _ConfigString(label, hint, default)
+        case _:
+            msg = f"Unsupported type for plugin config field: {type(default)!r}"
+            raise LMStudioPluginInitError(msg)
+    return cast(_T, descriptor)
+
 
 # TODO: Cover additional config field types
+# TODO: Allow optional constraints and UI display features
+#       (the similarity of the _to_kv_field methods will reduce when this is done)
 
 
-class BaseConfigSchema(BaseModel, omit_defaults=False):
+class _ImplicitDataClass(type):
+    def __new__(
+        meta_cls, name: str, bases: tuple[type, ...], namespace: dict[str, Any]
+    ) -> type:
+        cls: type = super().__new__(meta_cls, name, bases, namespace)
+        return dataclass()(cls)
+
+
+@dataclass_transform(field_specifiers=(config_field,))
+class BaseConfigSchema(metaclass=_ImplicitDataClass):
     """Base class for plugin configuration schema definitions."""
 
-    @classmethod
-    def _to_kv_config_schematics(cls) -> SerializedKVConfigSchematics:
-        """Convert to wire format for transmission to the app server."""
-        fields: list[SerializedKVConfigSchematicsField] = []
-        config_spec = cls()
-        for attr in config_spec.__struct_fields__:
-            field_spec = getattr(config_spec, attr, None)
-            kv_field: SerializedKVConfigSchematicsField
-            match field_spec:
-                case ConfigString(label=label, hint=hint, default=default):
-                    kv_field = SerializedKVConfigSchematicsField(
-                        short_key=attr,
-                        full_key=attr,
-                        type_key="string",
-                        type_params={
-                            "displayName": label,
-                            "hint": hint,
-                        },
-                        default_value=default,
-                    )
+    # This uses the custom metaclass to automatically make subclasses data classes
+    # Declare that behaviour in a way that mypy will fully accept
+    __dataclass_fields__: ClassVar[dict[str, Field[Any]]]
 
-                case ConfigField():
-                    err_msg = f"{field_spec!r} is not an instance of a known {ConfigField!r} subclass"
-                    raise LMStudioPluginInitError(err_msg)
-                case unmatched:
-                    raise LMStudioPluginInitError(
-                        f"Expected {ConfigField!r} instance, not {unmatched!r}"
-                    )
-            fields.append(kv_field)
-        return SerializedKVConfigSchematics(fields=fields)
+    # ConfigField.__set_name__ lazily creates this class variable
+    __kv_config_fields__: ClassVar[Sequence[SerializedKVConfigSchematicsField]]
+
+    @classmethod
+    def _to_kv_config_schematics(cls) -> SerializedKVConfigSchematics | None:
+        """Convert to wire format for transmission to the app server."""
+        try:
+            config_fields = cls.__kv_config_fields__
+        except AttributeError:
+            # No config fields have been defined on this config schema
+            # Treat that as an error (at least for now)
+            # Type hint allows for None returns in case that changes later
+            msg = f"{cls.__name__} must define at least one config field"
+            raise LMStudioPluginInitError(msg)
+        return SerializedKVConfigSchematics(fields=config_fields)
 
     @classmethod
     def _default_config(cls) -> dict[str, Any]:
         default_config: dict[str, Any] = {}
         config_spec = cls()
-        for attr in config_spec.__struct_fields__:
-            default_config[attr] = getattr(config_spec, attr).default
+        for field in fields(config_spec):
+            attr = field.name
+            default_config[attr] = getattr(config_spec, attr)
         return default_config
 
     @classmethod
-    def _parse(cls, dynamic_config: SerializedKVConfigSettings) -> DictObject:
+    def _parse(cls, dynamic_config: SerializedKVConfigSettings) -> Self:
         config = cls._default_config()
         config.update(dict_from_kvconfig(dynamic_config))
-        return config
+        return cls(**config)

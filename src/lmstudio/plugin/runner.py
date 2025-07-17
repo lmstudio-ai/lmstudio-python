@@ -26,6 +26,8 @@ from .sdk_api import LMStudioPluginInitError
 from .config_schemas import BaseConfigSchema
 from .hooks import (
     AsyncSessionPlugins,
+    TPluginConfigSchema,
+    TGlobalConfigSchema,
     run_prompt_preprocessor,
     # run_token_generator,
     # run_tools_provider,
@@ -45,11 +47,17 @@ AnyHookImpl: TypeAlias = Callable[..., Awaitable[Any]]
 THookImpl = TypeVar("THookImpl", bound=AnyHookImpl)
 ReadyCallback: TypeAlias = Callable[[], Any]
 HookRunner: TypeAlias = Callable[
-    [THookImpl, type[BaseConfigSchema] | None, AsyncSessionPlugins, ReadyCallback],
+    [
+        THookImpl,
+        type[TPluginConfigSchema],
+        type[TGlobalConfigSchema],
+        AsyncSessionPlugins,
+        ReadyCallback,
+    ],
     Awaitable[Any],
 ]
 
-_HOOK_RUNNERS: dict[str, HookRunner[Any]] = {
+_HOOK_RUNNERS: dict[str, HookRunner[Any, Any, Any]] = {
     "preprocess_prompt": run_prompt_preprocessor,
     # "generate_tokens": run_token_generator,
     # "list_provided_tools": run_tools_provider,
@@ -101,19 +109,25 @@ class PluginClient(AsyncClient):
 
     async def _run_hook_impl(
         self,
-        hook_runner: HookRunner[THookImpl],
+        hook_runner: HookRunner[THookImpl, TPluginConfigSchema, TGlobalConfigSchema],
         hook_impl: THookImpl,
-        plugin_config_schema: type[BaseConfigSchema] | None,
-        global_config_schema: type[BaseConfigSchema] | None,
+        plugin_config_schema: type[TPluginConfigSchema],
+        global_config_schema: type[TGlobalConfigSchema],
         notify_ready: ReadyCallback,
     ) -> None:
         """Run the given hook implementation."""
-        await hook_runner(hook_impl, plugin_config_schema, self.plugins, notify_ready)
+        await hook_runner(
+            hook_impl,
+            plugin_config_schema,
+            global_config_schema,
+            self.plugins,
+            notify_ready,
+        )
 
     _CONFIG_SCHEMA_SCOPES = {
         "plugin": ("ConfigSchema", "setConfigSchematics", SetConfigSchematicsParam),
         "global": (
-            "GlobalSchema",
+            "GlobalConfigSchema",
             "setGlobalConfigSchematics",
             SetGlobalConfigSchematicsParam,
         ),
@@ -121,22 +135,26 @@ class PluginClient(AsyncClient):
 
     async def _load_config_schema(
         self, ns: DictObject, scope: str
-    ) -> type[BaseConfigSchema] | None:
+    ) -> type[BaseConfigSchema]:
         config_name, endpoint, param_type = self._CONFIG_SCHEMA_SCOPES[scope]
         maybe_config_schema = ns.get(config_name, None)
         if maybe_config_schema is None:
-            return None
+            # Use an empty config in the client, don't register a schema with the server
+            return BaseConfigSchema
         if not issubclass(maybe_config_schema, BaseConfigSchema):
             raise LMStudioPluginInitError(
                 f"{config_name}: Expected {BaseConfigSchema!r} subclass definition, not {maybe_config_schema!r}"
             )
         config_schema: type[BaseConfigSchema] = maybe_config_schema
-        await self.plugins.remote_call(
-            endpoint,
-            param_type(
-                schematics=maybe_config_schema._to_kv_config_schematics(),
-            ),
-        )
+        kv_config_schematics = config_schema._to_kv_config_schematics()
+        if kv_config_schematics is not None:
+            # Only notify the server if there is at least one config field defined
+            await self.plugins.remote_call(
+                endpoint,
+                param_type(
+                    schematics=kv_config_schematics,
+                ),
+            )
         return config_schema
 
     # TODO: Cleanup the assorted debugging prints (either remove or migrate to logging)

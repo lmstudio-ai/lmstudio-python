@@ -12,15 +12,21 @@ from typing import (
 )
 
 from ...async_api import AsyncSession
-from ..._kv_config import dict_from_kvconfig
 from ..._sdk_models import (
     # TODO: Define aliases at schema generation time
     PluginsChannelSetGeneratorToClientPacketGenerate as TokenGenerationRequest,
     PluginsChannelSetToolsProviderToClientPacketInitSession as ProvideToolsInitSession,
     PromptPreprocessingRequest,
+    SerializedKVConfigSettings,
     StatusStepStatus,
 )
 from ..config_schemas import BaseConfigSchema
+
+__all__ = [
+    "AsyncSessionPlugins",
+    "TPluginConfigSchema",
+    "TGlobalConfigSchema",
+]
 
 
 class AsyncSessionPlugins(AsyncSession):
@@ -33,25 +39,39 @@ PluginRequest: TypeAlias = (
     PromptPreprocessingRequest | TokenGenerationRequest | ProvideToolsInitSession
 )
 TPluginRequest = TypeVar("TPluginRequest", bound=PluginRequest)
+TPluginConfigSchema = TypeVar("TPluginConfigSchema", bound=BaseConfigSchema)
+TGlobalConfigSchema = TypeVar("TGlobalConfigSchema", bound=BaseConfigSchema)
+TConfig = TypeVar("TConfig", bound=BaseConfigSchema)
 
 
-class HookController(Generic[TPluginRequest]):
+class HookController(Generic[TPluginRequest, TPluginConfigSchema, TGlobalConfigSchema]):
     """Common base class for plugin hook API access controllers."""
 
     def __init__(
         self,
         session: AsyncSessionPlugins,
         request: TPluginRequest,
-        plugin_config: type[BaseConfigSchema] | None,
+        plugin_config_schema: type[TPluginConfigSchema],
+        global_config_schema: type[TGlobalConfigSchema],
     ) -> None:
         """Initialize common hook controller settings."""
         self.session = session
-        self.plugin_config = (
-            plugin_config._parse(request.plugin_config) if plugin_config else {}
+        self.plugin_config = self._parse_config(
+            request.plugin_config, plugin_config_schema
         )
-        self.global_config = dict_from_kvconfig(request.global_plugin_config)
+        self.global_config = self._parse_config(
+            request.global_plugin_config, global_config_schema
+        )
         work_dir = request.working_directory_path
         self.working_path = Path(work_dir) if work_dir else None
+
+    @classmethod
+    def _parse_config(
+        cls, config: SerializedKVConfigSettings, schema: type[TConfig]
+    ) -> TConfig:
+        if schema is None:
+            schema = BaseConfigSchema
+        return schema._parse(config)
 
     @classmethod
     def _create_ui_block_id(self) -> str:
