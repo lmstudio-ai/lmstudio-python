@@ -32,7 +32,7 @@ from .runner import *
 #
 # Prompt preprocessing hook
 # * [DONE] emit a status notification block when the demo plugin fires
-# * add a global plugin config to control the in-place status update demo
+# * [DONE] add a global plugin config to control the in-place status update demo
 # * handle "Abort" requests from server (including sending "Aborted" responses)
 # * catch hook invocation failures and send "Error" responses
 # * this includes adding runtime checks for the hook returning the wrong type
@@ -58,8 +58,8 @@ from .runner import *
 #
 # Plugin config field definitions
 # * define approach for specifying plugin config field constraints and style options (e.g. numeric sliders)
-# * numeric: https://github.com/lmstudio-ai/lmstudio-js/blob/main/packages/lms-kv-config/src/valueTypes.ts#L99
-# * string
+# * [usable] numeric: https://github.com/lmstudio-ai/lmstudio-js/blob/main/packages/lms-kv-config/src/valueTypes.ts#L99
+# * [usable] string
+# * [usable] boolean
 # * select (array of strings, or value/label string pairs)
-# * boolean
 # * string array
