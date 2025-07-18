@@ -225,8 +225,8 @@ async def run_prompt_preprocessor(
                     response_dict = message.to_dict()
                 else:
                     if isinstance(response, dict):
-                        # TODO: consider parsing the response to ensure validity client side
-                        # (probably not necessary, since the server will check that anyway)
+                        # TODO: parse the response to ensure validity client side
+                        # otherwise serialising the message may fail and crash the plugin
                         response_dict = response
                     elif isinstance(response, get_type_args(AnyChatMessage)):
                         response_dict = response.to_dict()

@@ -15,7 +15,7 @@ from .runner import *
 # * [DONE] refactor hook registration to be data driven instead of hardcoded in the runner
 # * refactor to allow "Abort" request handling to be common across hook invocation tasks
 # * refactor to allow hook invocation error handling to be common across hook invocation tasks
-# * gracefully handle app termination while a dev plugin is still running
+# * gracefully handle app termination while a dev plugin is still running (handle "None" on rx_stream)
 # * [DONE] gracefully handle using Ctrl-C to terminate a running dev plugin
 #
 # Controller APIs (may be limited to relevant hook controllers)
@@ -35,7 +35,7 @@ from .runner import *
 # * [DONE] add a global plugin config to control the in-place status update demo
 # * handle "Abort" requests from server (including sending "Aborted" responses)
 # * [DONE] catch hook invocation failures and send "Error" responses
-# * [DONE] this includes adding runtime checks for the hook returning the wrong type
+# * [partial] this includes adding runtime checks for the hook returning the wrong type
 #
 # Token generator hook
 # * add an example plugin for this (probably proxying a remote LM Studio instance)
