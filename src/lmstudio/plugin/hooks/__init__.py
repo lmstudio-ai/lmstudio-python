@@ -3,7 +3,7 @@
 # ruff: noqa: F403, F405
 
 from .common import *
-from .prompt_processor import *
+from .prompt_preprocessor import *
 from .token_generator import *
 from .tools_provider import *
 
