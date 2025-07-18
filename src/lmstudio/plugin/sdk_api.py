@@ -8,6 +8,12 @@ _PLUGIN_SDK_SUBMODULE = ".".join(__name__.split(".")[:-1])
 
 _C = TypeVar("_C", bound=type)
 
+# Available as lmstudio.plugin.*
+__all__ = [
+    "LMStudioPluginInitError",
+    "LMStudioPluginRuntimeError",
+]
+
 
 def plugin_sdk_type(cls: _C) -> _C:
     """Indicates a class forms part of the public plugin SDK boundary.

@@ -18,8 +18,14 @@ from .._sdk_models import (
     SerializedKVConfigSchematicsField,
     SerializedKVConfigSettings,
 )
+from ..sdk_api import sdk_public_api
+from .sdk_api import LMStudioPluginInitError, plugin_sdk_type
 
-from .sdk_api import LMStudioPluginInitError
+# Available as lmstudio.plugin.*
+__all__ = [
+    "BaseConfigSchema",
+    "config_field",
+]
 
 _T = TypeVar("_T")
 
@@ -150,6 +156,7 @@ class _ConfigString(_ConfigField[str]):
         )
 
 
+@sdk_public_api()
 def config_field(*, label: str, hint: str, default: _T) -> _T:
     """Define a plugin config field to be displayed and updated via the app UI."""
     # This type hint intentionally doesn't match the actual returned type
@@ -186,6 +193,7 @@ class _ImplicitDataClass(type):
 
 
 @dataclass_transform(field_specifiers=(config_field,))
+@plugin_sdk_type
 class BaseConfigSchema(metaclass=_ImplicitDataClass):
     """Base class for plugin configuration schema definitions."""
 
@@ -203,10 +211,8 @@ class BaseConfigSchema(metaclass=_ImplicitDataClass):
             config_fields = cls.__kv_config_fields__
         except AttributeError:
             # No config fields have been defined on this config schema
-            # Treat that as an error (at least for now)
-            # Type hint allows for None returns in case that changes later
-            msg = f"{cls.__name__} must define at least one config field"
-            raise LMStudioPluginInitError(msg)
+            # This is fine (as it allows for placeholders in code skeletons)
+            return None
         return SerializedKVConfigSchematics(fields=config_fields)
 
     @classmethod

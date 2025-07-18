@@ -22,6 +22,7 @@ from ..._sdk_models import (
 )
 from ..config_schemas import BaseConfigSchema
 
+# Available as lmstudio.plugin.hooks.*
 __all__ = [
     "AsyncSessionPlugins",
     "TPluginConfigSchema",

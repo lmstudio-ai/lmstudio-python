@@ -16,13 +16,15 @@ from typing import Any, Awaitable, Callable, TypeAlias, TypeVar
 
 from anyio import create_task_group
 
+from .._logging import get_logger
+from ..sdk_api import LMStudioFileNotFoundError, sdk_public_api
 from ..schemas import DictObject
 from ..async_api import AsyncClient
 from .._sdk_models import (
     PluginsRpcSetConfigSchematicsParameter as SetConfigSchematicsParam,
     PluginsRpcSetGlobalConfigSchematicsParameter as SetGlobalConfigSchematicsParam,
 )
-from .sdk_api import LMStudioPluginInitError
+from .sdk_api import LMStudioPluginInitError, LMStudioPluginRuntimeError
 from .config_schemas import BaseConfigSchema
 from .hooks import (
     AsyncSessionPlugins,
@@ -33,6 +35,7 @@ from .hooks import (
     # run_tools_provider,
 )
 
+# Available as lmstudio.plugin.*
 __all__ = [
     "run_plugin",
     "run_plugin_async",
@@ -75,9 +78,11 @@ class PluginClient(AsyncClient):
         self._client_id = client_id
         self._client_key = client_key
         super().__init__()
-        # TODO: Nicer error handling, move file reading to class method and make this a data class
+        # TODO: Consider moving file reading to class method and make this a data class
         self._plugin_path = plugin_path = Path(plugin_dir)
         manifest_path = plugin_path / "manifest.json"
+        if not manifest_path.exists():
+            raise LMStudioFileNotFoundError(manifest_path)
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         if manifest["type"] != "plugin":
             raise LMStudioPluginInitError(f"Invalid manifest type: {manifest['type']}")
@@ -88,7 +93,9 @@ class PluginClient(AsyncClient):
                 f'Invalid manifest runner: {manifest["runner"]} (expected "python")'
             )
         self._owner = manifest["owner"]
-        self._name = manifest["name"]
+        self._name = name = manifest["name"]
+        self._logger = logger = get_logger(__name__)
+        logger.update_context(plugin=name)
 
     _ALL_SESSIONS = (
         # Plugin controller access all runs through a dedicated endpoint
@@ -136,10 +143,12 @@ class PluginClient(AsyncClient):
     async def _load_config_schema(
         self, ns: DictObject, scope: str
     ) -> type[BaseConfigSchema]:
+        logger = self._logger
         config_name, endpoint, param_type = self._CONFIG_SCHEMA_SCOPES[scope]
         maybe_config_schema = ns.get(config_name, None)
         if maybe_config_schema is None:
-            # Use an empty config in the client, don't register a schema with the server
+            # Use an empty config in the client, don't register any schema with the server
+            logger.debug(f"Plugin does not define {config_name!r}")
             return BaseConfigSchema
         if not issubclass(maybe_config_schema, BaseConfigSchema):
             raise LMStudioPluginInitError(
@@ -147,8 +156,12 @@ class PluginClient(AsyncClient):
             )
         config_schema: type[BaseConfigSchema] = maybe_config_schema
         kv_config_schematics = config_schema._to_kv_config_schematics()
-        if kv_config_schematics is not None:
+        if kv_config_schematics is None:
+            # No fields to configure, no need to register schema with the server
+            logger.info(f"Plugin defines an empty {config_name!r}")
+        else:
             # Only notify the server if there is at least one config field defined
+            logger.info(f"Plugin defines {config_name!r}, sending to server...")
             await self.plugins.remote_call(
                 endpoint,
                 param_type(
@@ -157,18 +170,20 @@ class PluginClient(AsyncClient):
             )
         return config_schema
 
-    # TODO: Cleanup the assorted debugging prints (either remove or migrate to logging)
     async def run_plugin(self, *, allow_local_imports: bool = False) -> int:
         # TODO: Nicer error handling
-        source_path = self._plugin_path / "src"
-        plugin_path = source_path / "plugin.py"
-        if not plugin_path.exists():
-            raise FileNotFoundError(plugin_path)
-        print(f"Running {plugin_path}")
+        plugin_path = self._plugin_path
+        source_dir_path = plugin_path / "src"
+        source_path = source_dir_path / "plugin.py"
+        if not source_path.exists():
+            raise LMStudioFileNotFoundError(source_path)
+        # TODO: Consider passing this logger to hook runners (instead of each creating their own)
+        logger = self._logger
+        logger.info(f"Running {source_path}")
         if allow_local_imports:
             # We don't try to revert the path change, as that can have odd side-effects
-            sys.path.insert(0, str(source_path))
-        plugin_ns = runpy.run_path(str(plugin_path), run_name="__lms_plugin__")
+            sys.path.insert(0, str(source_dir_path))
+        plugin_ns = runpy.run_path(str(source_path), run_name="__lms_plugin__")
         # Look up config schemas in the namespace
         plugin_schema = await self._load_config_schema(plugin_ns, "plugin")
         global_schema = await self._load_config_schema(plugin_ns, "global")
@@ -178,8 +193,9 @@ class PluginClient(AsyncClient):
         for hook_name, hook_runner in _HOOK_RUNNERS.items():
             hook_impl = plugin_ns.get(hook_name, None)
             if hook_impl is None:
-                print(f"Plugin does not define the {hook_name!r} hook")
+                logger.debug(f"Plugin does not define the {hook_name!r} hook")
                 continue
+            logger.info(f"Plugin defines the {hook_name!r} hook")
             hook_ready_event = asyncio.Event()
             hook_ready_events.append(hook_ready_event)
             implemented_hooks.append(
@@ -217,25 +233,23 @@ def get_plugin_credentials_from_env() -> tuple[str, str]:
     return os.environ[ENV_CLIENT_ID], os.environ[ENV_CLIENT_KEY]
 
 
+@sdk_public_api()
 async def run_plugin_async(
     plugin_dir: str | os.PathLike[str], *, allow_local_imports: bool = False
-) -> int:
+) -> None:
     """Asynchronously execute a plugin in development mode."""
     try:
         client_id, client_key = get_plugin_credentials_from_env()
     except KeyError:
-        print(
-            f"ERROR: {ENV_CLIENT_ID} and {ENV_CLIENT_KEY} must both be set in the environment"
-        )
-        return 1
+        err_msg = f"ERROR: {ENV_CLIENT_ID} and {ENV_CLIENT_KEY} must both be set in the environment"
+        raise LMStudioPluginRuntimeError(err_msg)
     async with PluginClient(plugin_dir, client_id, client_key) as plugin_client:
-        return await plugin_client.run_plugin(allow_local_imports=allow_local_imports)
+        await plugin_client.run_plugin(allow_local_imports=allow_local_imports)
 
 
+@sdk_public_api()
 def run_plugin(
     plugin_dir: str | os.PathLike[str], *, allow_local_imports: bool = False
-) -> int:
+) -> None:
     """Execute a plugin in application mode."""
-    return asyncio.run(
-        run_plugin_async(plugin_dir, allow_local_imports=allow_local_imports)
-    )
+    asyncio.run(run_plugin_async(plugin_dir, allow_local_imports=allow_local_imports))

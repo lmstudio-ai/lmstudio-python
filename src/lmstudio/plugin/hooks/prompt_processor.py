@@ -11,6 +11,8 @@ from typing import (
 
 from anyio import create_task_group
 
+from ..._logging import get_logger
+from ...sdk_api import sdk_callback_invocation
 from ...schemas import DictObject, EmptyDict
 from ...history import AnyChatMessage, AnyChatMessageDict
 from ...json_api import (
@@ -40,6 +42,7 @@ from .common import (
 )
 
 
+# Available as lmstudio.plugin.hooks.*
 __all__ = [
     "PromptPreprocessorController",
     "PromptPreprocessorHook",
@@ -185,18 +188,20 @@ async def run_prompt_preprocessor(
     notify_ready: Callable[[], Any],
 ) -> None:
     """Accept prompt preprocessing requests."""
+    logger = get_logger(__name__)
     endpoint = PromptPreprocessingEndpoint()
     async with session._create_channel(endpoint) as channel:
         notify_ready()
-        print("Opened channel to receive prompt preprocessing requests...")
+        logger.info("Opened channel to receive prompt preprocessing requests...")
 
         async def _invoke_hook(request: PromptPreprocessingRequest) -> None:
             message = request.input
             hook_controller = PromptPreprocessorController(
                 session, request, plugin_config_schema, global_config_schema
             )
-            # TODO once stable: use sdk_api_callback context manager
-            response = await hook_impl(hook_controller, message)
+            err_msg = "Error calling prompt preprocessing hook"
+            with sdk_callback_invocation(err_msg, logger):
+                response = await hook_impl(hook_controller, message)
             if response is None:
                 response = message.to_dict()
             await channel.send_message(
@@ -208,15 +213,17 @@ async def run_prompt_preprocessor(
             )
 
         async with create_task_group() as tg:
-            print("Waiting for prompt preprocessing requests...")
+            logger.debug("Waiting for prompt preprocessing requests...")
             async for contents in channel.rx_stream():
-                print(f"Handling prompt preprocessing channel message: {contents}")
+                logger.debug(
+                    f"Handling prompt preprocessing channel message: {contents}"
+                )
                 for event in endpoint.iter_message_events(contents):
-                    print("Handling prompt preprocessing channel event")
+                    logger.debug("Handling prompt preprocessing channel event")
                     endpoint.handle_rx_event(event)
                     match event:
                         case PromptPreprocessingRequestEvent():
-                            print("Running prompt preprocessing request hook")
+                            logger.debug("Running prompt preprocessing request hook")
                             tg.start_soon(_invoke_hook, event.arg)
                 if endpoint.is_finished:
                     break

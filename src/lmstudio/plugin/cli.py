@@ -7,6 +7,8 @@ import warnings
 
 from typing import Sequence
 
+from ..sdk_api import sdk_public_api
+
 from . import _dev_runner, runner
 
 
@@ -24,7 +26,7 @@ def _parse_args(
     parser.add_argument("--dev", action="store_true", help="Run in development mode")
     return parser, parser.parse_args(argv)
 
-
+@sdk_public_api()
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the ``lmstudio.plugin`` CLI.
 
@@ -47,6 +49,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     logging.basicConfig(level=logging.DEBUG)
     if not args.dev:
-        return runner.run_plugin(plugin_path, allow_local_imports=True)
+        runner.run_plugin(plugin_path, allow_local_imports=True)
     # Retrieve args from API host, spawn plugin in subprocess
-    return _dev_runner.run_plugin(plugin_path)
+    _dev_runner.run_plugin(plugin_path)
+    return 0

@@ -17,9 +17,11 @@ from .common import (
     TGlobalConfigSchema,
 )
 
+# Available as lmstudio.plugin.hooks.*
 __all__ = [
     "ToolsProviderController",
     "ToolsProviderHook",
+    # "run_tools_provider",
 ]
 
 

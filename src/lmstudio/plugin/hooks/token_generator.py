@@ -12,9 +12,11 @@ from .common import (
     TGlobalConfigSchema,
 )
 
+# Available as lmstudio.plugin.hooks.*
 __all__ = [
     "TokenGeneratorController",
     "TokenGeneratorHook",
+    # "run_token_generator",
 ]
 
 
