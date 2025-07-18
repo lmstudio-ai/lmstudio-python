@@ -1,5 +1,9 @@
 """Invoking and supporting prompt preprocessor hook implementations."""
 
+import asyncio
+
+from traceback import format_tb
+
 from typing import (
     Any,
     Awaitable,
@@ -7,12 +11,12 @@ from typing import (
     Iterable,
     TypeAlias,
     assert_never,
+    get_args as get_type_args,
 )
 
 from anyio import create_task_group
 
 from ..._logging import get_logger
-from ...sdk_api import sdk_callback_invocation
 from ...schemas import DictObject, EmptyDict
 from ...history import AnyChatMessage, AnyChatMessageDict
 from ...json_api import (
@@ -28,7 +32,9 @@ from ..._sdk_models import (
     ProcessingUpdateStatusCreate,
     ProcessingUpdateStatusUpdate,
     PromptPreprocessingCompleteDict,
+    PromptPreprocessingErrorDict,
     PromptPreprocessingRequest,
+    SerializedLMSExtendedErrorDict,
     StatusStepState,
     StatusStepStatus,
 )
@@ -176,7 +182,7 @@ class PromptPreprocessorController(
 
 PromptPreprocessorHook = Callable[
     [PromptPreprocessorController[Any, Any], AnyChatMessage],
-    Awaitable[AnyChatMessageDict | None],
+    Awaitable[AnyChatMessage | AnyChatMessageDict | None],
 ]
 
 
@@ -199,18 +205,49 @@ async def run_prompt_preprocessor(
             hook_controller = PromptPreprocessorController(
                 session, request, plugin_config_schema, global_config_schema
             )
-            err_msg = "Error calling prompt preprocessing hook"
-            with sdk_callback_invocation(err_msg, logger):
+            error_details: SerializedLMSExtendedErrorDict | None = None
+            response_dict: AnyChatMessageDict
+            try:
                 response = await hook_impl(hook_controller, message)
-            if response is None:
-                response = message.to_dict()
-            await channel.send_message(
-                PromptPreprocessingCompleteDict(
+            except asyncio.CancelledError:
+                # Cancellation is a regular exception, so explicitly
+                # reraise it to avoid blocking Ctrl-C processing
+                raise
+            except Exception as exc:
+                err_msg = "Error calling prompt preprocessing hook"
+                logger.error(err_msg, exc_info=True, exc=repr(exc))
+                error_details = SerializedLMSExtendedErrorDict(
+                    cause=repr(exc), stack="\n".join(format_tb(exc.__traceback__))
+                )
+            else:
+                if response is None:
+                    # No change to message
+                    response_dict = message.to_dict()
+                else:
+                    if isinstance(response, dict):
+                        # TODO: consider parsing the response to ensure validity client side
+                        # (probably not necessary, since the server will check that anyway)
+                        response_dict = response
+                    elif isinstance(response, get_type_args(AnyChatMessage)):
+                        response_dict = response.to_dict()
+                    else:
+                        err_msg = f"Prompt preprocessing hook returned {type(response).__name__!r} (chat message expected)"
+                        logger.error(err_msg)
+                        error_details = SerializedLMSExtendedErrorDict(cause=err_msg)
+            channel_message: DictObject
+            if error_details is not None:
+                channel_message = PromptPreprocessingErrorDict(
+                    type="error",
+                    taskId=request.task_id,
+                    error=error_details,
+                )
+            else:
+                channel_message = PromptPreprocessingCompleteDict(
                     type="complete",
                     taskId=request.task_id,
-                    processed=response,
+                    processed=response_dict,
                 )
-            )
+            await channel.send_message(channel_message)
 
         async with create_task_group() as tg:
             logger.debug("Waiting for prompt preprocessing requests...")

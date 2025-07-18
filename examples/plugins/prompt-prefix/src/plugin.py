@@ -33,12 +33,12 @@ class GlobalConfigSchema(BaseConfigSchema):
     )
 
 
+# Assigning preprocess_prompt = some_other_callable also works
 async def preprocess_prompt(
     ctl: PromptPreprocessorController[ConfigSchema, GlobalConfigSchema],
     message: AnyChatMessage,
 ) -> AnyChatMessageDict | None:
     """Naming the function 'preprocess_prompt' implicitly registers it."""
-    # Assigning preprocess_prompt = some_other_callable also works
     if message.role != "user":
         return None
     print(f"Running prompt preprocessor hook from {__file__} with {ctl.plugin_config}")

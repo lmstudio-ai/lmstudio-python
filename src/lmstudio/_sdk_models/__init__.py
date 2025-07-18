@@ -422,8 +422,6 @@ __all__ = [
     "PluginsChannelSetPromptPreprocessorToClientPacketAbortDict",
     "PluginsChannelSetPromptPreprocessorToServerPacketAborted",
     "PluginsChannelSetPromptPreprocessorToServerPacketAbortedDict",
-    "PluginsChannelSetPromptPreprocessorToServerPacketError",
-    "PluginsChannelSetPromptPreprocessorToServerPacketErrorDict",
     "PluginsChannelSetToolsProviderToClientPacketAbortToolCall",
     "PluginsChannelSetToolsProviderToClientPacketAbortToolCallDict",
     "PluginsChannelSetToolsProviderToClientPacketCallTool",
@@ -526,6 +524,8 @@ __all__ = [
     "ProcessingUpdateToolStatusUpdateDict",
     "PromptPreprocessingComplete",
     "PromptPreprocessingCompleteDict",
+    "PromptPreprocessingError",
+    "PromptPreprocessingErrorDict",
     "PromptPreprocessingRequest",
     "PromptPreprocessingRequestDict",
     "PseudoDiagnostics",
@@ -5082,8 +5082,8 @@ class PluginsChannelSetPromptPreprocessorToServerPacketAbortedDict(TypedDict):
     taskId: str
 
 
-class PluginsChannelSetPromptPreprocessorToServerPacketError(
-    LMStudioStruct["PluginsChannelSetPromptPreprocessorToServerPacketErrorDict"],
+class PromptPreprocessingError(
+    LMStudioStruct["PromptPreprocessingErrorDict"],
     kw_only=True,
     tag_field="type",
     tag="error",
@@ -5093,7 +5093,7 @@ class PluginsChannelSetPromptPreprocessorToServerPacketError(
     error: SerializedLMSExtendedError
 
 
-class PluginsChannelSetPromptPreprocessorToServerPacketErrorDict(TypedDict):
+class PromptPreprocessingErrorDict(TypedDict):
     """Corresponding typed dictionary definition for PluginsChannelSetPromptPreprocessorToServerPacketError.
 
     NOTE: Multi-word keys are defined using their camelCase form,
@@ -10201,10 +10201,10 @@ PluginsChannelSetPromptPreprocessorToClientPacketDict = (
 PluginsChannelSetPromptPreprocessorToServerPacket = (
     PromptPreprocessingComplete
     | PluginsChannelSetPromptPreprocessorToServerPacketAborted
-    | PluginsChannelSetPromptPreprocessorToServerPacketError
+    | PromptPreprocessingError
 )
 PluginsChannelSetPromptPreprocessorToServerPacketDict = (
-    PluginsChannelSetPromptPreprocessorToServerPacketErrorDict
+    PromptPreprocessingErrorDict
     | PromptPreprocessingCompleteDict
     | PluginsChannelSetPromptPreprocessorToServerPacketAbortedDict
 )

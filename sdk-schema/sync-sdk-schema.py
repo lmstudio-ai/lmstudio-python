@@ -368,6 +368,8 @@ _DATA_MODEL_NAME_OVERRIDES = {
     "PluginsChannelSetPromptPreprocessorToClientPacketPreprocessDict": "PromptPreprocessingRequestDict",
     "PluginsChannelSetPromptPreprocessorToServerPacketComplete": "PromptPreprocessingComplete",
     "PluginsChannelSetPromptPreprocessorToServerPacketCompleteDict": "PromptPreprocessingCompleteDict",
+    "PluginsChannelSetPromptPreprocessorToServerPacketError": "PromptPreprocessingError",
+    "PluginsChannelSetPromptPreprocessorToServerPacketErrorDict": "PromptPreprocessingErrorDict",
     # Prettier config handling type names
     "LlmRpcGetLoadConfigReturns": "SerializedKVConfigSettings",
     "LlmRpcGetLoadConfigReturnsDict": "SerializedKVConfigSettingsDict",
