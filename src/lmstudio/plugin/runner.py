@@ -208,6 +208,13 @@ class PluginClient(AsyncClient):
                     hook_ready_event.set,
                 )
             )
+        plugin = self._name
+        if not implemented_hooks:
+            print(
+                f"No plugin hooks defined in {plugin!r}, "
+                f"expected at least one of {sorted(_HOOK_RUNNERS)}"
+            )
+            return 1
         # Use anyio and exceptiongroup to handle the lack of native task
         # and exception groups prior to Python 3.11
         async with create_task_group() as tg:
@@ -217,11 +224,8 @@ class PluginClient(AsyncClient):
             await asyncio.gather(*(e.wait() for e in hook_ready_events))
             await self.plugins.remote_call("pluginInitCompleted")
             # Indicate that prompt processing is ready
-            # Terminate all running tasks when termination is requested
-            try:
-                await asyncio.to_thread(partial(input, "Press Enter to terminate..."))
-            finally:
-                tg.cancel_scope.cancel()
+            print(f"Plugin {plugin!r} running, press Ctrl-C to terminate...")
+            # Task group will wait for the plugins to run
         return 0
 
 

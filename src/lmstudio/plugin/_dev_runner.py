@@ -100,8 +100,9 @@ class DevPluginClient(PluginClient):
         """Register a dev plugin on entry, deregister it on exit."""
         endpoint = self._get_registration_endpoint()
         async with self.plugins._create_channel(endpoint) as channel:
+            registration_result = await channel.wait_for_result()
             try:
-                yield await channel.wait_for_result()
+                yield registration_result
             finally:
                 message: DevPluginRegistrationEndDict = {"type": "end"}
                 await channel.send_message(message)
@@ -118,7 +119,6 @@ class DevPluginClient(PluginClient):
                     client_key,
                 )
             )
-            result.check_returncode()
             return result.returncode
 
 

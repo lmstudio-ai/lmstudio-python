@@ -26,6 +26,7 @@ def _parse_args(
     parser.add_argument("--dev", action="store_true", help="Run in development mode")
     return parser, parser.parse_args(argv)
 
+
 @sdk_public_api()
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the ``lmstudio.plugin`` CLI.
@@ -49,7 +50,14 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     logging.basicConfig(level=logging.DEBUG)
     if not args.dev:
-        runner.run_plugin(plugin_path, allow_local_imports=True)
-    # Retrieve args from API host, spawn plugin in subprocess
-    _dev_runner.run_plugin(plugin_path)
+        try:
+            runner.run_plugin(plugin_path, allow_local_imports=True)
+        except KeyboardInterrupt:
+            print("Plugin execution terminated with Ctrl-C")
+    else:
+        # Retrieve args from API host, spawn plugin in subprocess
+        try:
+            _dev_runner.run_plugin(plugin_path)
+        except KeyboardInterrupt:
+            pass  # Subprocess handles reporting the plugin termination
     return 0
