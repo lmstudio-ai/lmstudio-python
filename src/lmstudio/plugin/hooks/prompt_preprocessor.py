@@ -15,7 +15,7 @@ from typing import (
 
 from anyio import create_task_group
 
-from ..._logging import get_logger
+from ..._logging import new_logger
 from ...schemas import DictObject, EmptyDict, ValidationError
 from ...history import UserMessage, UserMessageDict
 from ...json_api import (
@@ -187,6 +187,7 @@ PromptPreprocessorHook = Callable[
 
 
 async def run_prompt_preprocessor(
+    plugin_name: str,
     hook_impl: PromptPreprocessorHook,
     plugin_config_schema: type[BaseConfigSchema],
     global_config_schema: type[BaseConfigSchema],
@@ -194,7 +195,8 @@ async def run_prompt_preprocessor(
     notify_ready: Callable[[], Any],
 ) -> None:
     """Accept prompt preprocessing requests."""
-    logger = get_logger(__name__)
+    logger = new_logger(__name__)
+    logger.update_context(plugin_name=plugin_name)
     endpoint = PromptPreprocessingEndpoint()
     async with session._create_channel(endpoint) as channel:
         notify_ready()

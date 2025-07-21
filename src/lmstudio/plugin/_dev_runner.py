@@ -93,7 +93,7 @@ class DevPluginRegistrationEndpoint(
 
 class DevPluginClient(PluginClient):
     def _get_registration_endpoint(self) -> DevPluginRegistrationEndpoint:
-        return DevPluginRegistrationEndpoint(self._owner, self._name)
+        return DevPluginRegistrationEndpoint(self.owner, self.name)
 
     @asynccontextmanager
     async def register_dev_plugin(self) -> AsyncGenerator[tuple[str, str], None]:

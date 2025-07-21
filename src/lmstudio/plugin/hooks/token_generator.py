@@ -6,7 +6,9 @@ from ..._sdk_models import (
     PluginsChannelSetGeneratorToClientPacketGenerate as TokenGenerationRequest,
 )
 
+from ..config_schemas import BaseConfigSchema
 from .common import (
+    AsyncSessionPlugins,
     HookController,
     TPluginConfigSchema,
     TGlobalConfigSchema,
@@ -16,7 +18,7 @@ from .common import (
 __all__ = [
     "TokenGeneratorController",
     "TokenGeneratorHook",
-    # "run_token_generator",
+    "run_token_generator",
 ]
 
 
@@ -27,3 +29,15 @@ class TokenGeneratorController(
 
 
 TokenGeneratorHook = Callable[[TokenGeneratorController[Any, Any]], Awaitable[None]]
+
+
+async def run_token_generator(
+    plugin_name: str,
+    hook_impl: TokenGeneratorHook,
+    plugin_config_schema: type[BaseConfigSchema],
+    global_config_schema: type[BaseConfigSchema],
+    session: AsyncSessionPlugins,
+    notify_ready: Callable[[], Any],
+) -> None:
+    """Accept token generation requests."""
+    raise NotImplementedError

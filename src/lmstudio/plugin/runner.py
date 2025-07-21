@@ -16,7 +16,7 @@ from typing import Any, Awaitable, Callable, TypeAlias, TypeVar
 
 from anyio import create_task_group
 
-from .._logging import get_logger
+from .._logging import new_logger
 from ..sdk_api import LMStudioFileNotFoundError, sdk_public_api
 from ..schemas import DictObject
 from ..async_api import AsyncClient
@@ -51,6 +51,7 @@ THookImpl = TypeVar("THookImpl", bound=AnyHookImpl)
 ReadyCallback: TypeAlias = Callable[[], Any]
 HookRunner: TypeAlias = Callable[
     [
+        str,  # Plugin name
         THookImpl,
         type[TPluginConfigSchema],
         type[TGlobalConfigSchema],
@@ -92,9 +93,9 @@ class PluginClient(AsyncClient):
             raise LMStudioPluginInitError(
                 f'Invalid manifest runner: {manifest["runner"]} (expected "python")'
             )
-        self._owner = manifest["owner"]
-        self._name = name = manifest["name"]
-        self._logger = logger = get_logger(__name__)
+        self.owner = manifest["owner"]
+        self.name = name = manifest["name"]
+        self._logger = logger = new_logger(__name__)
         logger.update_context(plugin=name)
 
     _ALL_SESSIONS = (
@@ -124,6 +125,7 @@ class PluginClient(AsyncClient):
     ) -> None:
         """Run the given hook implementation."""
         await hook_runner(
+            self.name,
             hook_impl,
             plugin_config_schema,
             global_config_schema,
@@ -179,6 +181,7 @@ class PluginClient(AsyncClient):
             raise LMStudioFileNotFoundError(source_path)
         # TODO: Consider passing this logger to hook runners (instead of each creating their own)
         logger = self._logger
+        logger.update_context(plugin_name=self.name)
         logger.info(f"Running {source_path}")
         if allow_local_imports:
             # We don't try to revert the path change, as that can have odd side-effects
@@ -208,7 +211,7 @@ class PluginClient(AsyncClient):
                     hook_ready_event.set,
                 )
             )
-        plugin = self._name
+        plugin = self.name
         if not implemented_hooks:
             print(
                 f"No plugin hooks defined in {plugin!r}, "

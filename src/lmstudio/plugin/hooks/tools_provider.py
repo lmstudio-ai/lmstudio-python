@@ -11,7 +11,9 @@ from ..._sdk_models import (
     PluginsChannelSetToolsProviderToClientPacketInitSession as ProvideToolsInitSession,
 )
 
+from ..config_schemas import BaseConfigSchema
 from .common import (
+    AsyncSessionPlugins,
     HookController,
     TPluginConfigSchema,
     TGlobalConfigSchema,
@@ -21,7 +23,7 @@ from .common import (
 __all__ = [
     "ToolsProviderController",
     "ToolsProviderHook",
-    # "run_tools_provider",
+    "run_tools_provider",
 ]
 
 
@@ -34,3 +36,15 @@ class ToolsProviderController(
 ToolsProviderHook = Callable[
     [ToolsProviderController[Any, Any]], Awaitable[Iterable[ToolDefinition]]
 ]
+
+
+async def run_tools_provider(
+    plugin_name: str,
+    hook_impl: ToolsProviderHook,
+    plugin_config_schema: type[BaseConfigSchema],
+    global_config_schema: type[BaseConfigSchema],
+    session: AsyncSessionPlugins,
+    notify_ready: Callable[[], Any],
+) -> None:
+    """Accept tools provider session requests."""
+    raise NotImplementedError

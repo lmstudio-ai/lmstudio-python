@@ -121,7 +121,7 @@ from ._sdk_models import (
     ModelCompatibilityType,
 )
 
-from ._logging import get_logger, LogEventContext
+from ._logging import new_logger, LogEventContext
 
 # Only the sync API itself is published from
 # this module. Anything needed for type hints
@@ -223,7 +223,7 @@ class SyncRemoteCall:
         """Initialize synchronous remote procedure call."""
         self._rx_queue = rx_queue
         self._rpc = RemoteCallHandler(call_id, log_context, notice_prefix)
-        self._logger = logger = get_logger(type(self).__name__)
+        self._logger = logger = new_logger(type(self).__name__)
         logger.update_context(log_context, call_id=call_id)
 
     def get_rpc_message(
