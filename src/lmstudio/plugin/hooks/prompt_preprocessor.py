@@ -17,7 +17,7 @@ from typing import (
 from anyio import create_task_group
 
 from ..._logging import get_logger
-from ...schemas import DictObject, EmptyDict
+from ...schemas import DictObject, EmptyDict, ValidationError
 from ...history import AnyChatMessage, AnyChatMessageDict
 from ...json_api import (
     ChannelCommonRxEvent,
@@ -25,6 +25,7 @@ from ...json_api import (
     ChannelFinishedEvent,
     ChannelRxEvent,
     LMStudioChannelClosedError,
+    load_struct,
 )
 from ..._sdk_models import (
     PluginsRpcProcessingHandleUpdateParameter,
@@ -216,6 +217,7 @@ async def run_prompt_preprocessor(
             except Exception as exc:
                 err_msg = "Error calling prompt preprocessing hook"
                 logger.error(err_msg, exc_info=True, exc=repr(exc))
+                # TODO: Determine if it's practical to emit a stack trace the server can display
                 error_details = SerializedLMSExtendedErrorDict(
                     cause=repr(exc), stack="\n".join(format_tb(exc.__traceback__))
                 )
@@ -224,14 +226,28 @@ async def run_prompt_preprocessor(
                     # No change to message
                     response_dict = message.to_dict()
                 else:
+                    logger.debug(
+                        f"Validating prompt preprocessing response: {response!r}"
+                    )
+                    response_cls = type(message)
                     if isinstance(response, dict):
-                        # TODO: parse the response to ensure validity client side
+                        # Parse the response to ensure validity client side,
                         # otherwise serialising the message may fail and crash the plugin
-                        response_dict = response
+                        try:
+                            # Response should have the same role as the received message
+                            parsed_response = load_struct(response, response_cls)
+                        except ValidationError as exc:
+                            err_msg = f"Failed to parse prompt preprocessing response as {response_cls.__name__}"
+                            logger.error(err_msg, exc_info=True, exc=repr(exc))
+                            error_details = SerializedLMSExtendedErrorDict(
+                                cause=err_msg
+                            )
+                        else:
+                            response_dict = parsed_response.to_dict()
                     elif isinstance(response, get_type_args(AnyChatMessage)):
                         response_dict = response.to_dict()
                     else:
-                        err_msg = f"Prompt preprocessing hook returned {type(response).__name__!r} (chat message expected)"
+                        err_msg = f"Prompt preprocessing hook returned {type(response).__name__!r} ({response_cls.__name__!r} expected)"
                         logger.error(err_msg)
                         error_details = SerializedLMSExtendedErrorDict(cause=err_msg)
             channel_message: DictObject
