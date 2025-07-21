@@ -147,5 +147,7 @@ class StructuredLogger:
         self._log(logging.CRITICAL, msg, exc_info, stack_info, stacklevel, event_dict)
 
 
-def get_logger(name: str, /, *args: Any, **kwds: Any) -> StructuredLogger:
+def new_logger(name: str, /, *args: Any, **kwds: Any) -> StructuredLogger:
+    # Loggers contain runtime state, so they are NOT shared based on their names
+    # Function name reflects this to avoid false expectations from stdlib logging
     return StructuredLogger(logging.getLogger(name, *args, **kwds))

@@ -32,7 +32,7 @@ from httpx_ws import aconnect_ws, AsyncWebSocketSession, HTTPXWSException
 from .schemas import DictObject
 from .json_api import LMStudioWebsocket, LMStudioWebsocketError
 
-from ._logging import get_logger, LogEventContext
+from ._logging import new_logger, LogEventContext
 
 
 # Allow the core client websocket management to be shared across all SDK interaction APIs
@@ -281,7 +281,7 @@ class BackgroundThread(threading.Thread):
 class AsyncWebsocketThread(BackgroundThread):
     def __init__(self, log_context: LogEventContext | None = None) -> None:
         super().__init__(task_target=self._log_thread_execution)
-        self._logger = logger = get_logger(type(self).__name__)
+        self._logger = logger = new_logger(type(self).__name__)
         logger.update_context(log_context, thread_id=self.name)
 
     async def _log_thread_execution(self) -> None:
@@ -322,8 +322,7 @@ class AsyncWebsocketHandler:
         self._ws_disconnected = asyncio.Event()
         self._rx_task: asyncio.Task[None] | None = None
         self._enqueue_message = enqueue_message
-        self._logger = get_logger(type(self).__name__)
-        self._logger = logger = get_logger(type(self).__name__)
+        self._logger = logger = new_logger(type(self).__name__)
         logger.update_context(log_context)
 
     async def connect(self) -> bool:
