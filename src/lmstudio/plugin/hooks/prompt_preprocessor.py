@@ -11,14 +11,13 @@ from typing import (
     Iterable,
     TypeAlias,
     assert_never,
-    get_args as get_type_args,
 )
 
 from anyio import create_task_group
 
 from ..._logging import get_logger
 from ...schemas import DictObject, EmptyDict, ValidationError
-from ...history import AnyChatMessage, AnyChatMessageDict
+from ...history import UserMessage, UserMessageDict
 from ...json_api import (
     ChannelCommonRxEvent,
     ChannelEndpoint,
@@ -182,8 +181,8 @@ class PromptPreprocessorController(
 
 
 PromptPreprocessorHook = Callable[
-    [PromptPreprocessorController[Any, Any], AnyChatMessage],
-    Awaitable[AnyChatMessage | AnyChatMessageDict | None],
+    [PromptPreprocessorController[Any, Any], UserMessage],
+    Awaitable[UserMessage | UserMessageDict | None],
 ]
 
 
@@ -203,11 +202,17 @@ async def run_prompt_preprocessor(
 
         async def _invoke_hook(request: PromptPreprocessingRequest) -> None:
             message = request.input
+            expected_cls = UserMessage
+            if not isinstance(message, expected_cls):
+                logger.error(
+                    f"Received {type(message).__name__!r} ({expected_cls.__name__!r} expected)"
+                )
+                return
             hook_controller = PromptPreprocessorController(
                 session, request, plugin_config_schema, global_config_schema
             )
             error_details: SerializedLMSExtendedErrorDict | None = None
-            response_dict: AnyChatMessageDict
+            response_dict: UserMessageDict
             try:
                 response = await hook_impl(hook_controller, message)
             except asyncio.CancelledError:
@@ -227,27 +232,23 @@ async def run_prompt_preprocessor(
                     response_dict = message.to_dict()
                 else:
                     logger.debug(
-                        f"Validating prompt preprocessing response: {response!r}"
+                        "Validating prompt preprocessing response", response=response
                     )
-                    response_cls = type(message)
                     if isinstance(response, dict):
-                        # Parse the response to ensure validity client side,
-                        # otherwise serialising the message may fail and crash the plugin
                         try:
-                            # Response should have the same role as the received message
-                            parsed_response = load_struct(response, response_cls)
+                            parsed_response = load_struct(response, expected_cls)
                         except ValidationError as exc:
-                            err_msg = f"Failed to parse prompt preprocessing response as {response_cls.__name__}"
+                            err_msg = f"Failed to parse prompt preprocessing response as {expected_cls.__name__}"
                             logger.error(err_msg, exc_info=True, exc=repr(exc))
                             error_details = SerializedLMSExtendedErrorDict(
                                 cause=err_msg
                             )
                         else:
                             response_dict = parsed_response.to_dict()
-                    elif isinstance(response, get_type_args(AnyChatMessage)):
+                    elif isinstance(response, UserMessage):
                         response_dict = response.to_dict()
                     else:
-                        err_msg = f"Prompt preprocessing hook returned {type(response).__name__!r} ({response_cls.__name__!r} expected)"
+                        err_msg = f"Prompt preprocessing hook returned {type(response).__name__!r} ({expected_cls.__name__!r} expected)"
                         logger.error(err_msg)
                         error_details = SerializedLMSExtendedErrorDict(cause=err_msg)
             channel_message: DictObject

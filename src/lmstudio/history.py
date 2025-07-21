@@ -59,6 +59,7 @@ from ._sdk_models import (
     ToolCallResultDataDict,
     ToolResultMessage,
     UserMessage,
+    UserMessageDict,
 )
 
 __all__ = [
@@ -84,6 +85,7 @@ __all__ = [
     "ToolResultMessage",
     "UserMessage",
     "UserMessageContent",
+    "UserMessageDict",
 ]
 
 # A note on terminology:

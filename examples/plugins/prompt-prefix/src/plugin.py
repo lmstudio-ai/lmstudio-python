@@ -3,7 +3,7 @@
 import asyncio
 
 from lmstudio.plugin import BaseConfigSchema, PromptPreprocessorController, config_field
-from lmstudio import AnyChatMessage, AnyChatMessageDict, TextDataDict
+from lmstudio import UserMessage, UserMessageDict, TextDataDict
 
 
 # Assigning ConfigSchema = SomeOtherSchemaClass also works
@@ -36,11 +36,9 @@ class GlobalConfigSchema(BaseConfigSchema):
 # Assigning preprocess_prompt = some_other_callable also works
 async def preprocess_prompt(
     ctl: PromptPreprocessorController[ConfigSchema, GlobalConfigSchema],
-    message: AnyChatMessage,
-) -> AnyChatMessageDict | None:
+    message: UserMessage,
+) -> UserMessageDict | None:
     """Naming the function 'preprocess_prompt' implicitly registers it."""
-    if message.role != "user":
-        return None
     print(f"Running prompt preprocessor hook from {__file__} with {ctl.plugin_config}")
     if ctl.global_config.enable_inplace_status_demo:
         # Run an in-place status prompt update demonstration
