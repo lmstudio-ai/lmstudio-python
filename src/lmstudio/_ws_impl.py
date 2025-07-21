@@ -322,7 +322,6 @@ class AsyncWebsocketHandler:
         self._ws_disconnected = asyncio.Event()
         self._rx_task: asyncio.Task[None] | None = None
         self._enqueue_message = enqueue_message
-        self._logger = new_logger(type(self).__name__)
         self._logger = logger = new_logger(type(self).__name__)
         logger.update_context(log_context)
 
