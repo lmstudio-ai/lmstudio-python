@@ -225,8 +225,9 @@ async def run_prompt_preprocessor(
                 err_msg = "Error calling prompt preprocessing hook"
                 logger.error(err_msg, exc_info=True, exc=repr(exc))
                 # TODO: Determine if it's practical to emit a stack trace the server can display
+                ui_cause = f"{err_msg}\n({type(exc).__name__}: {exc})"
                 error_details = SerializedLMSExtendedErrorDict(
-                    cause=repr(exc), stack="\n".join(format_tb(exc.__traceback__))
+                    cause=ui_cause, stack="\n".join(format_tb(exc.__traceback__))
                 )
             else:
                 if response is None:
@@ -240,8 +241,8 @@ async def run_prompt_preprocessor(
                         try:
                             parsed_response = load_struct(response, expected_cls)
                         except ValidationError as exc:
-                            err_msg = f"Failed to parse prompt preprocessing response as {expected_cls.__name__}"
-                            logger.error(err_msg, exc_info=True, exc=repr(exc))
+                            err_msg = f"Failed to parse prompt preprocessing response as {expected_cls.__name__}\n({exc})"
+                            logger.error(err_msg)
                             error_details = SerializedLMSExtendedErrorDict(
                                 cause=err_msg
                             )
@@ -255,6 +256,12 @@ async def run_prompt_preprocessor(
                         error_details = SerializedLMSExtendedErrorDict(cause=err_msg)
             channel_message: DictObject
             if error_details is not None:
+                error_title = f"Prompt preprocessing error in plugin {plugin_name!r}"
+                common_error_args: SerializedLMSExtendedErrorDict = {
+                    "title": error_title,
+                    "rootTitle": error_title,
+                }
+                error_details.update(common_error_args)
                 channel_message = PromptPreprocessingErrorDict(
                     type="error",
                     taskId=request.task_id,

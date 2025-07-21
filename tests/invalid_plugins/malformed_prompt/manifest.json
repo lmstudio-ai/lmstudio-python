@@ -1,0 +1,7 @@
+{
+  "type": "plugin",
+  "runner": "python",
+  "owner": "lmstudio",
+  "name": "malformed-prompt",
+  "revision": 1
+}

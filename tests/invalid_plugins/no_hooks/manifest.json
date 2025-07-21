@@ -1,0 +1,7 @@
+{
+  "type": "plugin",
+  "runner": "python",
+  "owner": "lmstudio",
+  "name": "no-hooks",
+  "revision": 1
+}

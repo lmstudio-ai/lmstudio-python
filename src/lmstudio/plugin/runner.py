@@ -31,8 +31,8 @@ from .hooks import (
     TPluginConfigSchema,
     TGlobalConfigSchema,
     run_prompt_preprocessor,
-    # run_token_generator,
-    # run_tools_provider,
+    run_token_generator,
+    run_tools_provider,
 )
 
 # Available as lmstudio.plugin.*
@@ -63,8 +63,8 @@ HookRunner: TypeAlias = Callable[
 
 _HOOK_RUNNERS: dict[str, HookRunner[Any, Any, Any]] = {
     "preprocess_prompt": run_prompt_preprocessor,
-    # "generate_tokens": run_token_generator,
-    # "list_provided_tools": run_tools_provider,
+    "generate_tokens": run_token_generator,
+    "list_provided_tools": run_tools_provider,
 }
 
 
@@ -213,9 +213,10 @@ class PluginClient(AsyncClient):
             )
         plugin = self.name
         if not implemented_hooks:
+            hook_list = "\n  - ".join(("", *sorted(_HOOK_RUNNERS)))
             print(
                 f"No plugin hooks defined in {plugin!r}, "
-                f"expected at least one of {sorted(_HOOK_RUNNERS)}"
+                f"expected at least one of:{hook_list}"
             )
             return 1
         # Use anyio and exceptiongroup to handle the lack of native task
