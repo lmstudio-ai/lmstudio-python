@@ -117,7 +117,7 @@ from ._sdk_models import (
     RepositoryRpcSearchModelsParameter,
     SerializedLMSExtendedError,
 )
-from ._logging import get_logger, LogEventContext, StructuredLogger
+from ._logging import new_logger, LogEventContext, StructuredLogger
 
 # The sync and async modules publish the main SDK client API.
 # From here, we publish everything that might be needed
@@ -661,7 +661,7 @@ class ChannelEndpoint(Generic[T, TRxEvent, TWireFormat], ABC):
         # Channel processing state tracking
         self._is_finished = False
         self._result: T | None = None
-        self._logger = logger = get_logger(type(self).__name__)
+        self._logger = logger = new_logger(type(self).__name__)
         logger.update_context(endpoint=self._API_ENDPOINT)
 
     @property
@@ -1602,7 +1602,7 @@ class ChannelHandler(Generic[TEndpoint]):
         self._is_finished = False
         self._channel_id = channel_id
         self._endpoint = endpoint
-        self._logger = logger = get_logger(type(self).__name__)
+        self._logger = logger = new_logger(type(self).__name__)
         logger.update_context(log_context, channel_id=channel_id)
 
     @property
@@ -1681,7 +1681,7 @@ class RemoteCallHandler:
     ) -> None:
         """Initialize websocket remote procedure call."""
         self._call_id = call_id
-        self._logger = logger = get_logger(type(self).__name__)
+        self._logger = logger = new_logger(type(self).__name__)
         logger.update_context(log_context, call_id=call_id)
         self._notice_prefix = notice_prefix
 
@@ -1776,7 +1776,7 @@ class LMStudioWebsocket(Generic[TWebsocket, TQueue]):
         """Initialize I/O independent websocket details."""
         self._ws_url = ws_url
         self._auth_details = auth_details
-        self._logger = logger = get_logger(type(self).__name__)
+        self._logger = logger = new_logger(type(self).__name__)
         logger.update_context(log_context, ws_url=ws_url)
         self._mux = MultiplexingManager(logger)
         # Subclasses handle actually creating a websocket instance
@@ -2042,7 +2042,7 @@ class ModelHandleBase(Generic[TSession]):
         """Initialize the LM Studio model reference."""
         self.identifier = model_identifier
         self._session = session
-        self._logger = logger = get_logger(type(self).__name__)
+        self._logger = logger = new_logger(type(self).__name__)
         logger.update_context(model_identifier=model_identifier)
 
     def __repr__(self) -> str:

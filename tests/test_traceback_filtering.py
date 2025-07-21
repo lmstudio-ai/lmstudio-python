@@ -5,7 +5,7 @@ from pytest import LogCaptureFixture as LogCap
 
 from lmstudio import LMStudioError
 from lmstudio.sdk_api import sdk_callback_invocation
-from lmstudio._logging import get_logger
+from lmstudio._logging import new_logger
 
 from .support import check_sdk_error, check_unfiltered_error
 from .support.lmstudio import (
@@ -65,7 +65,7 @@ async def test_async_api_truncation_internal_error(public_api: TestCoro) -> None
 
 
 def test_callback_invocation(caplog: LogCap) -> None:
-    logger = get_logger(__name__)
+    logger = new_logger(__name__)
     exc_to_raise = Exception("This will be raised")
     with sdk_callback_invocation("Callback test", logger):
         raise exc_to_raise
