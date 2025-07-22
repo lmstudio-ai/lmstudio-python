@@ -107,7 +107,9 @@ class DevPluginClient(PluginClient):
                 message: DevPluginRegistrationEndDict = {"type": "end"}
                 await channel.send_message(message)
 
-    async def run_plugin(self, *, allow_local_imports: bool = True) -> int:
+    async def run_plugin(
+        self, *, allow_local_imports: bool = True, debug: bool = False
+    ) -> int:
         if not allow_local_imports:
             raise ValueError("Local imports are always permitted for dev plugins")
         async with self.register_dev_plugin() as (client_id, client_key):
@@ -117,35 +119,40 @@ class DevPluginClient(PluginClient):
                     self._plugin_path,
                     client_id,
                     client_key,
+                    debug,
                 )
             )
             return result.returncode
 
 
-# TODO: support the same subprocess monitoring features as `lms dev`
+# TODO: support the same source code change monitoring features as `lms dev`
 def _run_plugin_in_child_process(
-    plugin_path: Path, client_id: str, client_key: str
+    plugin_path: Path, client_id: str, client_key: str, debug: bool = False
 ) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
     env[ENV_CLIENT_ID] = client_id
     env[ENV_CLIENT_KEY] = client_key
     package_name = __spec__.parent
     assert package_name is not None
+    debug_option = ("--debug",) if debug else ()
     command: list[str] = [
         sys.executable,
         "-m",
         package_name,
+        *debug_option,
         os.fspath(plugin_path),
     ]
     return subprocess.run(command, text=True, env=env)
 
 
-async def run_plugin_async(plugin_dir: str | os.PathLike[str]) -> int:
+async def run_plugin_async(
+    plugin_dir: str | os.PathLike[str], *, debug: bool = False
+) -> int:
     """Asynchronously execute a plugin in development mode."""
     async with DevPluginClient(plugin_dir) as dev_client:
-        return await dev_client.run_plugin()
+        return await dev_client.run_plugin(debug=debug)
 
 
-def run_plugin(plugin_dir: str | os.PathLike[str]) -> int:
+def run_plugin(plugin_dir: str | os.PathLike[str], *, debug: bool = False) -> int:
     """Execute a plugin in development mode."""
-    return asyncio.run(run_plugin_async(plugin_dir))
+    return asyncio.run(run_plugin_async(plugin_dir, debug=debug))

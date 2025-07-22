@@ -321,7 +321,7 @@ class SyncLMStudioWebsocket(
         for rx_queue in self._mux.all_queues():
             rx_queue.put(None)
             num_clients += 1
-        self._logger.info(
+        self._logger.debug(
             f"Notified {num_clients} clients of websocket termination",
             num_clients=num_clients,
         )

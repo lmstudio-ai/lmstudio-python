@@ -1,6 +1,7 @@
 """Command line interface implementation."""
 
 import argparse
+import logging
 import os.path
 import sys
 import warnings
@@ -24,6 +25,7 @@ def _parse_args(
         "plugin_path", metavar="PLUGIN_PATH", help="Directory name of plugin to run"
     )
     parser.add_argument("--dev", action="store_true", help="Run in development mode")
+    parser.add_argument("--debug", action="store_true", help="Enable debug logging")
     return parser, parser.parse_args(argv)
 
 
@@ -45,10 +47,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     warnings.filterwarnings(
         "ignore", ".*the async API is not yet stable", FutureWarning
     )
-    # TODO: Accept options to configure the verbosity
-    import logging
-
-    logging.basicConfig(level=logging.DEBUG)
+    log_level = logging.DEBUG if args.debug else logging.INFO
+    logging.basicConfig(level=log_level)
     if not args.dev:
         try:
             runner.run_plugin(plugin_path, allow_local_imports=True)
@@ -57,7 +57,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     else:
         # Retrieve args from API host, spawn plugin in subprocess
         try:
-            _dev_runner.run_plugin(plugin_path)
+            _dev_runner.run_plugin(plugin_path, debug=args.debug)
         except KeyboardInterrupt:
             pass  # Subprocess handles reporting the plugin termination
     return 0
