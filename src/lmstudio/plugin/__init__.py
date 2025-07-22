@@ -15,7 +15,7 @@ from .runner import *
 # * [DONE] refactor hook registration to be data driven instead of hardcoded in the runner
 # * refactor to allow "Abort" request handling to be common across hook invocation tasks
 # * refactor to allow hook invocation error handling to be common across hook invocation tasks
-# * gracefully handle app termination while a dev plugin is still running (handle "None" on rx_stream)
+# * [DONE] gracefully handle app termination while a dev plugin is still running
 # * [DONE] gracefully handle using Ctrl-C to terminate a running dev plugin
 #
 # Controller APIs (may be limited to relevant hook controllers)

@@ -1,7 +1,5 @@
 """Invoking and supporting prompt preprocessor hook implementations."""
 
-import asyncio
-
 from traceback import format_tb
 
 from typing import (
@@ -23,7 +21,6 @@ from ...json_api import (
     ChannelEndpoint,
     ChannelFinishedEvent,
     ChannelRxEvent,
-    LMStudioChannelClosedError,
     load_struct,
 )
 from ..._sdk_models import (
@@ -74,7 +71,7 @@ PromptPreprocessingRxEvent: TypeAlias = (
 class PromptPreprocessingEndpoint(
     ChannelEndpoint[tuple[str, str], PromptPreprocessingRxEvent, EmptyDict]
 ):
-    """API channel endpoint to register a development plugin and receive credentials."""
+    """API channel endpoint to accept prompt preprocessing requests."""
 
     _API_ENDPOINT = "setPromptPreprocessor"
     _NOTICE_PREFIX = "Prompt preprocessing"
@@ -87,9 +84,8 @@ class PromptPreprocessingEndpoint(
     ) -> Iterable[PromptPreprocessingRxEvent]:
         match contents:
             case None:
-                raise LMStudioChannelClosedError(
-                    "Server failed to complete development plugin registration."
-                )
+                # Server can only terminate the link by closing the websocket
+                pass
             case {"type": "abort", "task_id": str(task_id)}:
                 yield PromptPreprocessingAbortEvent(task_id)
             case {"type": "preprocess"} as request_dict:
@@ -217,14 +213,10 @@ async def run_prompt_preprocessor(
             response_dict: UserMessageDict
             try:
                 response = await hook_impl(hook_controller, message)
-            except asyncio.CancelledError:
-                # Cancellation is a regular exception, so explicitly
-                # reraise it to avoid blocking Ctrl-C processing
-                raise
             except Exception as exc:
                 err_msg = "Error calling prompt preprocessing hook"
                 logger.error(err_msg, exc_info=True, exc=repr(exc))
-                # TODO: Determine if it's practical to emit a stack trace the server can display
+                # TODO: Determine if it's worth sending the stack trace to the server
                 ui_cause = f"{err_msg}\n({type(exc).__name__}: {exc})"
                 error_details = SerializedLMSExtendedErrorDict(
                     cause=ui_cause, stack="\n".join(format_tb(exc.__traceback__))
