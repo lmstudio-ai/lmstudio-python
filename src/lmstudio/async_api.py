@@ -1,7 +1,6 @@
 """Async I/O protocol implementation for the LM Studio remote access API."""
 
 import asyncio
-import asyncio.queues
 import warnings
 
 from abc import abstractmethod
@@ -28,6 +27,8 @@ from typing_extensions import (
     TypeIs,
 )
 
+from anyio import create_task_group
+from anyio.abc import TaskGroup
 from httpx import RequestError, HTTPStatusError
 from httpx_ws import aconnect_ws, AsyncWebSocketSession, HTTPXWSException
 
@@ -163,7 +164,10 @@ class AsyncChannel(Generic[T]):
                 # Avoid emitting tracebacks that delve into supporting libraries
                 # (we can't easily suppress the SDK's own frames for iterators)
                 message = await self._rx_queue.get()
-                contents = self._api_channel.handle_rx_message(message)
+                if message is None:
+                    contents = None
+                else:
+                    contents = self._api_channel.handle_rx_message(message)
             if contents is None:
                 self._is_finished = True
                 break
@@ -204,6 +208,8 @@ class AsyncRemoteCall:
     async def receive_result(self) -> Any:
         """Receive call response on the receive queue."""
         message = await self._rx_queue.get()
+        if message is None:
+            return None
         return self._rpc.handle_rx_message(message)
 
 
@@ -220,8 +226,10 @@ class AsyncLMStudioWebsocket(
     ) -> None:
         """Initialize asynchronous websocket client."""
         super().__init__(ws_url, auth_details, log_context)
-        self._resource_manager = AsyncExitStack()
+        self._resource_manager = rm = AsyncExitStack()
+        rm.push_async_callback(self._notify_client_termination)
         self._rx_task: asyncio.Task[None] | None = None
+        self._terminate = asyncio.Event()
 
     @property
     def _httpx_ws(self) -> AsyncWebSocketSession | None:
@@ -241,7 +249,9 @@ class AsyncLMStudioWebsocket(
     async def _send_json(self, message: DictObject) -> None:
         # Callers are expected to call `_ensure_connected` before this method
         ws = self._ws
-        assert ws is not None
+        if ws is None:
+            # Assume app is shutting down and the owning task has already been cancelled
+            return
         try:
             await ws.send_json(message)
         except Exception as exc:
@@ -253,7 +263,9 @@ class AsyncLMStudioWebsocket(
     async def _receive_json(self) -> Any:
         # Callers are expected to call `_ensure_connected` before this method
         ws = self._ws
-        assert ws is not None
+        if ws is None:
+            # Assume app is shutting down and the owning task has already been cancelled
+            return
         try:
             return await ws.receive_json()
         except Exception as exc:
@@ -291,7 +303,7 @@ class AsyncLMStudioWebsocket(
         self._rx_task = rx_task = asyncio.create_task(self._receive_messages())
 
         async def _terminate_rx_task() -> None:
-            rx_task.cancel()
+            self._terminate.set()
             try:
                 await rx_task
             except asyncio.CancelledError:
@@ -305,11 +317,15 @@ class AsyncLMStudioWebsocket(
         """Drop the LM Studio API connection."""
         self._ws = None
         self._rx_task = None
-        await self._notify_client_termination()
+        self._terminate.set()
         await self._resource_manager.aclose()
         self._logger.info(f"Websocket session disconnected ({self._ws_url})")
 
     aclose = disconnect
+
+    async def _cancel_on_termination(self, tg: TaskGroup) -> None:
+        await self._terminate.wait()
+        tg.cancel_scope.cancel()
 
     async def _process_next_message(self) -> bool:
         """Process the next message received on the websocket.
@@ -317,7 +333,18 @@ class AsyncLMStudioWebsocket(
         Returns True if a message queue was updated.
         """
         self._ensure_connected("receive messages")
-        message = await self._receive_json()
+        async with create_task_group() as tg:
+            tg.start_soon(self._cancel_on_termination, tg)
+            try:
+                message = await self._receive_json()
+            except (LMStudioWebsocketError, HTTPXWSException):
+                if self._ws is not None and not self._terminate.is_set():
+                    # Websocket failed unexpectedly (rather than due to client shutdown)
+                    self._logger.error("Websocket failed, terminating session.")
+                    self._terminate.set()
+            tg.cancel_scope.cancel()
+        if self._terminate.is_set():
+            return (await self._notify_client_termination()) > 0
         rx_queue = self._mux.map_rx_message(message)
         if rx_queue is None:
             return False
@@ -326,18 +353,20 @@ class AsyncLMStudioWebsocket(
 
     async def _receive_messages(self) -> None:
         """Process received messages until connection is terminated."""
-        while True:
-            try:
-                await self._process_next_message()
-            except (LMStudioWebsocketError, HTTPXWSException):
-                self._logger.exception("Websocket failed, terminating session.")
-                await self.disconnect()
-                break
+        while not self._terminate.is_set():
+            await self._process_next_message()
 
-    async def _notify_client_termination(self) -> None:
+    async def _notify_client_termination(self) -> int:
         """Send None to all clients with open receive queues."""
+        num_clients = 0
         for rx_queue in self._mux.all_queues():
             await rx_queue.put(None)
+            num_clients += 1
+        self._logger.info(
+            f"Notified {num_clients} clients of websocket termination",
+            num_clients=num_clients,
+        )
+        return num_clients
 
     async def _connect_to_endpoint(self, channel: AsyncChannel[Any]) -> None:
         """Connect channel to specified endpoint."""
@@ -362,6 +391,9 @@ class AsyncLMStudioWebsocket(
                 self._logger.event_context,
             )
             await self._connect_to_endpoint(channel)
+            if self._terminate.is_set():
+                # Link has been terminated, ensure client gets a response
+                await rx_queue.put(None)
             yield channel
 
     async def _send_call(
@@ -396,6 +428,9 @@ class AsyncLMStudioWebsocket(
                 call_id, rx_queue, self._logger.event_context, notice_prefix
             )
             await self._send_call(rpc, endpoint, params)
+            if self._terminate.is_set():
+                # Link has been terminated, ensure client gets a response
+                await rx_queue.put(None)
             return await rpc.receive_result()
 
 

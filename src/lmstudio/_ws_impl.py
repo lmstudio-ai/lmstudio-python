@@ -290,6 +290,8 @@ class AsyncWebsocketThread(BackgroundThread):
         try:
             # Run the event loop until termination is requested
             await never_set.wait()
+        except asyncio.CancelledError:
+            raise
         except BaseException:
             err_msg = "Terminating websocket thread due to exception"
             self._logger.debug(err_msg, exc_info=True)
@@ -309,7 +311,7 @@ class AsyncWebsocketHandler:
         task_manager: AsyncTaskManager,
         ws_url: str,
         auth_details: DictObject,
-        enqueue_message: Callable[[DictObject], bool],
+        enqueue_message: Callable[[DictObject | None], Awaitable[bool]],
         log_context: LogEventContext | None = None,
     ) -> None:
         self._auth_details = auth_details
@@ -357,6 +359,8 @@ class AsyncWebsocketHandler:
         self._logger.info("Websocket handling task started")
         try:
             await self._handle_ws()
+        except asyncio.CancelledError:
+            raise
         except BaseException:
             err_msg = "Terminating websocket task due to exception"
             self._logger.debug(err_msg, exc_info=True)
@@ -364,7 +368,7 @@ class AsyncWebsocketHandler:
             # Ensure the foreground thread is unblocked even if the
             # background async task errors out completely
             self._connection_attempted.set()
-        self._logger.info("Websocket task terminated")
+            self._logger.info("Websocket task terminated")
 
     async def _handle_ws(self) -> None:
         assert self._task_manager.check_running_in_task_loop()
@@ -396,12 +400,19 @@ class AsyncWebsocketHandler:
                 await self._receive_messages()
             finally:
                 self._logger.info("Websocket demultiplexing task terminated.")
+                # Notify foreground thread of background thread termination
+                # (this covers termination due to link failure)
+                await self._enqueue_message(None)
                 dc_timeout = self.WS_DISCONNECT_TIMEOUT
                 with move_on_after(dc_timeout, shield=True) as cancel_scope:
                     # Workaround an anyio/httpx-ws issue with task cancellation:
                     # https://github.com/frankie567/httpx-ws/issues/107
                     self._ws = None
-                    await ws.close()
+                    try:
+                        await ws.close()
+                    except Exception:
+                        # Closing may fail if the link is already down
+                        pass
                 if cancel_scope.cancelled_caught:
                     self._logger.warn(
                         f"Failed to close websocket in {dc_timeout} seconds."
@@ -413,7 +424,9 @@ class AsyncWebsocketHandler:
         # This is only called if the websocket has been created
         assert self._task_manager.check_running_in_task_loop()
         ws = self._ws
-        assert ws is not None
+        if ws is None:
+            # Assume app is shutting down and the owning task has already been cancelled
+            return
         try:
             await ws.send_json(message)
         except Exception as exc:
@@ -430,7 +443,9 @@ class AsyncWebsocketHandler:
         # This is only called if the websocket has been created
         assert self._task_manager.check_running_in_task_loop()
         ws = self._ws
-        assert ws is not None
+        if ws is None:
+            # Assume app is shutting down and the owning task has already been cancelled
+            return
         try:
             return await ws.receive_json()
         except Exception as exc:
@@ -443,7 +458,9 @@ class AsyncWebsocketHandler:
         # This is only called if the websocket has been created
         assert self._task_manager.check_running_in_task_loop()
         ws = self._ws
-        assert ws is not None
+        if ws is None:
+            # Assume app is shutting down and the owning task has already been cancelled
+            return False
         auth_message = self._auth_details
         await self.send_json(auth_message)
         auth_result = await self._receive_json()
@@ -461,11 +478,11 @@ class AsyncWebsocketHandler:
         # This is only called if the websocket has been created
         assert self._task_manager.check_running_in_task_loop()
         ws = self._ws
-        assert ws is not None
+        if ws is None:
+            # Assume app is shutting down and the owning task has already been cancelled
+            return False
         message = await ws.receive_json()
-        # Enqueueing messages may be a blocking call
-        # TODO: Require it to return an Awaitable, move to_thread call to the sync bridge
-        return await asyncio.to_thread(self._enqueue_message, message)
+        return await self._enqueue_message(message)
 
     async def _receive_messages(self) -> None:
         """Process received messages until task is cancelled."""
@@ -475,7 +492,7 @@ class AsyncWebsocketHandler:
             except (LMStudioWebsocketError, HTTPXWSException):
                 if self._ws is not None and not self._ws_disconnected.is_set():
                     # Websocket failed unexpectedly (rather than due to client shutdown)
-                    self._logger.exception("Websocket failed, terminating session.")
+                    self._logger.error("Websocket failed, terminating session.")
                 break
 
 
@@ -485,11 +502,14 @@ class SyncToAsyncWebsocketBridge:
         ws_thread: AsyncWebsocketThread,
         ws_url: str,
         auth_details: DictObject,
-        enqueue_message: Callable[[DictObject], bool],
+        enqueue_message: Callable[[DictObject | None], bool],
         log_context: LogEventContext,
     ) -> None:
+        async def enqueue_async(message: DictObject | None) -> bool:
+            return await asyncio.to_thread(enqueue_message, message)
+
         self._ws_handler = AsyncWebsocketHandler(
-            ws_thread.task_manager, ws_url, auth_details, enqueue_message, log_context
+            ws_thread.task_manager, ws_url, auth_details, enqueue_async, log_context
         )
 
     def connect(self) -> bool:
