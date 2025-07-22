@@ -352,10 +352,10 @@ class LMStudioServerError(LMStudioError):
             lines.extend(_get_data_lines(details.error_data, "    "))
         if details.cause is not None:
             lines.extend(("", "  Reported cause:"))
-            lines.extend(f"    {details.cause}")
+            lines.append(f"    {details.cause}")
         if details.suggestion is not None:
             lines.extend(("", "  Suggested potential remedy:"))
-            lines.extend(f"    {details.suggestion}")
+            lines.append(f"    {details.suggestion}")
         # Only use the multi-line format if at least one
         # of the extended error fields is populated
         if lines:
