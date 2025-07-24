@@ -5,6 +5,7 @@ from pathlib import Path
 from random import randrange
 from typing import (
     Any,
+    Awaitable,
     Callable,
     Generic,
     TypeAlias,
@@ -12,6 +13,7 @@ from typing import (
 )
 
 from ...async_api import AsyncSession
+from ...schemas import DictObject
 from ..._sdk_models import (
     # TODO: Define aliases at schema generation time
     PluginsChannelSetGeneratorToClientPacketGenerate as TokenGenerationRequest,
@@ -43,6 +45,7 @@ TPluginRequest = TypeVar("TPluginRequest", bound=PluginRequest)
 TPluginConfigSchema = TypeVar("TPluginConfigSchema", bound=BaseConfigSchema)
 TGlobalConfigSchema = TypeVar("TGlobalConfigSchema", bound=BaseConfigSchema)
 TConfig = TypeVar("TConfig", bound=BaseConfigSchema)
+SendMessageCallback: TypeAlias = Callable[[DictObject], Awaitable[Any]]
 
 
 class HookController(Generic[TPluginRequest, TPluginConfigSchema, TGlobalConfigSchema]):
@@ -57,6 +60,7 @@ class HookController(Generic[TPluginRequest, TPluginConfigSchema, TGlobalConfigS
     ) -> None:
         """Initialize common hook controller settings."""
         self.session = session
+        self.request = request
         self.plugin_config = self._parse_config(
             request.plugin_config, plugin_config_schema
         )

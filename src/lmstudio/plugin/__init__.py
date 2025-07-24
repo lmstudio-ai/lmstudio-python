@@ -35,7 +35,7 @@ from .runner import *
 # * [DONE] add a global plugin config to control the in-place status update demo
 # * handle "Abort" requests from server (including sending "Aborted" responses)
 # * [DONE] catch hook invocation failures and send "Error" responses
-# * [partial] this includes adding runtime checks for the hook returning the wrong type
+# * [DONE] this includes adding runtime checks for the hook returning the wrong type
 #
 # Token generator hook
 # * add an example plugin for this (probably proxying a remote LM Studio instance)
