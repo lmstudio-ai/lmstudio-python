@@ -290,7 +290,7 @@ class AsyncWebsocketThread(BackgroundThread):
         try:
             # Run the event loop until termination is requested
             await never_set.wait()
-        except asyncio.CancelledError:
+        except (asyncio.CancelledError, GeneratorExit):
             raise
         except BaseException:
             err_msg = "Terminating websocket thread due to exception"
@@ -359,7 +359,7 @@ class AsyncWebsocketHandler:
         self._logger.info("Websocket handling task started")
         try:
             await self._handle_ws()
-        except asyncio.CancelledError:
+        except (asyncio.CancelledError, GeneratorExit):
             raise
         except BaseException:
             err_msg = "Terminating websocket task due to exception"

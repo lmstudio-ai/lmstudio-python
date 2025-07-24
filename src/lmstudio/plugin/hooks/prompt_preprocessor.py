@@ -1,9 +1,13 @@
 """Invoking and supporting prompt preprocessor hook implementations."""
 
+import asyncio
+
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from traceback import format_tb
 from typing import (
     Any,
+    AsyncIterator,
     Awaitable,
     Callable,
     Generic,
@@ -13,6 +17,7 @@ from typing import (
 )
 
 from anyio import create_task_group
+from anyio.abc import TaskGroup
 
 from ..._logging import new_logger
 from ...schemas import DictObject, EmptyDict, ValidationError
@@ -29,6 +34,7 @@ from ..._sdk_models import (
     ProcessingUpdate,
     ProcessingUpdateStatusCreate,
     ProcessingUpdateStatusUpdate,
+    PromptPreprocessingAbortedDict,
     PromptPreprocessingCompleteDict,
     PromptPreprocessingErrorDict,
     PromptPreprocessingRequest,
@@ -41,11 +47,11 @@ from .common import (
     AsyncSessionPlugins,
     HookController,
     SendMessageCallback,
+    ServerRequestError,
     StatusBlockController,
     TPluginConfigSchema,
     TGlobalConfigSchema,
 )
-
 
 # Available as lmstudio.plugin.hooks.*
 __all__ = [
@@ -88,7 +94,7 @@ class PromptPreprocessingEndpoint(
             case None:
                 # Server can only terminate the link by closing the websocket
                 pass
-            case {"type": "abort", "task_id": str(task_id)}:
+            case {"type": "abort", "taskId": str(task_id)}:
                 yield PromptPreprocessingAbortEvent(task_id)
             case {"type": "preprocess"} as request_dict:
                 parsed_request = PromptPreprocessingRequest._from_any_api_dict(
@@ -101,10 +107,10 @@ class PromptPreprocessingEndpoint(
     def handle_rx_event(self, event: PromptPreprocessingRxEvent) -> None:
         match event:
             case PromptPreprocessingAbortEvent(task_id):
-                self._logger.info(f"Aborting {task_id}", task_id=task_id)
+                self._logger.debug(f"Aborting {task_id}", task_id=task_id)
             case PromptPreprocessingRequestEvent(request):
                 task_id = request.task_id
-                self._logger.info(
+                self._logger.debug(
                     "Received prompt preprocessing request", task_id=task_id
                 )
             case ChannelFinishedEvent(_):
@@ -198,16 +204,18 @@ class PromptPreprocessor(Generic[TPluginConfigSchema, TGlobalConfigSchema]):
     def __post_init__(self) -> None:
         self._logger = logger = new_logger(__name__)
         logger.update_context(plugin_name=self.plugin_name)
+        self._abort_events: dict[str, asyncio.Event] = {}
 
     async def process_requests(
         self, session: AsyncSessionPlugins, notify_ready: Callable[[], Any]
     ) -> None:
+        """Create plugin channel and wait for server requests."""
         logger = self._logger
         endpoint = PromptPreprocessingEndpoint()
         async with session._create_channel(endpoint) as channel:
             notify_ready()
             logger.info("Opened channel to receive prompt preprocessing requests...")
-            send_cb = channel.send_message
+            send_message = channel.send_message
             async with create_task_group() as tg:
                 logger.debug("Waiting for prompt preprocessing requests...")
                 async for contents in channel.rx_stream():
@@ -218,6 +226,10 @@ class PromptPreprocessor(Generic[TPluginConfigSchema, TGlobalConfigSchema]):
                         logger.debug("Handling prompt preprocessing channel event")
                         endpoint.handle_rx_event(event)
                         match event:
+                            case PromptPreprocessingAbortEvent():
+                                await self._abort_hook_invocation(
+                                    event.arg, send_message
+                                )
                             case PromptPreprocessingRequestEvent():
                                 logger.debug(
                                     "Running prompt preprocessing request hook"
@@ -228,9 +240,58 @@ class PromptPreprocessor(Generic[TPluginConfigSchema, TGlobalConfigSchema]):
                                     self.plugin_config_schema,
                                     self.global_config_schema,
                                 )
-                                tg.start_soon(self._invoke_hook, ctl, send_cb)
+                                tg.start_soon(self._invoke_hook, ctl, send_message)
                     if endpoint.is_finished:
                         break
+
+    async def _abort_hook_invocation(
+        self, task_id: str, send_response: SendMessageCallback
+    ) -> None:
+        """Abort the specified hook invocation (if it is still running)."""
+        abort_event = self._abort_events.get(task_id, None)
+        if abort_event is not None:
+            abort_event.set()
+        response = PromptPreprocessingAbortedDict(
+            type="aborted",
+            taskId=task_id,
+        )
+        await send_response(response)
+
+    async def _cancel_on_event(
+        self, tg: TaskGroup, event: asyncio.Event, message: str
+    ) -> None:
+        await event.wait()
+        self._logger.info(message)
+        tg.cancel_scope.cancel()
+
+    @asynccontextmanager
+    async def _registered_hook_invocation(
+        self, task_id: str
+    ) -> AsyncIterator[asyncio.Event]:
+        logger = self._logger
+        abort_events = self._abort_events
+        if task_id in abort_events:
+            err_msg = f"Hook invocation already in progress for {task_id}"
+            raise ServerRequestError(err_msg)
+        abort_events[task_id] = abort_event = asyncio.Event()
+        try:
+            async with create_task_group() as tg:
+                tg.start_soon(
+                    self._cancel_on_event,
+                    tg,
+                    abort_event,
+                    f"Aborting request {task_id}",
+                )
+                logger.info(f"Processing request {task_id}")
+                yield abort_event
+                tg.cancel_scope.cancel()
+        finally:
+            abort_events.pop(task_id, None)
+        if abort_event.is_set():
+            completion_message = f"Aborted request {task_id}"
+        else:
+            completion_message = f"Processed request {task_id}"
+        logger.info(completion_message)
 
     async def _invoke_hook(
         self,
@@ -238,18 +299,17 @@ class PromptPreprocessor(Generic[TPluginConfigSchema, TGlobalConfigSchema]):
         send_response: SendMessageCallback,
     ) -> None:
         logger = self._logger
-        request = ctl.request
-        message = request.input
-        expected_cls = UserMessage
-        if not isinstance(message, expected_cls):
-            logger.error(
-                f"Received {type(message).__name__!r} ({expected_cls.__name__!r} expected)"
-            )
-            return
+        task_id = ctl.task_id
+        message = ctl.request.input
         error_details: SerializedLMSExtendedErrorDict | None = None
         response_dict: UserMessageDict
+        expected_cls = UserMessage
         try:
-            response = await self.hook_impl(ctl, message)
+            if not isinstance(message, expected_cls):
+                err_msg = f"Received {type(message).__name__!r} ({expected_cls.__name__!r} expected)"
+                raise ServerRequestError(err_msg)
+            async with self._registered_hook_invocation(task_id) as abort_event:
+                response = await self.hook_impl(ctl, message)
         except Exception as exc:
             err_msg = "Error calling prompt preprocessing hook"
             logger.error(err_msg, exc_info=True, exc=repr(exc))
@@ -259,8 +319,11 @@ class PromptPreprocessor(Generic[TPluginConfigSchema, TGlobalConfigSchema]):
                 cause=ui_cause, stack="\n".join(format_tb(exc.__traceback__))
             )
         else:
+            if abort_event.is_set():
+                # Processing was aborted by the server, skip sending a response
+                return
             if response is None:
-                # No change to message
+                logger.debug("No changes made to preprocessed prompt")
                 response_dict = message.to_dict()
             else:
                 logger.debug(
@@ -291,13 +354,13 @@ class PromptPreprocessor(Generic[TPluginConfigSchema, TGlobalConfigSchema]):
             error_details.update(common_error_args)
             channel_message = PromptPreprocessingErrorDict(
                 type="error",
-                taskId=request.task_id,
+                taskId=task_id,
                 error=error_details,
             )
         else:
             channel_message = PromptPreprocessingCompleteDict(
                 type="complete",
-                taskId=request.task_id,
+                taskId=task_id,
                 processed=response_dict,
             )
         await send_response(channel_message)

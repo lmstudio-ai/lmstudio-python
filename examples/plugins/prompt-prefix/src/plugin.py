@@ -39,12 +39,12 @@ async def preprocess_prompt(
     message: UserMessage,
 ) -> UserMessageDict | None:
     """Naming the function 'preprocess_prompt' implicitly registers it."""
-    print(f"Running prompt preprocessor hook from {__file__} with {ctl.plugin_config}")
     if ctl.global_config.enable_inplace_status_demo:
         # Run an in-place status prompt update demonstration
         status_block = await ctl.notify_start("Starting task (shows a static icon).")
         status_updates = (
             (status_block.notify_working, "Task in progress (shows a dynamic icon)."),
+            (status_block.notify_waiting, "Task is blocked (shows a static icon)."),
             (status_block.notify_error, "Reporting an error status."),
             (status_block.notify_canceled, "Reporting cancellation."),
             (
@@ -55,9 +55,11 @@ async def preprocess_prompt(
         status_duration = ctl.global_config.inplace_status_duration / len(
             status_updates
         )
-        for notification, status_text in status_updates:
-            await asyncio.sleep(status_duration)
-            await notification(status_text)
+        async with status_block.notify_aborted("Task genuinely cancelled."):
+            for notification, status_text in status_updates:
+                await asyncio.sleep(status_duration)
+                await notification(status_text)
+
     modified_message = message.to_dict()
     # Add a prefix to all user messages
     prefix_text = ctl.plugin_config.prefix

@@ -363,9 +363,11 @@ _DATA_MODEL_NAME_OVERRIDES = {
     "LlmChannelPredictCreationParameterDict": "PredictionChannelRequestDict",
     "RepositoryChannelDownloadModelCreationParameter": "DownloadModelChannelRequest",
     "RepositoryChannelDownloadModelCreationParameterDict": "DownloadModelChannelRequestDict",
-    # Prettier plugin channel type names
+    # Prettier plugin channel message names
     "PluginsChannelSetPromptPreprocessorToClientPacketPreprocess": "PromptPreprocessingRequest",
     "PluginsChannelSetPromptPreprocessorToClientPacketPreprocessDict": "PromptPreprocessingRequestDict",
+    "PluginsChannelSetPromptPreprocessorToServerPacketAborted": "PromptPreprocessingAborted",
+    "PluginsChannelSetPromptPreprocessorToServerPacketAbortedDict": "PromptPreprocessingAbortedDict",
     "PluginsChannelSetPromptPreprocessorToServerPacketComplete": "PromptPreprocessingComplete",
     "PluginsChannelSetPromptPreprocessorToServerPacketCompleteDict": "PromptPreprocessingCompleteDict",
     "PluginsChannelSetPromptPreprocessorToServerPacketError": "PromptPreprocessingError",

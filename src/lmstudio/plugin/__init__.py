@@ -33,7 +33,7 @@ from .runner import *
 # Prompt preprocessing hook
 # * [DONE] emit a status notification block when the demo plugin fires
 # * [DONE] add a global plugin config to control the in-place status update demo
-# * handle "Abort" requests from server (including sending "Aborted" responses)
+# * [DONE] handle "Abort" requests from server (including sending "Aborted" responses)
 # * [DONE] catch hook invocation failures and send "Error" responses
 # * [DONE] this includes adding runtime checks for the hook returning the wrong type
 #

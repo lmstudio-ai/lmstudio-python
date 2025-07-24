@@ -1,16 +1,22 @@
 """Common utilities to invoke and support plugin hook implementations."""
 
+import asyncio
+
+from contextlib import asynccontextmanager
 from datetime import datetime, UTC
 from pathlib import Path
 from random import randrange
 from typing import (
     Any,
+    AsyncIterator,
     Awaitable,
     Callable,
     Generic,
     TypeAlias,
     TypeVar,
 )
+
+from anyio import move_on_after
 
 from ...async_api import AsyncSession
 from ...schemas import DictObject
@@ -46,6 +52,10 @@ TPluginConfigSchema = TypeVar("TPluginConfigSchema", bound=BaseConfigSchema)
 TGlobalConfigSchema = TypeVar("TGlobalConfigSchema", bound=BaseConfigSchema)
 TConfig = TypeVar("TConfig", bound=BaseConfigSchema)
 SendMessageCallback: TypeAlias = Callable[[DictObject], Awaitable[Any]]
+
+
+class ServerRequestError(RuntimeError):
+    """Plugin received an invalid request from the API server."""
 
 
 class HookController(Generic[TPluginRequest, TPluginConfigSchema, TGlobalConfigSchema]):
@@ -117,3 +127,14 @@ class StatusBlockController:
     async def notify_done(self, message: str) -> None:
         """Report task completion in the status block."""
         await self._update_ui(self._id, "done", message)
+
+    @asynccontextmanager
+    async def notify_aborted(self, message: str) -> AsyncIterator[None]:
+        """Report asyncio.CancelledError as cancellation in the status block."""
+        try:
+            yield
+        except asyncio.CancelledError:
+            # Allow the notification to be sent, but don't necessarily wait for the reply
+            with move_on_after(0.2, shield=True):
+                await self.notify_canceled(message)
+            raise

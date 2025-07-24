@@ -420,8 +420,6 @@ __all__ = [
     "PluginsChannelSetPredictionLoopHandlerToServerPacketErrorDict",
     "PluginsChannelSetPromptPreprocessorToClientPacketAbort",
     "PluginsChannelSetPromptPreprocessorToClientPacketAbortDict",
-    "PluginsChannelSetPromptPreprocessorToServerPacketAborted",
-    "PluginsChannelSetPromptPreprocessorToServerPacketAbortedDict",
     "PluginsChannelSetToolsProviderToClientPacketAbortToolCall",
     "PluginsChannelSetToolsProviderToClientPacketAbortToolCallDict",
     "PluginsChannelSetToolsProviderToClientPacketCallTool",
@@ -522,6 +520,8 @@ __all__ = [
     "ProcessingUpdateToolStatusCreateDict",
     "ProcessingUpdateToolStatusUpdate",
     "ProcessingUpdateToolStatusUpdateDict",
+    "PromptPreprocessingAborted",
+    "PromptPreprocessingAbortedDict",
     "PromptPreprocessingComplete",
     "PromptPreprocessingCompleteDict",
     "PromptPreprocessingError",
@@ -5061,8 +5061,8 @@ class PluginsChannelSetPromptPreprocessorToClientPacketAbortDict(TypedDict):
     taskId: str
 
 
-class PluginsChannelSetPromptPreprocessorToServerPacketAborted(
-    LMStudioStruct["PluginsChannelSetPromptPreprocessorToServerPacketAbortedDict"],
+class PromptPreprocessingAborted(
+    LMStudioStruct["PromptPreprocessingAbortedDict"],
     kw_only=True,
     tag_field="type",
     tag="aborted",
@@ -5071,7 +5071,7 @@ class PluginsChannelSetPromptPreprocessorToServerPacketAborted(
     task_id: str = field(name="taskId")
 
 
-class PluginsChannelSetPromptPreprocessorToServerPacketAbortedDict(TypedDict):
+class PromptPreprocessingAbortedDict(TypedDict):
     """Corresponding typed dictionary definition for PluginsChannelSetPromptPreprocessorToServerPacketAborted.
 
     NOTE: Multi-word keys are defined using their camelCase form,
@@ -10199,14 +10199,12 @@ PluginsChannelSetPromptPreprocessorToClientPacketDict = (
     | PluginsChannelSetPromptPreprocessorToClientPacketAbortDict
 )
 PluginsChannelSetPromptPreprocessorToServerPacket = (
-    PromptPreprocessingComplete
-    | PluginsChannelSetPromptPreprocessorToServerPacketAborted
-    | PromptPreprocessingError
+    PromptPreprocessingComplete | PromptPreprocessingAborted | PromptPreprocessingError
 )
 PluginsChannelSetPromptPreprocessorToServerPacketDict = (
     PromptPreprocessingErrorDict
     | PromptPreprocessingCompleteDict
-    | PluginsChannelSetPromptPreprocessorToServerPacketAbortedDict
+    | PromptPreprocessingAbortedDict
 )
 
 
