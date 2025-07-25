@@ -155,11 +155,13 @@ __all__ = [
 _DEFAULT_TIMEOUT: float | None = 60.0
 
 
+@sdk_public_api()
 def get_sync_api_timeout() -> float | None:
     """Return the current default sync API timeout when waiting for server messages."""
     return _DEFAULT_TIMEOUT
 
 
+@sdk_public_api()
 def set_sync_api_timeout(timeout: float | None) -> None:
     """Set the default sync API timeout when waiting for server messages."""
     global _DEFAULT_TIMEOUT
