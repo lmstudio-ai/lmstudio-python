@@ -19,7 +19,7 @@ on:
       # Skip running the source code checks when only documentation has been updated
       - "!**.md"
       - "!**.rst"
-      - "!**.txt"  # Any requirements file changes will also involve changing other files
+      - "!**.txt" # Any requirements file changes will also involve changing other files
   push:
     branches:
       - main
@@ -37,7 +37,7 @@ jobs:
   tests:
     runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: false  # Always report results for all targets
+      fail-fast: false # Always report results for all targets
       max-parallel: 8
       matrix:
         python-version: ["3.10", "3.11", "3.12", "3.13"]
@@ -51,61 +51,59 @@ jobs:
     # for latest versions if the standard actions start emitting warnings
 
     steps:
-    - uses: actions/checkout@v4
-      with:
-        persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ matrix.python-version }}
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
 
-    - name: Get pip cache dir
-      id: pip-cache
-      run: |
-        echo "dir=$(python -m pip cache dir)" >> $GITHUB_OUTPUT
+      - name: Get pip cache dir
+        id: pip-cache
+        run: |
+          echo "dir=$(python -m pip cache dir)" >> $GITHUB_OUTPUT
 
-    - name: Cache bootstrapping dependencies
-      uses: actions/cache@v4
-      with:
-        path: ${{ steps.pip-cache.outputs.dir }}
-        key:
-          pip-${{ matrix.os }}-${{ matrix.python-version }}-v1-${{ hashFiles('pdm.lock') }}
-        restore-keys: |
-          pip-${{ matrix.os }}-${{ matrix.python-version }}-v1-
+      - name: Cache bootstrapping dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pip-cache.outputs.dir }}
+          key: pip-${{ matrix.os }}-${{ matrix.python-version }}-v1-${{ hashFiles('pdm.lock') }}
+          restore-keys: |
+            pip-${{ matrix.os }}-${{ matrix.python-version }}-v1-
 
-    - name: Install PDM
-      run: |
-        # Ensure `pdm` uses the same version as specified in `pdm.lock`
-        # while avoiding the error raised by https://github.com/pypa/pip/issues/12889
-        python -m pip install --upgrade -r ci-bootstrap-requirements.txt
+      - name: Install PDM
+        run: |
+          # Ensure `pdm` uses the same version as specified in `pdm.lock`
+          # while avoiding the error raised by https://github.com/pypa/pip/issues/12889
+          python -m pip install --upgrade -r ci-bootstrap-requirements.txt
 
-    - name: Create development virtual environment
-      run: |
-        python -m pdm sync --no-self --dev
-        # Handle Windows vs non-Windows differences in .venv layout
-        VIRTUAL_ENV_BIN_DIR="$PWD/.venv/bin"
-        test -e "$VIRTUAL_ENV_BIN_DIR" || VIRTUAL_ENV_BIN_DIR="$PWD/.venv/Scripts"
-        echo "VIRTUAL_ENV_BIN_DIR=$VIRTUAL_ENV_BIN_DIR" >> "$GITHUB_ENV"
+      - name: Create development virtual environment
+        run: |
+          python -m pdm sync --no-self --dev
+          # Handle Windows vs non-Windows differences in .venv layout
+          VIRTUAL_ENV_BIN_DIR="$PWD/.venv/bin"
+          test -e "$VIRTUAL_ENV_BIN_DIR" || VIRTUAL_ENV_BIN_DIR="$PWD/.venv/Scripts"
+          echo "VIRTUAL_ENV_BIN_DIR=$VIRTUAL_ENV_BIN_DIR" >> "$GITHUB_ENV"
 
-    - name: Static checks
-      run: |
-        source "$VIRTUAL_ENV_BIN_DIR/activate"
-        python -m tox -v -m static
+      - name: Static checks
+        run: |
+          source "$VIRTUAL_ENV_BIN_DIR/activate"
+          python -m tox -v -m static
 
-    - name: CI-compatible tests
-      run: |
-        source "$VIRTUAL_ENV_BIN_DIR/activate"
-        python -m tox -v -- -m 'not lmstudio'
+      - name: CI-compatible tests
+        run: |
+          source "$VIRTUAL_ENV_BIN_DIR/activate"
+          python -m tox -v -- -m 'not lmstudio'
 
-    - name: Upload coverage data
-      uses: actions/upload-artifact@v4
-      with:
-        name: coverage-data-${{ matrix.os }}-py${{ matrix.python-version }}
-        path: .coverage.*
-        include-hidden-files: true
-        if-no-files-found: ignore
-
+      - name: Upload coverage data
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-data-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: .coverage.*
+          include-hidden-files: true
+          if-no-files-found: ignore
 
   # Coverage check based on https://hynek.me/articles/ditch-codecov-python/
   coverage:
