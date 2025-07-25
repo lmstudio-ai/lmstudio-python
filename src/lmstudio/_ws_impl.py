@@ -464,9 +464,15 @@ class AsyncWebsocketHandler:
         """Run given coroutine in the event loop and wait for the result."""
         return self._task_manager.run_coroutine_threadsafe(coro).result()
 
-    def rx_queue_get_threadsafe(self, rx_queue: asyncio.Queue[Any]) -> Any:
+    def rx_queue_get_threadsafe(
+        self, rx_queue: asyncio.Queue[Any], timeout: float | None
+    ) -> Any:
         future = self._task_manager.run_coroutine_threadsafe(rx_queue.get())
-        return future.result()
+        try:
+            return future.result(timeout)
+        except TimeoutError:
+            future.cancel()
+            raise
 
     def rx_queue_put_threadsafe(
         self, rx_queue: asyncio.Queue[Any], message: Any
@@ -562,7 +568,7 @@ class SyncToAsyncWebsocketBridge:
     def send_json(self, message: DictObject) -> None:
         self._ws_handler.send_json_threadsafe(message)
 
-    def new_rx_queue(self) -> tuple[asyncio.Queue[Any], Callable[[], Any]]:
+    def new_rx_queue(self) -> tuple[asyncio.Queue[Any], Callable[[float | None], Any]]:
         rx_queue: asyncio.Queue[Any] = asyncio.Queue()
         return rx_queue, partial(self._ws_handler.rx_queue_get_threadsafe, rx_queue)
 

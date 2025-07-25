@@ -11,7 +11,7 @@ from contextlib import (
     contextmanager,
     ExitStack,
 )
-from types import TracebackType
+from types import EllipsisType, TracebackType
 from typing import (
     Any,
     ContextManager,
@@ -80,6 +80,7 @@ from .json_api import (
     LMStudioCancelledError,
     LMStudioClientError,
     LMStudioPredictionError,
+    LMStudioTimeoutError,
     LMStudioWebsocket,
     LoadModelEndpoint,
     ModelDownloadOptionBase,
@@ -141,15 +142,35 @@ __all__ = [
     "PredictionStream",
     "configure_default_client",
     "get_default_client",
+    "get_sync_api_timeout",
     "embedding_model",
     "list_downloaded_models",
     "list_loaded_models",
     "llm",
     "prepare_image",
+    "set_sync_api_timeout",
 ]
+
+#
+_DEFAULT_TIMEOUT: float | None = 60.0
+
+
+def get_sync_api_timeout() -> float | None:
+    """Return the current default sync API timeout when waiting for server messages."""
+    return _DEFAULT_TIMEOUT
+
+
+def set_sync_api_timeout(timeout: float | None) -> None:
+    """Set the default sync API timeout when waiting for server messages."""
+    global _DEFAULT_TIMEOUT
+    if timeout is not None:
+        timeout = float(timeout)
+    _DEFAULT_TIMEOUT = timeout
 
 
 T = TypeVar("T")
+CallWithTimeout: TypeAlias = Callable[[float | None], Any]
+TimeoutOption: TypeAlias = float | None | EllipsisType
 
 
 class SyncChannel(Generic[T]):
@@ -158,16 +179,18 @@ class SyncChannel(Generic[T]):
     def __init__(
         self,
         channel_id: int,
-        get_message: Callable[[], Any],
+        get_message: CallWithTimeout,
         endpoint: ChannelEndpoint[T, Any, Any],
         send_json: Callable[[DictObject], None],
         log_context: LogEventContext,
+        timeout: TimeoutOption = ...,
     ) -> None:
         """Initialize synchronous websocket streaming channel."""
         self._is_finished = False
         self._get_message = get_message
-        self._api_channel = ChannelHandler(channel_id, endpoint, log_context)
         self._send_json = send_json
+        self._timeout = timeout
+        self._api_channel = ChannelHandler(channel_id, endpoint, log_context)
 
     def get_creation_message(self) -> DictObject:
         """Get the message to send to create this channel."""
@@ -185,6 +208,14 @@ class SyncChannel(Generic[T]):
         cancel_message = self._api_channel.get_cancel_message()
         self._send_json(cancel_message)
 
+    @property
+    def timeout(self) -> float | None:
+        """Permitted time between received messages for this channel."""
+        timeout = self._timeout
+        if timeout is ...:
+            return _DEFAULT_TIMEOUT
+        return timeout
+
     def rx_stream(
         self,
     ) -> Iterator[DictObject | None]:
@@ -193,7 +224,10 @@ class SyncChannel(Generic[T]):
             with sdk_public_api():
                 # Avoid emitting tracebacks that delve into supporting libraries
                 # (we can't easily suppress the SDK's own frames for iterators)
-                message = self._get_message()
+                try:
+                    message = self._get_message(self.timeout)
+                except TimeoutError:
+                    raise LMStudioTimeoutError from None
                 contents = self._api_channel.handle_rx_message(message)
             if contents is None:
                 self._is_finished = True
@@ -216,12 +250,14 @@ class SyncRemoteCall:
     def __init__(
         self,
         call_id: int,
-        get_message: Callable[[], Any],
+        get_message: CallWithTimeout,
         log_context: LogEventContext,
         notice_prefix: str = "RPC",
+        timeout: TimeoutOption = ...,
     ) -> None:
         """Initialize synchronous remote procedure call."""
         self._get_message = get_message
+        self._timeout = timeout
         self._rpc = RemoteCallHandler(call_id, log_context, notice_prefix)
         self._logger = logger = new_logger(type(self).__name__)
         logger.update_context(log_context, call_id=call_id)
@@ -232,9 +268,20 @@ class SyncRemoteCall:
         """Get the message to send to initiate this remote procedure call."""
         return self._rpc.get_rpc_message(endpoint, params)
 
+    @property
+    def timeout(self) -> float | None:
+        """Permitted time to wait for a reply to this call."""
+        timeout = self._timeout
+        if timeout is ...:
+            return _DEFAULT_TIMEOUT
+        return timeout
+
     def receive_result(self) -> Any:
         """Receive call response on the receive queue."""
-        message = self._get_message()
+        try:
+            message = self._get_message(self.timeout)
+        except TimeoutError:
+            raise LMStudioTimeoutError from None
         return self._rpc.handle_rx_message(message)
 
 

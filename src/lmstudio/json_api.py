@@ -153,6 +153,7 @@ __all__ = [
     "LMStudioPredictionError",
     "LMStudioPresetNotFoundError",
     "LMStudioServerError",
+    "LMStudioTimeoutError",
     "LMStudioUnknownMessageWarning",
     "LMStudioWebsocketError",
     "ModelInfo",
@@ -425,8 +426,13 @@ class LMStudioCancelledError(LMStudioClientError):
 
 
 @sdk_public_type
+class LMStudioTimeoutError(LMStudioError, TimeoutError):
+    """Client failed to receive a message from the server in the expected time."""
+
+
+@sdk_public_type
 class LMStudioWebsocketError(LMStudioClientError):
-    """Client websocket sessiqqon has terminated (or was never opened)."""
+    """Client websocket session has terminated (or was never opened)."""
 
 
 # dataclass vs LMStudioStruct:

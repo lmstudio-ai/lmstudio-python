@@ -215,6 +215,8 @@ class PromptPreprocessor(Generic[TPluginConfigSchema, TGlobalConfigSchema]):
         """Create plugin channel and wait for server requests."""
         logger = self._logger
         endpoint = PromptPreprocessingEndpoint()
+        # Async API expects timeouts to be handled via task groups,
+        # so there's no default timeout to override when creating the channel
         async with session._create_channel(endpoint) as channel:
             notify_ready()
             logger.info("Opened channel to receive prompt preprocessing requests...")
