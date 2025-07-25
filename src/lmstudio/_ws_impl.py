@@ -288,7 +288,15 @@ class BackgroundThread(threading.Thread):
 # Creating this finalizer here ensures the weakref finalization hook is
 # registered at import time, and hence runs *after* any such hooks
 # (assuming the lmstudio SDK is imported before the hooks are registered)
-weakref.finalize(list, int)
+def _register_weakref_atexit_hook() -> None:
+    class C:
+        pass
+
+    weakref.finalize(C(), int)
+
+
+_register_weakref_atexit_hook()
+del _register_weakref_atexit_hook
 
 
 class AsyncWebsocketThread(BackgroundThread):
