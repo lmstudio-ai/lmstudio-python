@@ -61,8 +61,9 @@ $ tox -m test -- -k test_download_model
 
 Test files should follow the following naming conventions:
 
-- `test_XYZ.py`: mix of async and sync test cases for `XYZ` that aren't amenable to automated conversion
-  (for whatever reason; for example, `anyio.fail_after` has no sync counterpart)
+- `test_XYZ.py`: either a mix of async and sync test cases for `XYZ` that aren't amenable to
+  automated conversion (for whatever reason; for example, `anyio.fail_after` has no sync counterpart),
+  or else test cases for a behaviour which currently only exists in one API or the other
 - `async/test_XYZ_async.py` : async test cases for `XYZ` that are amenable to automated sync conversion;
   all test method names should also end in `_async`.
 - `sync/test_XYZ_sync.py` : sync test cases auto-generated from `test_XYZ_async.py`
