@@ -526,6 +526,8 @@ def _redact_json(data: DictObject | None) -> DictObject | None:
     return redacted
 
 
+# TODO: Now that even the sync API uses asyncio.Queue,
+# change the multiplexing manager to no longer be generic
 TQueue = TypeVar("TQueue")
 
 

@@ -14,14 +14,14 @@ import threading
 import weakref
 
 from concurrent.futures import Future as SyncFuture
-from contextlib import (
-    AsyncExitStack,
-)
+from contextlib import AsyncExitStack
+from functools import partial
 from typing import (
     Any,
     Awaitable,
     Coroutine,
     Callable,
+    Iterable,
     TypeVar,
 )
 
@@ -221,6 +221,8 @@ class BackgroundThread(threading.Thread):
         # Annoyingly, we have to mark the background thread as a daemon thread to
         # prevent hanging at shutdown. Even checking `sys.is_finalizing()` is inadequate
         # https://discuss.python.org/t/should-sys-is-finalizing-report-interpreter-finalization-instead-of-runtime-finalization/76695
+        # TODO: skip thread daemonization when running in a subinterpreter
+        # (and also disable the convenience API in subinterpreters to avoid hanging on shutdown)
         super().__init__(name=name, daemon=True)
         weakref.finalize(self, self.terminate)
 
@@ -276,6 +278,17 @@ class BackgroundThread(threading.Thread):
     def call_in_background(self, func: Callable[[], Any]) -> None:
         """Call given non-blocking function in the background event loop."""
         self._task_manager.call_soon_threadsafe(func)
+
+
+# By default, the weakref finalization atexit hook is registered lazily.
+# This can lead to shutdown sequencing issues if SDK users attempt to access
+# client instances (such as the default sync client) from atexit hooks
+# registered at import time (so they may end up running after the weakref
+# finalization hook has already terminated background threads)
+# Creating this finalizer here ensures the weakref finalization hook is
+# registered at import time, and hence runs *after* any such hooks
+# (assuming the lmstudio SDK is imported before the hooks are registered)
+weakref.finalize(list, int)
 
 
 class AsyncWebsocketThread(BackgroundThread):
@@ -439,6 +452,20 @@ class AsyncWebsocketHandler:
         future = self._task_manager.run_coroutine_threadsafe(self.send_json(message))
         future.result()  # Block until the message is sent
 
+    def run_background_coroutine(self, coro: Coroutine[Any, Any, T]) -> T:
+        """Run given coroutine in the event loop and wait for the result."""
+        return self._task_manager.run_coroutine_threadsafe(coro).result()
+
+    def rx_queue_get_threadsafe(self, rx_queue: asyncio.Queue[Any]) -> Any:
+        future = self._task_manager.run_coroutine_threadsafe(rx_queue.get())
+        return future.result()
+
+    def rx_queue_put_threadsafe(
+        self, rx_queue: asyncio.Queue[Any], message: Any
+    ) -> None:
+        future = self._task_manager.run_coroutine_threadsafe(rx_queue.put(message))
+        return future.result()
+
     async def _receive_json(self) -> Any:
         # This is only called if the websocket has been created
         assert self._task_manager.check_running_in_task_loop()
@@ -502,15 +529,21 @@ class SyncToAsyncWebsocketBridge:
         ws_thread: AsyncWebsocketThread,
         ws_url: str,
         auth_details: DictObject,
-        enqueue_message: Callable[[DictObject | None], bool],
+        get_queue: Callable[[DictObject | None], asyncio.Queue[Any] | None],
+        iter_queues: Callable[[], Iterable[asyncio.Queue[Any]]],
         log_context: LogEventContext,
     ) -> None:
-        async def enqueue_async(message: DictObject | None) -> bool:
-            return await asyncio.to_thread(enqueue_message, message)
-
+        self._get_queue = get_queue
+        self._iter_queues = iter_queues
         self._ws_handler = AsyncWebsocketHandler(
-            ws_thread.task_manager, ws_url, auth_details, enqueue_async, log_context
+            ws_thread.task_manager,
+            ws_url,
+            auth_details,
+            self._enqueue_message,
+            log_context,
         )
+        self._logger = logger = new_logger(type(self).__name__)
+        logger.update_context(log_context)
 
     def connect(self) -> bool:
         return self._ws_handler.connect_threadsafe()
@@ -520,6 +553,37 @@ class SyncToAsyncWebsocketBridge:
 
     def send_json(self, message: DictObject) -> None:
         self._ws_handler.send_json_threadsafe(message)
+
+    def new_rx_queue(self) -> tuple[asyncio.Queue[Any], Callable[[], Any]]:
+        rx_queue: asyncio.Queue[Any] = asyncio.Queue()
+        return rx_queue, partial(self._ws_handler.rx_queue_get_threadsafe, rx_queue)
+
+    async def _enqueue_message(self, message: Any) -> bool:
+        rx_queue = self._get_queue(message)
+        if message is None:
+            return await self.notify_client_termination() > 0
+        if rx_queue is None:
+            return False
+        await rx_queue.put(message)
+        return True
+
+    async def notify_client_termination(self) -> int:
+        """Send None to all clients with open receive queues (from background thread)."""
+        num_clients = 0
+        for rx_queue in self._iter_queues():
+            await rx_queue.put(None)
+            num_clients += 1
+        self._logger.debug(
+            f"Notified {num_clients} clients of websocket termination",
+            num_clients=num_clients,
+        )
+        return num_clients
+
+    def notify_client_termination_threadsafe(self) -> int:
+        """Send None to all clients with open receive queues (from foreground thread)."""
+        return self._ws_handler.run_background_coroutine(
+            self.notify_client_termination()
+        )
 
     # These attributes are currently accessed directly...
     @property
