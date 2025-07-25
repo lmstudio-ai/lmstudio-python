@@ -148,6 +148,11 @@ class AsyncChannel(Generic[T]):
         """Get the message to send to create this channel."""
         return self._api_channel.get_creation_message()
 
+    async def send_message(self, message: DictObject) -> None:
+        """Send given message on this channel."""
+        wrapped_message = self._api_channel.wrap_message(message)
+        await self._send_json(wrapped_message)
+
     async def cancel(self) -> None:
         """Cancel the channel."""
         if self._is_finished:
@@ -362,7 +367,7 @@ class AsyncLMStudioWebsocket(
         for rx_queue in self._mux.all_queues():
             await rx_queue.put(None)
             num_clients += 1
-        self._logger.info(
+        self._logger.debug(
             f"Notified {num_clients} clients of websocket termination",
             num_clients=num_clients,
         )
@@ -1406,7 +1411,7 @@ class AsyncClient(ClientBase):
     # However, lazy connections also don't work due to structured concurrency.
     # For now, all sessions are opened eagerly by the client
     # TODO: provide a way to selectively exclude unnecessary client sessions
-    _ALL_SESSIONS = (
+    _ALL_SESSIONS: tuple[Type[AsyncSession], ...] = (
         AsyncSessionEmbedding,
         _AsyncSessionFiles,
         AsyncSessionLlm,

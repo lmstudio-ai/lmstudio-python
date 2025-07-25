@@ -11,6 +11,7 @@ from typing import (
     Protocol,
     Sequence,
     TypeAlias,
+    TypedDict,
     TypeVar,
     cast,
     runtime_checkable,
@@ -20,16 +21,18 @@ from typing_extensions import (
     Self,
 )
 
-from msgspec import Struct, convert, to_builtins
+from msgspec import Struct, ValidationError, convert, to_builtins
 from msgspec.json import schema
 
 from .sdk_api import LMStudioValueError, sdk_public_api, sdk_public_type
 
 __all__ = [
+    "AnyLMStudioStruct",
     "BaseModel",
     "DictObject",
     "DictSchema",
     "ModelSchema",
+    "ValidationError",
 ]
 
 DictObject: TypeAlias = Mapping[str, Any]  # Any JSON-compatible string-keyed dict
@@ -224,3 +227,15 @@ class LMStudioStruct(Generic[TWireFormat], Struct, omit_defaults=True, kw_only=T
 
 
 AnyLMStudioStruct = LMStudioStruct[Any]
+
+
+class EmptyStruct(LMStudioStruct["EmptyDict"]):
+    """LM Studio struct with no defined fields."""
+
+    pass
+
+
+class EmptyDict(TypedDict):
+    """Wire format with no defined fields."""
+
+    pass

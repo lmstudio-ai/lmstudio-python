@@ -1613,19 +1613,26 @@ class ChannelHandler(Generic[TEndpoint]):
     def get_creation_message(self) -> DictObject:
         """Get the message to send to create this channel."""
         endpoint = self._endpoint
-        return {
+        message = {
             "type": "channelCreate",
             "endpoint": endpoint.api_endpoint,
             "channelId": self._channel_id,
-            "creationParameter": endpoint.creation_params,
         }
+        creation_params = endpoint.creation_params
+        if creation_params:
+            message["creationParameter"] = creation_params
+        return message
 
     def get_cancel_message(self) -> DictObject:
         """Get the message to send to cancel this channel."""
+        return self.wrap_message({"type": "cancel"})
+
+    def wrap_message(self, message: DictObject) -> DictObject:
+        """Wrap a message for sending on this channel."""
         return {
             "type": "channelSend",
             "channelId": self._channel_id,
-            "message": {"type": "cancel"},
+            "message": message,
         }
 
     # This runs in the context of the background demultiplexing task
@@ -1838,23 +1845,29 @@ class ClientBase:
         self._auth_details = self._create_auth_message()
 
     @staticmethod
-    def _create_auth_message() -> DictObject:
+    def _format_auth_message(
+        client_id: str | None = None, client_key: str | None = None
+    ) -> DictObject:
         """Create an LM Studio websocket authentication message."""
         # Note: authentication (in its current form) is primarily a cooperative
         # resource management mechanism that allows the server to appropriately
         # manage client-scoped resources (such as temporary file handles).
         # As such, the client ID and client passkey are currently more a two part
         # client identifier than they are an adversarial security measure. This is
-        # sufficient to prevent accidential conflicts and, in combination with secure
+        # sufficient to prevent accidental conflicts and, in combination with secure
         # websocket support, would be sufficient to ensure that access to the running
         # client was required to extract the auth details.
-        client_identifier = str(uuid.uuid4())
-        client_passkey = str(uuid.uuid4())
+        client_identifier = client_id if client_id is not None else str(uuid.uuid4())
+        client_passkey = client_key if client_key is not None else str(uuid.uuid4())
         return {
             "authVersion": 1,
             "clientIdentifier": client_identifier,
             "clientPasskey": client_passkey,
         }
+
+    def _create_auth_message(self) -> DictObject:
+        """Create an LM Studio websocket authentication message."""
+        return self._format_auth_message()
 
 
 TClient = TypeVar("TClient", bound=ClientBase)

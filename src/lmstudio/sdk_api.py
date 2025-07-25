@@ -50,6 +50,11 @@ class LMStudioOSError(OSError, LMStudioError):
 
 
 @sdk_public_type
+class LMStudioFileNotFoundError(FileNotFoundError, LMStudioError):
+    """The SDK failed to find the specified file on the local file system."""
+
+
+@sdk_public_type
 class LMStudioRuntimeError(RuntimeError, LMStudioError):
     """User requested an invalid sequence of operations from the SDK."""
 
@@ -69,7 +74,7 @@ def _truncate_traceback(exc: BaseException | None) -> None:
         return
     if isinstance(exc, LMStudioError) or not isinstance(exc, Exception):
         # Truncate the traceback for SDK exceptions at the SDK boundary.
-        # Also truncate asychronous exceptions like KeyboardInterrupt.
+        # Also truncate asynchronous exceptions like KeyboardInterrupt.
         # Other unwrapped exceptions indicate SDK bugs and keep a full traceback.
         exc.__traceback__ = None
 

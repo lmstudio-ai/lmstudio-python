@@ -173,6 +173,11 @@ class SyncChannel(Generic[T]):
         """Get the message to send to create this channel."""
         return self._api_channel.get_creation_message()
 
+    def send_message(self, message: DictObject) -> None:
+        """Send given message on this channel."""
+        wrapped_message = self._api_channel.wrap_message(message)
+        self._send_json(wrapped_message)
+
     def cancel(self) -> None:
         """Cancel the channel."""
         if self._is_finished:
@@ -316,7 +321,7 @@ class SyncLMStudioWebsocket(
         for rx_queue in self._mux.all_queues():
             rx_queue.put(None)
             num_clients += 1
-        self._logger.info(
+        self._logger.debug(
             f"Notified {num_clients} clients of websocket termination",
             num_clients=num_clients,
         )

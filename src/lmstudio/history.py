@@ -59,6 +59,7 @@ from ._sdk_models import (
     ToolCallResultDataDict,
     ToolResultMessage,
     UserMessage,
+    UserMessageDict,
 )
 
 __all__ = [
@@ -84,6 +85,7 @@ __all__ = [
     "ToolResultMessage",
     "UserMessage",
     "UserMessageContent",
+    "UserMessageDict",
 ]
 
 # A note on terminology:
@@ -543,6 +545,7 @@ def _get_file_details(src: LocalFileInput) -> Tuple[str, bytes]:
         try:
             data = src.read()
         except OSError as exc:
+            # Note: OSError details remain available via raised_exc.__context__
             err_msg = f"Error while reading {src!r} ({exc!r})"
             raise LMStudioOSError(err_msg) from None
         name = getattr(src, "name", str(uuid.uuid4()))
@@ -555,6 +558,7 @@ def _get_file_details(src: LocalFileInput) -> Tuple[str, bytes]:
         try:
             data = src_path.read_bytes()
         except OSError as exc:
+            # Note: OSError details remain available via raised_exc.__context__
             err_msg = f"Error while reading {str(src_path)!r} ({exc!r})"
             raise LMStudioOSError(err_msg) from None
         name = str(src_path.name)

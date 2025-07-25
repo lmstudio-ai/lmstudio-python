@@ -40,6 +40,7 @@ from ._sdk_models import (
     LlmSplitStrategy,
     LlmStructuredPredictionSetting,
     LlmStructuredPredictionSettingDict,
+    SerializedKVConfigSettings,
 )
 
 
@@ -324,7 +325,7 @@ TLoadConfigDict = TypeVar(
 )
 
 
-def dict_from_kvconfig(config: KvConfig) -> DictObject:
+def dict_from_kvconfig(config: KvConfig | SerializedKVConfigSettings) -> DictObject:
     return {kv.key: kv.value for kv in config.fields}
 
 
