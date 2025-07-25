@@ -19,11 +19,10 @@ import lmstudio as lms
 # in the async background thread with blocking async queue reads, eliminating
 # the blocking queue write operations, and allowing the client to continue running
 # in atexit threads
-def access_default_client(client: lms.Client):
+@atexit.register
+def access_default_client():
     """Ensure default client can be accessed from an atexit hook."""
     print("During shutdown:", end=" ", flush=True)
-    print(client.list_loaded_models())
-
-atexit.register(access_default_client, lms.get_default_client())
+    print(lms.list_loaded_models())
 
 print("Prior to shutdown:", lms.list_loaded_models())
