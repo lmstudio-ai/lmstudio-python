@@ -17,7 +17,7 @@ import lmstudio as lms
 # foreground thread, the sync API didn't work in this scenario.
 # In 1.5.0, the sync message reception was reworked to queue messages entirely
 # in the async background thread with blocking async queue reads, eliminating
-# the blocking queue write options, and allowing the client to continue running
+# the blocking queue write operations, and allowing the client to continue running
 # in atexit threads
 def access_default_client(client: lms.Client):
     """Ensure default client can be accessed from an atexit hook."""
