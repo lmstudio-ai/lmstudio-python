@@ -1,8 +1,8 @@
 """Sync I/O protocol implementation for the LM Studio remote access API."""
 
+import asyncio
 import itertools
 import time
-import queue
 import weakref
 
 from abc import abstractmethod
@@ -158,14 +158,14 @@ class SyncChannel(Generic[T]):
     def __init__(
         self,
         channel_id: int,
-        rx_queue: queue.Queue[Any],
+        get_message: Callable[[], Any],
         endpoint: ChannelEndpoint[T, Any, Any],
         send_json: Callable[[DictObject], None],
         log_context: LogEventContext,
     ) -> None:
         """Initialize synchronous websocket streaming channel."""
         self._is_finished = False
-        self._rx_queue = rx_queue
+        self._get_message = get_message
         self._api_channel = ChannelHandler(channel_id, endpoint, log_context)
         self._send_json = send_json
 
@@ -193,7 +193,7 @@ class SyncChannel(Generic[T]):
             with sdk_public_api():
                 # Avoid emitting tracebacks that delve into supporting libraries
                 # (we can't easily suppress the SDK's own frames for iterators)
-                message = self._rx_queue.get()
+                message = self._get_message()
                 contents = self._api_channel.handle_rx_message(message)
             if contents is None:
                 self._is_finished = True
@@ -216,12 +216,12 @@ class SyncRemoteCall:
     def __init__(
         self,
         call_id: int,
-        rx_queue: queue.Queue[Any],
+        get_message: Callable[[], Any],
         log_context: LogEventContext,
         notice_prefix: str = "RPC",
     ) -> None:
         """Initialize synchronous remote procedure call."""
-        self._rx_queue = rx_queue
+        self._get_message = get_message
         self._rpc = RemoteCallHandler(call_id, log_context, notice_prefix)
         self._logger = logger = new_logger(type(self).__name__)
         logger.update_context(log_context, call_id=call_id)
@@ -234,12 +234,12 @@ class SyncRemoteCall:
 
     def receive_result(self) -> Any:
         """Receive call response on the receive queue."""
-        message = self._rx_queue.get()
+        message = self._get_message()
         return self._rpc.handle_rx_message(message)
 
 
 class SyncLMStudioWebsocket(
-    LMStudioWebsocket[SyncToAsyncWebsocketBridge, queue.Queue[Any]]
+    LMStudioWebsocket[SyncToAsyncWebsocketBridge, asyncio.Queue[Any]]
 ):
     """Synchronous websocket client that handles demultiplexing of reply messages."""
 
@@ -279,7 +279,8 @@ class SyncLMStudioWebsocket(
             self._ws_thread,
             self._ws_url,
             self._auth_details,
-            self._enqueue_message,
+            self._get_rx_queue,
+            self._mux.all_queues,
             self._logger.event_context,
         )
         if not ws.connect():
@@ -298,34 +299,11 @@ class SyncLMStudioWebsocket(
         self._ws = None
         if ws is not None:
             self._logger.debug(f"Disconnecting websocket session ({self._ws_url})")
-            self._notify_client_termination()
+            ws.notify_client_termination_threadsafe()
             ws.disconnect()
         self._logger.info(f"Websocket session disconnected ({self._ws_url})")
 
     close = disconnect
-
-    def _enqueue_message(self, message: Any) -> bool:
-        if message is None:
-            self._logger.info(f"Websocket session failed ({self._ws_url})")
-            self._ws = None
-            return self._notify_client_termination() > 0
-        rx_queue = self._mux.map_rx_message(message)
-        if rx_queue is None:
-            return False
-        rx_queue.put(message)
-        return True
-
-    def _notify_client_termination(self) -> int:
-        """Send None to all clients with open receive queues."""
-        num_clients = 0
-        for rx_queue in self._mux.all_queues():
-            rx_queue.put(None)
-            num_clients += 1
-        self._logger.debug(
-            f"Notified {num_clients} clients of websocket termination",
-            num_clients=num_clients,
-        )
-        return num_clients
 
     def _send_json(self, message: DictObject) -> None:
         # Callers are expected to call `_ensure_connected` before this method
@@ -333,6 +311,13 @@ class SyncLMStudioWebsocket(
         assert ws is not None
         # Background thread handles the exception conversion
         ws.send_json(message)
+
+    def _get_rx_queue(self, message: Any) -> asyncio.Queue[Any] | None:
+        if message is None:
+            self._logger.info(f"Websocket session failed ({self._ws_url})")
+            self._ws = None
+            return None
+        return self._mux.map_rx_message(message)
 
     def _connect_to_endpoint(self, channel: SyncChannel[Any]) -> None:
         """Connect channel to specified endpoint."""
@@ -347,19 +332,18 @@ class SyncLMStudioWebsocket(
         endpoint: ChannelEndpoint[T, Any, Any],
     ) -> Generator[SyncChannel[T], None, None]:
         """Open a streaming channel over the websocket."""
-        rx_queue: queue.Queue[Any] = queue.Queue()
+        ws = self._ws
+        assert ws is not None
+        rx_queue, getter = ws.new_rx_queue()
         with self._mux.assign_channel_id(rx_queue) as channel_id:
             channel = SyncChannel(
                 channel_id,
-                rx_queue,
+                getter,
                 endpoint,
                 self._send_json,
                 self._logger.event_context,
             )
             self._connect_to_endpoint(channel)
-            if self._ws is None:
-                # Link has been terminated, ensure client gets a response
-                rx_queue.put(None)
             yield channel
 
     def _send_call(
@@ -388,15 +372,14 @@ class SyncLMStudioWebsocket(
         notice_prefix: str = "RPC",
     ) -> Any:
         """Make a remote procedure call over the websocket."""
-        rx_queue: queue.Queue[Any] = queue.Queue()
+        ws = self._ws
+        assert ws is not None
+        rx_queue, getter = ws.new_rx_queue()
         with self._mux.assign_call_id(rx_queue) as call_id:
             rpc = SyncRemoteCall(
-                call_id, rx_queue, self._logger.event_context, notice_prefix
+                call_id, getter, self._logger.event_context, notice_prefix
             )
             self._send_call(rpc, endpoint, params)
-            if self._ws is None:
-                # Link has been terminated, ensure client gets a response
-                rx_queue.put(None)
             return rpc.receive_result()
 
 
