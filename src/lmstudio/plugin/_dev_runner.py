@@ -8,7 +8,13 @@ import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 from functools import partial
-from typing import AsyncGenerator, Iterable, TypeAlias, assert_never
+from typing import AsyncGenerator, Iterable, TypeAlias
+
+from typing_extensions import (
+    # Native in 3.11+
+    assert_never,
+)
+
 
 from .runner import (
     ENV_CLIENT_ID,

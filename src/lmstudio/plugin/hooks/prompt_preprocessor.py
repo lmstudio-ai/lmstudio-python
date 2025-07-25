@@ -13,6 +13,9 @@ from typing import (
     Generic,
     Iterable,
     TypeAlias,
+)
+from typing_extensions import (
+    # Native in 3.11+
     assert_never,
 )
 

@@ -5,10 +5,14 @@ from typing import (
     Any,
     ClassVar,
     Generic,
-    Self,
     Sequence,
     TypeVar,
     cast,
+)
+
+from typing_extensions import (
+    # Native in 3.11+
+    Self,
     dataclass_transform,
 )
 

@@ -3,7 +3,7 @@
 import asyncio
 
 from contextlib import asynccontextmanager
-from datetime import datetime, UTC
+from datetime import datetime, timezone
 from pathlib import Path
 from random import randrange
 from typing import (
@@ -90,7 +90,7 @@ class HookController(Generic[TPluginRequest, TPluginConfigSchema, TGlobalConfigS
 
     @classmethod
     def _create_ui_block_id(self) -> str:
-        return f"{datetime.now(UTC)}-{randrange(0, 2**32):08x}"
+        return f"{datetime.now(timezone.utc)}-{randrange(0, 2**32):08x}"
 
 
 StatusUpdateCallback: TypeAlias = Callable[[str, StatusStepStatus, str], Any]
