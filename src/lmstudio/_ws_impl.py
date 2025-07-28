@@ -1,7 +1,7 @@
 """Shared core async websocket implementation for the LM Studio remote access API."""
 
-# Sync API: runs in background thread with sync queues
-# Async convenience API: runs in background thread with async queues
+# Sync API: runs in dedicated background thread
+# Async convenience API (once implemented): runs in dedicated background thread
 # Async structured API: runs in foreground event loop
 
 # Callback handling rules:
@@ -10,36 +10,37 @@
 # * All callbacks must be invoked from the *foreground* thread/event loop
 
 import asyncio
-import threading
-import weakref
 
 from concurrent.futures import Future as SyncFuture
-from contextlib import AsyncExitStack
+from contextlib import AsyncExitStack, contextmanager
 from functools import partial
 from typing import (
     Any,
     Awaitable,
     Coroutine,
     Callable,
-    Iterable,
+    Generator,
+    TypeAlias,
     TypeVar,
 )
 
-# Synchronous API still uses an async websocket (just in a background thread)
 from anyio import create_task_group, move_on_after
 from httpx_ws import aconnect_ws, AsyncWebSocketSession, HTTPXWSException
 
 from .schemas import DictObject
-from .json_api import LMStudioWebsocket, LMStudioWebsocketError
+from .json_api import (
+    LMStudioWebsocket,
+    LMStudioWebsocketError,
+    MultiplexingManager,
+    RxQueue,
+)
 
-from ._logging import new_logger, LogEventContext
-
+from ._logging import LogEventContext, new_logger
 
 # Allow the core client websocket management to be shared across all SDK interaction APIs
 # See https://discuss.python.org/t/daemon-threads-and-background-task-termination/77604
 # (Note: this implementation has the elements needed to run on *current* Python versions
 # and omits the generalised features that the SDK doesn't need)
-# Already used by the sync API, async client is still to be migrated
 T = TypeVar("T")
 
 
@@ -194,6 +195,17 @@ class AsyncTaskManager:
             raise RuntimeError(f"{self!r} is currently inactive.")
         return asyncio.run_coroutine_threadsafe(coro, loop)
 
+    def call_threadsafe(self, func: Callable[[], T]) -> SyncFuture[T]:
+        """Call non-blocking function in the background event loop and make the result available.
+
+        Important: function must NOT access any scoped resources from the calling scope.
+        """
+
+        async def coro() -> T:
+            return func()
+
+        return self.run_coroutine_threadsafe(coro())
+
     def call_soon_threadsafe(self, func: Callable[[], Any]) -> asyncio.Handle:
         """Call given non-blocking function in the background event loop."""
         loop = self._event_loop
@@ -202,126 +214,13 @@ class AsyncTaskManager:
         return loop.call_soon_threadsafe(func)
 
 
-class BackgroundThread(threading.Thread):
-    """Background async event loop thread."""
-
-    def __init__(
-        self,
-        task_target: Callable[[], Coroutine[Any, Any, Any]] | None = None,
-        name: str | None = None,
-    ) -> None:
-        # Accepts the same args as `threading.Thread`, *except*:
-        #   * a  `task_target` coroutine replaces the `target` function
-        #   * No `daemon` option (always runs as a daemon)
-        # Variant: accept `debug` and `loop_factory` options to forward to `asyncio.run`
-        # Alternative: accept a `task_runner` callback, defaulting to `asyncio.run`
-        self._task_target = task_target
-        self._loop_started = loop_started = threading.Event()
-        self._task_manager = AsyncTaskManager(on_activation=loop_started.set)
-        # Annoyingly, we have to mark the background thread as a daemon thread to
-        # prevent hanging at shutdown. Even checking `sys.is_finalizing()` is inadequate
-        # https://discuss.python.org/t/should-sys-is-finalizing-report-interpreter-finalization-instead-of-runtime-finalization/76695
-        # TODO: skip thread daemonization when running in a subinterpreter
-        # (and also disable the convenience API in subinterpreters to avoid hanging on shutdown)
-        super().__init__(name=name, daemon=True)
-        weakref.finalize(self, self.terminate)
-
-    @property
-    def task_manager(self) -> AsyncTaskManager:
-        return self._task_manager
-
-    def start(self, wait_for_loop: bool = True) -> None:
-        """Start background thread and (optionally) wait for the event loop to be ready."""
-        super().start()
-        if wait_for_loop:
-            self.wait_for_loop()
-
-    def run(self) -> None:
-        """Run an async event loop in the background thread."""
-        # Only public to override threading.Thread.run
-        asyncio.run(self._task_manager.run_until_terminated(self._task_target))
-
-    def wait_for_loop(self) -> asyncio.AbstractEventLoop | None:
-        """Wait for the event loop to start from a synchronous foreground thread."""
-        if self._task_manager._event_loop is None and not self._task_manager.activated:
-            self._loop_started.wait()
-        return self._task_manager._event_loop
-
-    async def wait_for_loop_async(self) -> asyncio.AbstractEventLoop | None:
-        """Wait for the event loop to start from an asynchronous foreground thread."""
-        return await asyncio.to_thread(self.wait_for_loop)
-
-    def terminate(self) -> bool:
-        """Request termination of the event loop from a synchronous foreground thread."""
-        return self._task_manager.request_termination_threadsafe().result()
-
-    async def terminate_async(self) -> bool:
-        """Request termination of the event loop from an asynchronous foreground thread."""
-        return await asyncio.to_thread(self.terminate)
-
-    def schedule_background_task(self, func: Callable[[], Any]) -> None:
-        """Schedule given task in the event loop from a synchronous foreground thread."""
-        self._task_manager.schedule_task_threadsafe(func)
-
-    async def schedule_background_task_async(self, func: Callable[[], Any]) -> None:
-        """Schedule given task in the event loop from an asynchronous foreground thread."""
-        return await asyncio.to_thread(self.schedule_background_task, func)
-
-    def run_background_coroutine(self, coro: Coroutine[Any, Any, T]) -> T:
-        """Run given coroutine in the event loop and wait for the result."""
-        return self._task_manager.run_coroutine_threadsafe(coro).result()
-
-    async def run_background_coroutine_async(self, coro: Coroutine[Any, Any, T]) -> T:
-        """Run given coroutine in the event loop and await the result."""
-        return await asyncio.to_thread(self.run_background_coroutine, coro)
-
-    def call_in_background(self, func: Callable[[], Any]) -> None:
-        """Call given non-blocking function in the background event loop."""
-        self._task_manager.call_soon_threadsafe(func)
-
-
-# By default, the weakref finalization atexit hook is registered lazily.
-# This can lead to shutdown sequencing issues if SDK users attempt to access
-# client instances (such as the default sync client) from atexit hooks
-# registered at import time (so they may end up running after the weakref
-# finalization hook has already terminated background threads)
-# Creating this finalizer here ensures the weakref finalization hook is
-# registered at import time, and hence runs *after* any such hooks
-# (assuming the lmstudio SDK is imported before the hooks are registered)
-def _register_weakref_atexit_hook() -> None:
-    class C:
-        pass
-
-    weakref.finalize(C(), int)
-
-
-_register_weakref_atexit_hook()
-del _register_weakref_atexit_hook
-
-
-class AsyncWebsocketThread(BackgroundThread):
-    def __init__(self, log_context: LogEventContext | None = None) -> None:
-        super().__init__(task_target=self._log_thread_execution)
-        self._logger = logger = new_logger(type(self).__name__)
-        logger.update_context(log_context, thread_id=self.name)
-
-    async def _log_thread_execution(self) -> None:
-        self._logger.info("Websocket handling thread started")
-        never_set = asyncio.Event()
-        try:
-            # Run the event loop until termination is requested
-            await never_set.wait()
-        except (asyncio.CancelledError, GeneratorExit):
-            raise
-        except BaseException:
-            err_msg = "Terminating websocket thread due to exception"
-            self._logger.debug(err_msg, exc_info=True)
-        finally:
-            self._logger.info("Websocket thread terminated")
+AsyncChannelInfo: TypeAlias = tuple[int, Callable[[], Awaitable[Any]]]
+AsyncRemoteCallInfo: TypeAlias = tuple[int, Callable[[], Awaitable[Any]]]
 
 
 # TODO: Improve code sharing between AsyncWebsocketHandler and
 #       the async-native AsyncLMStudioWebsocket implementation
+#       (likely by migrating the websocket over to using the handler)
 class AsyncWebsocketHandler:
     """Async task handler for a single websocket connection."""
 
@@ -332,7 +231,6 @@ class AsyncWebsocketHandler:
         task_manager: AsyncTaskManager,
         ws_url: str,
         auth_details: DictObject,
-        enqueue_message: Callable[[DictObject | None], Awaitable[bool]],
         log_context: LogEventContext | None = None,
     ) -> None:
         self._auth_details = auth_details
@@ -344,9 +242,9 @@ class AsyncWebsocketHandler:
         self._ws: AsyncWebSocketSession | None = None
         self._ws_disconnected = asyncio.Event()
         self._rx_task: asyncio.Task[None] | None = None
-        self._enqueue_message = enqueue_message
         self._logger = logger = new_logger(type(self).__name__)
         logger.update_context(log_context)
+        self._mux = MultiplexingManager(logger)
 
     async def connect(self) -> bool:
         """Connect websocket from the task manager's event loop."""
@@ -386,7 +284,7 @@ class AsyncWebsocketHandler:
             err_msg = "Terminating websocket task due to exception"
             self._logger.debug(err_msg, exc_info=True)
         finally:
-            # Ensure the foreground thread is unblocked even if the
+            # Ensure connections attempt are unblocked even if the
             # background async task errors out completely
             self._connection_attempted.set()
             self._logger.info("Websocket task terminated")
@@ -403,9 +301,7 @@ class AsyncWebsocketHandler:
             raise
 
         def _clear_task_state() -> None:
-            # Break the reference cycle with the foreground thread
-            del self._enqueue_message
-            # Websocket is about to be disconnected
+            # Websocket is about to be disconnected (if it isn't already)
             self._ws = None
 
         resources.callback(_clear_task_state)
@@ -423,7 +319,7 @@ class AsyncWebsocketHandler:
                 self._logger.info("Websocket demultiplexing task terminated.")
                 # Notify foreground thread of background thread termination
                 # (this covers termination due to link failure)
-                await self._enqueue_message(None)
+                await self.notify_client_termination()
                 dc_timeout = self.WS_DISCONNECT_TIMEOUT
                 with move_on_after(dc_timeout, shield=True) as cancel_scope:
                     # Workaround an anyio/httpx-ws issue with task cancellation:
@@ -447,6 +343,9 @@ class AsyncWebsocketHandler:
         ws = self._ws
         if ws is None:
             # Assume app is shutting down and the owning task has already been cancelled
+            rx_queue = self._mux.map_tx_message(message)
+            if rx_queue is not None:
+                await rx_queue.put(None)
             return
         try:
             await ws.send_json(message)
@@ -464,21 +363,53 @@ class AsyncWebsocketHandler:
         """Run given coroutine in the event loop and wait for the result."""
         return self._task_manager.run_coroutine_threadsafe(coro).result()
 
-    def rx_queue_get_threadsafe(
-        self, rx_queue: asyncio.Queue[Any], timeout: float | None
-    ) -> Any:
+    @contextmanager
+    def open_channel(self) -> Generator[AsyncChannelInfo, None, None]:
+        assert self._task_manager.check_running_in_task_loop()
+        rx_queue: RxQueue = asyncio.Queue()
+        with self._mux.assign_channel_id(rx_queue) as call_id:
+            yield call_id, rx_queue.get
+
+    @contextmanager
+    def start_call(self) -> Generator[AsyncRemoteCallInfo, None, None]:
+        assert self._task_manager.check_running_in_task_loop()
+        rx_queue: RxQueue = asyncio.Queue()
+        with self._mux.assign_call_id(rx_queue) as call_id:
+            yield call_id, rx_queue.get
+
+    def new_threadsafe_rx_queue(self) -> tuple[RxQueue, Callable[[float | None], Any]]:
+        rx_queue: RxQueue = asyncio.Queue()
+        return rx_queue, partial(self._rx_queue_get_threadsafe, rx_queue)
+
+    def acquire_channel_id_threadsafe(self, rx_queue: RxQueue) -> int:
+        future = self._task_manager.call_threadsafe(
+            partial(self._mux.acquire_channel_id, rx_queue)
+        )
+        return future.result()  # Wait for background thread to assign the ID
+
+    def release_channel_id_threadsafe(self, channel_id: int, rx_queue: RxQueue) -> None:
+        self._task_manager.call_soon_threadsafe(
+            partial(self._mux.release_channel_id, channel_id, rx_queue)
+        )
+
+    def acquire_call_id_threadsafe(self, rx_queue: RxQueue) -> int:
+        future = self._task_manager.call_threadsafe(
+            partial(self._mux.acquire_call_id, rx_queue)
+        )
+        return future.result()  # Wait for background thread to assign the ID
+
+    def release_call_id_threadsafe(self, call_id: int, rx_queue: RxQueue) -> None:
+        self._task_manager.call_soon_threadsafe(
+            partial(self._mux.release_call_id, call_id, rx_queue)
+        )
+
+    def _rx_queue_get_threadsafe(self, rx_queue: RxQueue, timeout: float | None) -> Any:
         future = self._task_manager.run_coroutine_threadsafe(rx_queue.get())
         try:
             return future.result(timeout)
         except TimeoutError:
             future.cancel()
             raise
-
-    def rx_queue_put_threadsafe(
-        self, rx_queue: asyncio.Queue[Any], message: Any
-    ) -> None:
-        future = self._task_manager.run_coroutine_threadsafe(rx_queue.put(message))
-        return future.result()
 
     async def _receive_json(self) -> Any:
         # This is only called if the websocket has been created
@@ -536,46 +467,12 @@ class AsyncWebsocketHandler:
                     self._logger.error("Websocket failed, terminating session.")
                 break
 
-
-class SyncToAsyncWebsocketBridge:
-    def __init__(
-        self,
-        ws_thread: AsyncWebsocketThread,
-        ws_url: str,
-        auth_details: DictObject,
-        get_queue: Callable[[DictObject | None], asyncio.Queue[Any] | None],
-        iter_queues: Callable[[], Iterable[asyncio.Queue[Any]]],
-        log_context: LogEventContext,
-    ) -> None:
-        self._get_queue = get_queue
-        self._iter_queues = iter_queues
-        self._ws_handler = AsyncWebsocketHandler(
-            ws_thread.task_manager,
-            ws_url,
-            auth_details,
-            self._enqueue_message,
-            log_context,
-        )
-        self._logger = logger = new_logger(type(self).__name__)
-        logger.update_context(log_context)
-
-    def connect(self) -> bool:
-        return self._ws_handler.connect_threadsafe()
-
-    def disconnect(self) -> None:
-        self._ws_handler.disconnect_threadsafe()
-
-    def send_json(self, message: DictObject) -> None:
-        self._ws_handler.send_json_threadsafe(message)
-
-    def new_rx_queue(self) -> tuple[asyncio.Queue[Any], Callable[[float | None], Any]]:
-        rx_queue: asyncio.Queue[Any] = asyncio.Queue()
-        return rx_queue, partial(self._ws_handler.rx_queue_get_threadsafe, rx_queue)
-
     async def _enqueue_message(self, message: Any) -> bool:
-        rx_queue = self._get_queue(message)
         if message is None:
+            self._logger.info(f"Websocket session failed ({self._ws_url})")
+            self._ws = None
             return await self.notify_client_termination() > 0
+        rx_queue = self._mux.map_rx_message(message)
         if rx_queue is None:
             return False
         await rx_queue.put(message)
@@ -584,7 +481,7 @@ class SyncToAsyncWebsocketBridge:
     async def notify_client_termination(self) -> int:
         """Send None to all clients with open receive queues (from background thread)."""
         num_clients = 0
-        for rx_queue in self._iter_queues():
+        for rx_queue in self._mux.all_queues():
             await rx_queue.put(None)
             num_clients += 1
         self._logger.debug(
@@ -595,19 +492,4 @@ class SyncToAsyncWebsocketBridge:
 
     def notify_client_termination_threadsafe(self) -> int:
         """Send None to all clients with open receive queues (from foreground thread)."""
-        return self._ws_handler.run_background_coroutine(
-            self.notify_client_termination()
-        )
-
-    # These attributes are currently accessed directly...
-    @property
-    def _ws(self) -> AsyncWebSocketSession | None:
-        return self._ws_handler._ws
-
-    @property
-    def _connection_failure(self) -> Exception | None:
-        return self._ws_handler._connection_failure
-
-    @property
-    def _auth_failure(self) -> Any | None:
-        return self._ws_handler._auth_failure
+        return self.run_background_coroutine(self.notify_client_termination())
