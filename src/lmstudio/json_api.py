@@ -695,6 +695,7 @@ class ChannelEndpoint(Generic[T, TRxEvent, TWireFormat], ABC):
     def _set_result(self, result: T) -> ChannelFinishedEvent:
         # Note: errors are raised immediately when handling the relevant message
         #       rather than only being reported when the result is accessed
+        self._logger.debug("Channel result received, closing channel")
         self._is_finished = True
         self._result = result
         return ChannelFinishedEvent(None)
