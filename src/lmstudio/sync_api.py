@@ -1,6 +1,5 @@
 """Sync I/O protocol implementation for the LM Studio remote access API."""
 
-import asyncio
 import itertools
 import time
 import weakref
@@ -110,7 +109,7 @@ from .json_api import (
     _model_spec_to_api_dict,
     _redact_json,
 )
-from ._ws_impl import AsyncWebsocketThread, SyncToAsyncWebsocketBridge
+from ._ws_thread import AsyncWebsocketThread, SyncToAsyncWebsocketBridge
 from ._kv_config import TLoadConfig, TLoadConfigDict, parse_server_config
 from ._sdk_models import (
     EmbeddingRpcCountTokensParameter,
@@ -230,6 +229,8 @@ class SyncChannel(Generic[T]):
                     message = self._get_message(self.timeout)
                 except TimeoutError:
                     raise LMStudioTimeoutError from None
+                if message is None:
+                    raise LMStudioRuntimeError("Client unexpectedly disconnected.")
                 contents = self._api_channel.handle_rx_message(message)
             if contents is None:
                 self._is_finished = True
@@ -284,12 +285,12 @@ class SyncRemoteCall:
             message = self._get_message(self.timeout)
         except TimeoutError:
             raise LMStudioTimeoutError from None
+        if message is None:
+            raise LMStudioRuntimeError("Client unexpectedly disconnected.")
         return self._rpc.handle_rx_message(message)
 
 
-class SyncLMStudioWebsocket(
-    LMStudioWebsocket[SyncToAsyncWebsocketBridge, asyncio.Queue[Any]]
-):
+class SyncLMStudioWebsocket(LMStudioWebsocket[SyncToAsyncWebsocketBridge]):
     """Synchronous websocket client that handles demultiplexing of reply messages."""
 
     def __init__(
@@ -328,8 +329,6 @@ class SyncLMStudioWebsocket(
             self._ws_thread,
             self._ws_url,
             self._auth_details,
-            self._get_rx_queue,
-            self._mux.all_queues,
             self._logger.event_context,
         )
         if not ws.connect():
@@ -361,13 +360,6 @@ class SyncLMStudioWebsocket(
         # Background thread handles the exception conversion
         ws.send_json(message)
 
-    def _get_rx_queue(self, message: Any) -> asyncio.Queue[Any] | None:
-        if message is None:
-            self._logger.info(f"Websocket session failed ({self._ws_url})")
-            self._ws = None
-            return None
-        return self._mux.map_rx_message(message)
-
     def _connect_to_endpoint(self, channel: SyncChannel[Any]) -> None:
         """Connect channel to specified endpoint."""
         self._ensure_connected("open channel endpoints")
@@ -383,8 +375,7 @@ class SyncLMStudioWebsocket(
         """Open a streaming channel over the websocket."""
         ws = self._ws
         assert ws is not None
-        rx_queue, getter = ws.new_rx_queue()
-        with self._mux.assign_channel_id(rx_queue) as channel_id:
+        with ws.open_channel() as (channel_id, getter):
             channel = SyncChannel(
                 channel_id,
                 getter,
@@ -423,8 +414,7 @@ class SyncLMStudioWebsocket(
         """Make a remote procedure call over the websocket."""
         ws = self._ws
         assert ws is not None
-        rx_queue, getter = ws.new_rx_queue()
-        with self._mux.assign_call_id(rx_queue) as call_id:
+        with ws.start_call() as (call_id, getter):
             rpc = SyncRemoteCall(
                 call_id, getter, self._logger.event_context, notice_prefix
             )

@@ -77,6 +77,7 @@ from .json_api import (
     ModelSessionTypes,
     ModelTypesEmbedding,
     ModelTypesLlm,
+    MultiplexingManager,  # Temporary until migration to AsyncWebsocketHandler
     PredictionStreamBase,
     PredictionEndpoint,
     PredictionFirstTokenCallback,
@@ -87,6 +88,7 @@ from .json_api import (
     PromptProcessingCallback,
     RemoteCallHandler,
     ResponseSchema,
+    RxQueue,
     TModelInfo,
     check_model_namespace,
     load_struct,
@@ -133,7 +135,7 @@ class AsyncChannel(Generic[T]):
     def __init__(
         self,
         channel_id: int,
-        rx_queue: asyncio.Queue[Any],
+        rx_queue: RxQueue,
         endpoint: ChannelEndpoint[T, Any, Any],
         send_json: Callable[[DictObject], Awaitable[None]],
         log_context: LogEventContext,
@@ -170,9 +172,8 @@ class AsyncChannel(Generic[T]):
                 # (we can't easily suppress the SDK's own frames for iterators)
                 message = await self._rx_queue.get()
                 if message is None:
-                    contents = None
-                else:
-                    contents = self._api_channel.handle_rx_message(message)
+                    raise LMStudioRuntimeError("Client unexpectedly disconnected.")
+                contents = self._api_channel.handle_rx_message(message)
             if contents is None:
                 self._is_finished = True
                 break
@@ -194,7 +195,7 @@ class AsyncRemoteCall:
     def __init__(
         self,
         call_id: int,
-        rx_queue: asyncio.Queue[Any],
+        rx_queue: RxQueue,
         log_context: LogEventContext,
         notice_prefix: str = "RPC",
     ) -> None:
@@ -214,13 +215,11 @@ class AsyncRemoteCall:
         """Receive call response on the receive queue."""
         message = await self._rx_queue.get()
         if message is None:
-            return None
+            raise LMStudioRuntimeError("Client unexpectedly disconnected.")
         return self._rpc.handle_rx_message(message)
 
 
-class AsyncLMStudioWebsocket(
-    LMStudioWebsocket[AsyncWebSocketSession, asyncio.Queue[Any]]
-):
+class AsyncLMStudioWebsocket(LMStudioWebsocket[AsyncWebSocketSession]):
     """Asynchronous websocket client that handles demultiplexing of reply messages."""
 
     def __init__(
@@ -235,6 +234,7 @@ class AsyncLMStudioWebsocket(
         rm.push_async_callback(self._notify_client_termination)
         self._rx_task: asyncio.Task[None] | None = None
         self._terminate = asyncio.Event()
+        self._mux = MultiplexingManager(self._logger)
 
     @property
     def _httpx_ws(self) -> AsyncWebSocketSession | None:
@@ -386,7 +386,7 @@ class AsyncLMStudioWebsocket(
         endpoint: ChannelEndpoint[T, Any, Any],
     ) -> AsyncGenerator[AsyncChannel[T], None]:
         """Open a streaming channel over the websocket."""
-        rx_queue: asyncio.Queue[Any] = asyncio.Queue()
+        rx_queue: RxQueue = asyncio.Queue()
         with self._mux.assign_channel_id(rx_queue) as channel_id:
             channel = AsyncChannel(
                 channel_id,
@@ -427,7 +427,7 @@ class AsyncLMStudioWebsocket(
         notice_prefix: str = "RPC",
     ) -> Any:
         """Make a remote procedure call over the websocket."""
-        rx_queue: asyncio.Queue[Any] = asyncio.Queue()
+        rx_queue: RxQueue = asyncio.Queue()
         with self._mux.assign_call_id(rx_queue) as call_id:
             rpc = AsyncRemoteCall(
                 call_id, rx_queue, self._logger.event_context, notice_prefix

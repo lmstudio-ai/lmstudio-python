@@ -21,7 +21,7 @@ from lmstudio.sync_api import (
     SyncSession,
     SyncSessionSystem,
 )
-from lmstudio._ws_impl import AsyncWebsocketThread
+from lmstudio._ws_thread import AsyncWebsocketThread
 
 from .support import LOCAL_API_HOST
 

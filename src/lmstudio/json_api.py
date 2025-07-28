@@ -1,6 +1,15 @@
-"""Sans I/O protocol implementation for the LM Studio remote access API."""
+"""Common protocol implementation for the LM Studio remote access API."""
 
-# TODO: Migrate additional protocol details from the [a]sync APIs to the sans I/O API
+# In order to simplify the websocket demultiplexing logic, this is NOT
+# a full sans I/O protocol implementation. Instead, it is an async
+# protocol implementation that supports both async interaction
+# (from the same event loop or from one running in another thread)
+# *and* sync interaction (by blocking on threadsafe futures)
+#
+# The I/O *transport* layer is still abstracted out, but the internal
+# use of asynchronous queues for message demultiplexing is assumed.
+
+import asyncio
 import copy
 import json
 import uuid
@@ -123,7 +132,7 @@ from ._logging import new_logger, LogEventContext, StructuredLogger
 # From here, we publish everything that might be needed
 # for API type hints, error handling, defining custom
 # structured responses, and other expected activities.
-# The "sans I/O" API itself is *not* automatically exported.
+# The shared API itself is *not* automatically exported.
 # If API consumers want to use that, they need to access it
 # explicitly via `lmstudio.json_api`, it isn't exported
 # implicitly as part of the top-level `lmstudio` API.
@@ -532,25 +541,23 @@ def _redact_json(data: DictObject | None) -> DictObject | None:
     return redacted
 
 
-# TODO: Now that even the sync API uses asyncio.Queue,
-# change the multiplexing manager to no longer be generic
-TQueue = TypeVar("TQueue")
+RxQueue: TypeAlias = asyncio.Queue[Any]
 
 
-class MultiplexingManager(Generic[TQueue]):
+class MultiplexingManager:
     """Helper class to allocate distinct protocol multiplexing IDs."""
 
     def __init__(self, logger: StructuredLogger) -> None:
         """Initialize ID multiplexer."""
-        self._open_channels: dict[int, TQueue] = {}
+        self._open_channels: dict[int, RxQueue] = {}
         self._last_channel_id = 0
-        self._pending_calls: dict[int, TQueue] = {}
+        self._pending_calls: dict[int, RxQueue] = {}
         self._last_call_id = 0
         # `_active_subscriptions` (if we add signal support)
         # `_last_subscriber_id` (if we add signal support)
         self._logger = logger
 
-    def all_queues(self) -> Iterator[TQueue]:
+    def all_queues(self) -> Iterator[asyncio.Queue[Any]]:
         """Iterate over all queues (for example, to send a shutdown message)."""
         yield from self._open_channels.values()
         yield from self._pending_calls.values()
@@ -562,18 +569,30 @@ class MultiplexingManager(Generic[TQueue]):
         self._last_channel_id = next_id
         return next_id
 
-    @contextmanager
-    def assign_channel_id(self, rx_queue: TQueue) -> Generator[int, None, None]:
-        """Assign distinct streaming channel ID to given queue."""
+    def acquire_channel_id(self, rx_queue: RxQueue) -> int:
+        """Acquire a distinct streaming channel ID for the given queue."""
         channel_id = self._get_next_channel_id()
         self._open_channels[channel_id] = rx_queue
+        return channel_id
+
+    def release_channel_id(self, channel_id: int, rx_queue: RxQueue) -> None:
+        """Release a previously acquired streaming channel ID."""
+        open_channels = self._open_channels
+        assigned_queue = open_channels.get(channel_id)
+        if rx_queue is not assigned_queue:
+            raise LMStudioRuntimeError(
+                f"Unexpected change to reply queue for channel ({channel_id} in {self!r})"
+            )
+        del open_channels[channel_id]
+
+    @contextmanager
+    def assign_channel_id(self, rx_queue: RxQueue) -> Generator[int, None, None]:
+        """Assign distinct streaming channel ID to given queue."""
+        channel_id = self.acquire_channel_id(rx_queue)
         try:
             yield channel_id
         finally:
-            dropped_queue = self._open_channels.pop(channel_id, None)
-            assert dropped_queue is rx_queue, (
-                f"Unexpected change to reply queue for channel ({channel_id} in {self!r})"
-            )
+            self.release_channel_id(channel_id, rx_queue)
 
     def _get_next_call_id(self) -> int:
         """Get next distinct RPC ID."""
@@ -581,24 +600,36 @@ class MultiplexingManager(Generic[TQueue]):
         self._last_call_id = next_id
         return next_id
 
-    @contextmanager
-    def assign_call_id(self, rx_queue: TQueue) -> Generator[int, None, None]:
-        """Assign distinct remote call ID to given queue."""
+    def acquire_call_id(self, rx_queue: RxQueue) -> int:
+        """Acquire a distinct remote call ID for the given queue."""
         call_id = self._get_next_call_id()
         self._pending_calls[call_id] = rx_queue
+        return call_id
+
+    def release_call_id(self, call_id: int, rx_queue: RxQueue) -> None:
+        """Release a previously acquired remote call ID."""
+        pending_calls = self._pending_calls
+        assigned_queue = pending_calls.get(call_id)
+        if rx_queue is not assigned_queue:
+            raise LMStudioRuntimeError(
+                f"Unexpected change to reply queue for remote call ({call_id} in {self!r})"
+            )
+        del pending_calls[call_id]
+
+    @contextmanager
+    def assign_call_id(self, rx_queue: RxQueue) -> Generator[int, None, None]:
+        """Assign distinct remote call ID to given queue."""
+        call_id = self.acquire_call_id(rx_queue)
         try:
             yield call_id
         finally:
-            dropped_queue = self._pending_calls.pop(call_id, None)
-            assert dropped_queue is rx_queue, (
-                f"Unexpected change to reply queue for remote call ({call_id} in {self!r})"
-            )
+            self.release_call_id(call_id, rx_queue)
 
-    def map_rx_message(self, message: DictObject) -> TQueue | None:
+    def map_rx_message(self, message: DictObject) -> RxQueue | None:
         """Map received message to the relevant demultiplexing queue."""
         # TODO: Define an even-spammier-than-debug trace logging level for this
         # self._logger.trace("Incoming websocket message", json=message)
-        rx_queue: TQueue | None = None
+        rx_queue: RxQueue | None = None
         match message:
             case {"channelId": channel_id}:
                 rx_queue = self._open_channels.get(channel_id, None)
@@ -629,6 +660,37 @@ class MultiplexingManager(Generic[TQueue]):
                 return None
             case unmatched:
                 raise LMStudioClientError(f"Unexpected message: {unmatched}")
+        return rx_queue
+
+    def map_tx_message(self, message: DictObject) -> RxQueue | None:
+        """Map failed message transmission to the relevant demultiplexing queue."""
+        # TODO: Define an even-spammier-than-debug trace logging level for this
+        # self._logger.trace("Failed to send websocket message", json=message)
+        rx_queue: RxQueue | None = None
+        match message:
+            case {"channelId": channel_id}:
+                rx_queue = self._open_channels.get(channel_id, None)
+                if rx_queue is None:
+                    if channel_id <= self._last_channel_id:
+                        self._logger.warn(
+                            "Attempted to send message on already closed channel",
+                            channel_id=channel_id,
+                        )
+                    else:
+                        self._logger.warn(
+                            "Attempted to send message on not yet used channel",
+                            channel_id=channel_id,
+                        )
+            case {"callId": call_id}:
+                rx_queue = self._pending_calls.get(call_id, None)
+                if rx_queue is None:
+                    self._logger.warn(
+                        "Attempted to send remote call with unknown ID", call_id=call_id
+                    )
+            case _:
+                self._logger.warn(
+                    "Attempted to send top level message on closed session"
+                )
         return rx_queue
 
 
@@ -1772,7 +1834,7 @@ def _format_exc(exc: Exception) -> str:
     return exc_name
 
 
-class LMStudioWebsocket(Generic[TWebsocket, TQueue]):
+class LMStudioWebsocket(Generic[TWebsocket]):
     """Common base class for LM Studio websocket clients."""
 
     # The common websocket API is narrow due to the sync/async split,
@@ -1780,8 +1842,6 @@ class LMStudioWebsocket(Generic[TWebsocket, TQueue]):
 
     # Subclasses will declare a specific underlying websocket type
     _ws: TWebsocket | None
-    # Subclasses will declare a specific receive queue type
-    _mux: MultiplexingManager[TQueue]
 
     def __init__(
         self,
@@ -1794,7 +1854,6 @@ class LMStudioWebsocket(Generic[TWebsocket, TQueue]):
         self._auth_details = auth_details
         self._logger = logger = new_logger(type(self).__name__)
         logger.update_context(log_context, ws_url=ws_url)
-        self._mux = MultiplexingManager(logger)
         # Subclasses handle actually creating a websocket instance
         self._ws = None
 
@@ -1842,7 +1901,7 @@ class LMStudioWebsocket(Generic[TWebsocket, TQueue]):
         return None
 
 
-TLMStudioWebsocket = TypeVar("TLMStudioWebsocket", bound=LMStudioWebsocket[Any, Any])
+TLMStudioWebsocket = TypeVar("TLMStudioWebsocket", bound=LMStudioWebsocket[Any])
 
 
 class ClientBase:
