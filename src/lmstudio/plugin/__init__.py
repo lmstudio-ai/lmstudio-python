@@ -17,6 +17,7 @@ from .runner import *
 # * refactor to allow hook invocation error handling to be common across hook invocation tasks
 # * [DONE] gracefully handle app termination while a dev plugin is still running
 # * [DONE] gracefully handle using Ctrl-C to terminate a running dev plugin
+# * add async tool handling support to SDK (as part of adding .act() to the async API)
 #
 # Controller APIs (may be limited to relevant hook controllers)
 #
@@ -48,7 +49,8 @@ from .runner import *
 # * catch hook invocation failures and send "Error" responses
 #
 # Tools provider hook
-# * add example plugin or plugins for this (probably both dice rolling and Wikipedia lookup)
+# * add example synchronous tool plugin (dice rolling)
+# * add example asynchronous tool plugin (Wikipedia lookup) (note: requires async tool support in SDK)
 # * define the channel, hook invocation task and hook invocation controller for this hook
 # * main request initiation message is "InitSession" (with Initialized/Failed responses)
 # * handle "Abort" requests from server (including sending "Aborted" responses)

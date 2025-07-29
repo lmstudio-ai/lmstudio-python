@@ -1,6 +1,7 @@
-# `lmstudio/pyprompt`
+# `lmstudio/prompt-prefix`
 
 Python prompt preprocessing plugin example
 
-Note: there's no `python` runner in LM Studio yet, so use
-`python -m lmstudio.plugin --dev path/to/plugin` to run a dev instance
+Running a local dev instance:
+
+    pdm run python -m lmstudio.plugin --dev examples/plugins/prompt-prefix
