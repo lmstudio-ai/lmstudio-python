@@ -13,8 +13,8 @@ from lmstudio import (
     Client,
 )
 from lmstudio.async_api import (
-    AsyncSession,
-    AsyncSessionSystem,
+    _AsyncSession,
+    _AsyncSessionSystem,
 )
 from lmstudio.sync_api import (
     SyncLMStudioWebsocket,
@@ -34,7 +34,7 @@ from .support import (
 from .support.lmstudio import ErrFunc
 
 
-async def check_call_errors_async(session: AsyncSession) -> None:
+async def check_call_errors_async(session: _AsyncSession) -> None:
     # Remote calls on the underlying websocket are expected to fail when not connected
     with pytest.raises(
         LMStudioWebsocketError,
@@ -57,7 +57,7 @@ async def check_call_errors_async(session: AsyncSession) -> None:
 @pytest.mark.asyncio
 async def test_session_not_started_async(caplog: LogCap) -> None:
     caplog.set_level(logging.DEBUG)
-    session = AsyncSessionSystem(AsyncClient())
+    session = _AsyncSessionSystem(AsyncClient())
     # Sessions start out disconnected
     assert not session.connected
     # Check server call errors are reported as expected
@@ -69,7 +69,7 @@ async def test_session_not_started_async(caplog: LogCap) -> None:
 async def test_session_disconnected_async(caplog: LogCap) -> None:
     caplog.set_level(logging.DEBUG)
     client = AsyncClient()
-    session = AsyncSessionSystem(client)
+    session = _AsyncSessionSystem(client)
     async with client._task_manager, session:
         assert session.connected
     # Session is disconnected after use
@@ -82,7 +82,7 @@ async def test_session_disconnected_async(caplog: LogCap) -> None:
 async def test_session_closed_port_async(caplog: LogCap) -> None:
     caplog.set_level(logging.DEBUG)
     client = AsyncClient(closed_api_host())
-    session = AsyncSessionSystem(client)
+    session = _AsyncSessionSystem(client)
     # Sessions start out disconnected
     assert not session.connected
     # Should get an SDK exception rather than the underlying exception
@@ -101,7 +101,7 @@ async def test_session_nonresponsive_port_async(caplog: LogCap) -> None:
     caplog.set_level(logging.DEBUG)
     with nonresponsive_api_host() as api_host:
         client = AsyncClient(api_host)
-        session = AsyncSessionSystem(client)
+        session = _AsyncSessionSystem(client)
         # Sessions start out disconnected
         assert not session.connected
         # Should get an SDK exception rather than the underlying exception

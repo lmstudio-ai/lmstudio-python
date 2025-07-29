@@ -18,7 +18,7 @@ from typing import (
 
 from anyio import move_on_after
 
-from ...async_api import AsyncSession
+from ...async_api import _AsyncSession
 from ...schemas import DictObject
 from ..._sdk_models import (
     # TODO: Define aliases at schema generation time
@@ -32,13 +32,13 @@ from ..config_schemas import BaseConfigSchema
 
 # Available as lmstudio.plugin.hooks.*
 __all__ = [
-    "AsyncSessionPlugins",
+    "_AsyncSessionPlugins",
     "TPluginConfigSchema",
     "TGlobalConfigSchema",
 ]
 
 
-class AsyncSessionPlugins(AsyncSession):
+class _AsyncSessionPlugins(_AsyncSession):
     """Async client session for the plugins namespace."""
 
     API_NAMESPACE = "plugins"
@@ -63,7 +63,7 @@ class HookController(Generic[TPluginRequest, TPluginConfigSchema, TGlobalConfigS
 
     def __init__(
         self,
-        session: AsyncSessionPlugins,
+        session: _AsyncSessionPlugins,
         request: TPluginRequest,
         plugin_config_schema: type[TPluginConfigSchema],
         global_config_schema: type[TGlobalConfigSchema],

@@ -97,7 +97,6 @@ markers = [
 # Warnings should only be emitted when being specifically tested
 filterwarnings = [
     "error",
-    "ignore:.*the async API is not yet stable:FutureWarning"
 ]
 # Capture log info from network client libraries
 log_format = "%(asctime)s %(levelname)s %(message)s"

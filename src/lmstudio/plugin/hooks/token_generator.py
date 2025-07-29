@@ -8,7 +8,7 @@ from ..._sdk_models import (
 
 from ..config_schemas import BaseConfigSchema
 from .common import (
-    AsyncSessionPlugins,
+    _AsyncSessionPlugins,
     HookController,
     TPluginConfigSchema,
     TGlobalConfigSchema,
@@ -36,7 +36,7 @@ async def run_token_generator(
     hook_impl: TokenGeneratorHook,
     plugin_config_schema: type[BaseConfigSchema],
     global_config_schema: type[BaseConfigSchema],
-    session: AsyncSessionPlugins,
+    session: _AsyncSessionPlugins,
     notify_ready: Callable[[], Any],
 ) -> None:
     """Accept token generation requests."""

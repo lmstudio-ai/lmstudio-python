@@ -13,7 +13,7 @@ from ..._sdk_models import (
 
 from ..config_schemas import BaseConfigSchema
 from .common import (
-    AsyncSessionPlugins,
+    _AsyncSessionPlugins,
     HookController,
     TPluginConfigSchema,
     TGlobalConfigSchema,
@@ -43,7 +43,7 @@ async def run_tools_provider(
     hook_impl: ToolsProviderHook,
     plugin_config_schema: type[BaseConfigSchema],
     global_config_schema: type[BaseConfigSchema],
-    session: AsyncSessionPlugins,
+    session: _AsyncSessionPlugins,
     notify_ready: Callable[[], Any],
 ) -> None:
     """Accept tools provider session requests."""
