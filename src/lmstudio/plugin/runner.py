@@ -27,7 +27,7 @@ from .._sdk_models import (
 from .sdk_api import LMStudioPluginInitError, LMStudioPluginRuntimeError
 from .config_schemas import BaseConfigSchema
 from .hooks import (
-    AsyncSessionPlugins,
+    _AsyncSessionPlugins,
     TPluginConfigSchema,
     TGlobalConfigSchema,
     run_prompt_preprocessor,
@@ -55,7 +55,7 @@ HookRunner: TypeAlias = Callable[
         THookImpl,
         type[TPluginConfigSchema],
         type[TGlobalConfigSchema],
-        AsyncSessionPlugins,
+        _AsyncSessionPlugins,
         ReadyCallback,
     ],
     Awaitable[Any],
@@ -100,7 +100,7 @@ class PluginClient(AsyncClient):
 
     _ALL_SESSIONS = (
         # Plugin controller access all runs through a dedicated endpoint
-        AsyncSessionPlugins,
+        _AsyncSessionPlugins,
     )
 
     def _create_auth_message(self) -> DictObject:
@@ -111,9 +111,9 @@ class PluginClient(AsyncClient):
         return self._format_auth_message(self._client_id, self._client_key)
 
     @property
-    def plugins(self) -> AsyncSessionPlugins:
+    def plugins(self) -> _AsyncSessionPlugins:
         """Return the plugins API client session."""
-        return self._get_session(AsyncSessionPlugins)
+        return self._get_session(_AsyncSessionPlugins)
 
     async def _run_hook_impl(
         self,

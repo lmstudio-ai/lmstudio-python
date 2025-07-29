@@ -44,9 +44,6 @@ def main(argv: Sequence[str] | None = None) -> int:
     warnings.filterwarnings(
         "ignore", ".*the plugin API is not yet stable", FutureWarning
     )
-    warnings.filterwarnings(
-        "ignore", ".*the async API is not yet stable", FutureWarning
-    )
     log_level = logging.DEBUG if args.debug else logging.INFO
     logging.basicConfig(level=log_level)
     if not args.dev:

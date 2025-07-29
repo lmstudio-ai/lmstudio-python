@@ -110,6 +110,7 @@ from .json_api import (
     _model_spec_to_api_dict,
     _redact_json,
 )
+from ._ws_impl import SyncFutureTimeout
 from ._ws_thread import AsyncWebsocketThread, SyncToAsyncWebsocketBridge
 from ._kv_config import TLoadConfig, TLoadConfigDict, parse_server_config
 from ._sdk_models import (
@@ -228,7 +229,7 @@ class SyncChannel(Generic[T]):
                 # (we can't easily suppress the SDK's own frames for iterators)
                 try:
                     message = self._get_message(self.timeout)
-                except TimeoutError:
+                except SyncFutureTimeout:
                     raise LMStudioTimeoutError from None
                 if message is None:
                     raise LMStudioWebsocketError("Client unexpectedly disconnected.")
@@ -284,7 +285,7 @@ class SyncRemoteCall:
         """Receive call response on the receive queue."""
         try:
             message = self._get_message(self.timeout)
-        except TimeoutError:
+        except SyncFutureTimeout:
             raise LMStudioTimeoutError from None
         if message is None:
             raise LMStudioWebsocketError("Client unexpectedly disconnected.")

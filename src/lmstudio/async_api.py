@@ -1,7 +1,6 @@
 """Async I/O protocol implementation for the LM Studio remote access API."""
 
 import asyncio
-import warnings
 
 from abc import abstractmethod
 from contextlib import AsyncExitStack, asynccontextmanager
@@ -109,8 +108,8 @@ from ._logging import new_logger, LogEventContext
 # and similar tasks is published from `json_api`.
 # Bypassing the high level API, and working more
 # directly with the underlying websocket(s) is
-# supported (hence the public names), but they're
-# not exported via the top-level `lmstudio` API.
+# not supported due to the complexity of the task
+# management details (hence the private names).
 __all__ = [
     "AnyAsyncDownloadedModel",
     "AsyncClient",
@@ -215,7 +214,7 @@ class AsyncRemoteCall:
         return self._rpc.handle_rx_message(message)
 
 
-class AsyncLMStudioWebsocket(LMStudioWebsocket[AsyncWebSocketSession]):
+class _AsyncLMStudioWebsocket(LMStudioWebsocket[AsyncWebSocketSession]):
     """Asynchronous websocket client that handles demultiplexing of reply messages."""
 
     def __init__(
@@ -331,7 +330,7 @@ class AsyncLMStudioWebsocket(LMStudioWebsocket[AsyncWebSocketSession]):
             return await rpc.receive_result()
 
 
-class AsyncSession(ClientSession["AsyncClient", AsyncLMStudioWebsocket]):
+class _AsyncSession(ClientSession["AsyncClient", _AsyncLMStudioWebsocket]):
     """Async client session interfaces applicable to all API namespaces."""
 
     def __init__(self, client: "AsyncClient") -> None:
@@ -354,7 +353,7 @@ class AsyncSession(ClientSession["AsyncClient", AsyncLMStudioWebsocket]):
         await self.disconnect()
 
     @sdk_public_api_async()
-    async def connect(self) -> AsyncLMStudioWebsocket:
+    async def connect(self) -> _AsyncLMStudioWebsocket:
         """Connect the client session."""
         self._fail_if_connected("Attempted to connect already connected session")
         api_host = self._client.api_host
@@ -367,7 +366,7 @@ class AsyncSession(ClientSession["AsyncClient", AsyncLMStudioWebsocket]):
         resources = self._resource_manager
         client = self._client
         self._lmsws = lmsws = await resources.enter_async_context(
-            AsyncLMStudioWebsocket(
+            _AsyncLMStudioWebsocket(
                 client._task_manager, session_url, client._auth_details
             )
         )
@@ -411,7 +410,7 @@ class AsyncSession(ClientSession["AsyncClient", AsyncLMStudioWebsocket]):
 
 
 TAsyncSessionModel = TypeVar(
-    "TAsyncSessionModel", bound="AsyncSessionModel[Any, Any, Any, Any]"
+    "TAsyncSessionModel", bound="_AsyncSessionModel[Any, Any, Any, Any]"
 )
 TAsyncModelHandle = TypeVar("TAsyncModelHandle", bound="AsyncModelHandle[Any]")
 
@@ -467,7 +466,7 @@ class AsyncDownloadedModel(
 class AsyncDownloadedEmbeddingModel(
     AsyncDownloadedModel[
         EmbeddingModelInfo,
-        "AsyncSessionEmbedding",
+        "_AsyncSessionEmbedding",
         EmbeddingLoadModelConfig,
         EmbeddingLoadModelConfigDict,
         "AsyncEmbeddingModel",
@@ -476,7 +475,7 @@ class AsyncDownloadedEmbeddingModel(
     """Asynchronous download listing for an embedding model."""
 
     def __init__(
-        self, model_info: DictObject, session: "AsyncSessionEmbedding"
+        self, model_info: DictObject, session: "_AsyncSessionEmbedding"
     ) -> None:
         """Initialize downloaded embedding model details."""
         super().__init__(EmbeddingModelInfo, model_info, session)
@@ -485,7 +484,7 @@ class AsyncDownloadedEmbeddingModel(
 class AsyncDownloadedLlm(
     AsyncDownloadedModel[
         LlmInfo,
-        "AsyncSessionLlm",
+        "_AsyncSessionLlm",
         LlmLoadModelConfig,
         LlmLoadModelConfigDict,
         "AsyncLLM",
@@ -493,7 +492,7 @@ class AsyncDownloadedLlm(
 ):
     """Asynchronous ownload listing for an LLM."""
 
-    def __init__(self, model_info: DictObject, session: "AsyncSessionLlm") -> None:
+    def __init__(self, model_info: DictObject, session: "_AsyncSessionLlm") -> None:
         """Initialize downloaded embedding model details."""
         super().__init__(LlmInfo, model_info, session)
 
@@ -501,7 +500,7 @@ class AsyncDownloadedLlm(
 AnyAsyncDownloadedModel: TypeAlias = AsyncDownloadedModel[Any, Any, Any, Any, Any]
 
 
-class AsyncSessionSystem(AsyncSession):
+class _AsyncSessionSystem(_AsyncSession):
     """Async client session for the system namespace."""
 
     API_NAMESPACE = "system"
@@ -531,7 +530,7 @@ class AsyncSessionSystem(AsyncSession):
         )
 
 
-class _AsyncSessionFiles(AsyncSession):
+class _AsyncSessionFiles(_AsyncSession):
     """Async client session for the files namespace."""
 
     API_NAMESPACE = "files"
@@ -562,7 +561,7 @@ class _AsyncSessionFiles(AsyncSession):
         return await self._fetch_file_handle(file_data)
 
 
-class AsyncModelDownloadOption(ModelDownloadOptionBase[AsyncSession]):
+class AsyncModelDownloadOption(ModelDownloadOptionBase[_AsyncSession]):
     """A single download option for a model search result."""
 
     @sdk_public_api_async()
@@ -577,10 +576,10 @@ class AsyncModelDownloadOption(ModelDownloadOptionBase[AsyncSession]):
             return await channel.wait_for_result()
 
 
-class AsyncAvailableModel(AvailableModelBase[AsyncSession]):
+class AsyncAvailableModel(AvailableModelBase[_AsyncSession]):
     """A model available for download from the model repository."""
 
-    _session: AsyncSession
+    _session: _AsyncSession
 
     @sdk_public_api_async()
     async def get_download_options(
@@ -595,7 +594,7 @@ class AsyncAvailableModel(AvailableModelBase[AsyncSession]):
         return final
 
 
-class AsyncSessionRepository(AsyncSession):
+class _AsyncSessionRepository(_AsyncSession):
     """Async client session for the repository namespace."""
 
     API_NAMESPACE = "repository"
@@ -616,8 +615,8 @@ class AsyncSessionRepository(AsyncSession):
 TAsyncDownloadedModel = TypeVar("TAsyncDownloadedModel", bound=AnyAsyncDownloadedModel)
 
 
-class AsyncSessionModel(
-    AsyncSession,
+class _AsyncSessionModel(
+    _AsyncSession,
     Generic[
         TAsyncModelHandle,
         TLoadConfig,
@@ -630,7 +629,7 @@ class AsyncSessionModel(
     _API_TYPES: Type[ModelSessionTypes[TLoadConfig]]
 
     @property
-    def _system_session(self) -> AsyncSessionSystem:
+    def _system_session(self) -> _AsyncSessionSystem:
         return self._client.system
 
     @property
@@ -922,8 +921,8 @@ class AsyncPredictionStream(PredictionStreamBase):
             await self._channel.cancel()
 
 
-class AsyncSessionLlm(
-    AsyncSessionModel[
+class _AsyncSessionLlm(
+    _AsyncSessionModel[
         "AsyncLLM",
         LlmLoadModelConfig,
         LlmLoadModelConfigDict,
@@ -1028,8 +1027,8 @@ class AsyncSessionLlm(
         return response.get("formatted", "") if response else ""
 
 
-class AsyncSessionEmbedding(
-    AsyncSessionModel[
+class _AsyncSessionEmbedding(
+    _AsyncSessionModel[
         "AsyncEmbeddingModel",
         EmbeddingLoadModelConfig,
         EmbeddingLoadModelConfigDict,
@@ -1115,7 +1114,7 @@ class AsyncModelHandle(
 AnyAsyncModel: TypeAlias = AsyncModelHandle[Any]
 
 
-class AsyncLLM(AsyncModelHandle[AsyncSessionLlm]):
+class AsyncLLM(AsyncModelHandle[_AsyncSessionLlm]):
     """Reference to a loaded LLM model."""
 
     @sdk_public_api_async()
@@ -1258,7 +1257,7 @@ class AsyncLLM(AsyncModelHandle[AsyncSessionLlm]):
         )
 
 
-class AsyncEmbeddingModel(AsyncModelHandle[AsyncSessionEmbedding]):
+class AsyncEmbeddingModel(AsyncModelHandle[_AsyncSessionEmbedding]):
     """Reference to a loaded embedding model."""
 
     # Alas, type hints don't properly support distinguishing str vs Iterable[str]:
@@ -1271,11 +1270,7 @@ class AsyncEmbeddingModel(AsyncModelHandle[AsyncSessionEmbedding]):
         return await self._session._embed(self.identifier, input)
 
 
-TAsyncSession = TypeVar("TAsyncSession", bound=AsyncSession)
-
-_ASYNC_API_STABILITY_WARNING = """\
-Note the async API is not yet stable and is expected to change in future releases
-"""
+TAsyncSession = TypeVar("TAsyncSession", bound=_AsyncSession)
 
 
 class AsyncClient(ClientBase):
@@ -1283,12 +1278,9 @@ class AsyncClient(ClientBase):
 
     def __init__(self, api_host: str | None = None) -> None:
         """Initialize API client."""
-        # Warn about the async API stability, since we expect it to change
-        # (in particular, accepting coroutine functions as callbacks)
-        warnings.warn(_ASYNC_API_STABILITY_WARNING, FutureWarning)
         super().__init__(api_host)
         self._resources = AsyncExitStack()
-        self._sessions: dict[str, AsyncSession] = {}
+        self._sessions: dict[str, _AsyncSession] = {}
         self._task_manager = AsyncTaskManager()
         # Unlike the sync API, we don't support GC-based resource
         # management in the async API. Structured concurrency
@@ -1301,12 +1293,12 @@ class AsyncClient(ClientBase):
     # TODO: revisit lazy connections given the task manager implementation
     #       (for example, eagerly start tasks for all sessions, and lazily
     #       trigger events that allow them to initiate their connection)
-    _ALL_SESSIONS: tuple[Type[AsyncSession], ...] = (
-        AsyncSessionEmbedding,
+    _ALL_SESSIONS: tuple[Type[_AsyncSession], ...] = (
+        _AsyncSessionEmbedding,
         _AsyncSessionFiles,
-        AsyncSessionLlm,
-        AsyncSessionRepository,
-        AsyncSessionSystem,
+        _AsyncSessionLlm,
+        _AsyncSessionRepository,
+        _AsyncSessionSystem,
     )
 
     async def __aenter__(self) -> Self:
@@ -1342,20 +1334,20 @@ class AsyncClient(ClientBase):
 
     @property
     @sdk_public_api()
-    def llm(self) -> AsyncSessionLlm:
+    def llm(self) -> _AsyncSessionLlm:
         """Return the LLM API client session."""
-        return self._get_session(AsyncSessionLlm)
+        return self._get_session(_AsyncSessionLlm)
 
     @property
     @sdk_public_api()
-    def embedding(self) -> AsyncSessionEmbedding:
+    def embedding(self) -> _AsyncSessionEmbedding:
         """Return the embedding model API client session."""
-        return self._get_session(AsyncSessionEmbedding)
+        return self._get_session(_AsyncSessionEmbedding)
 
     @property
-    def system(self) -> AsyncSessionSystem:
+    def system(self) -> _AsyncSessionSystem:
         """Return the system API client session."""
-        return self._get_session(AsyncSessionSystem)
+        return self._get_session(_AsyncSessionSystem)
 
     @property
     def files(self) -> _AsyncSessionFiles:
@@ -1363,9 +1355,9 @@ class AsyncClient(ClientBase):
         return self._get_session(_AsyncSessionFiles)
 
     @property
-    def repository(self) -> AsyncSessionRepository:
+    def repository(self) -> _AsyncSessionRepository:
         """Return the repository API client session."""
-        return self._get_session(AsyncSessionRepository)
+        return self._get_session(_AsyncSessionRepository)
 
     # Convenience methods
     # Not yet implemented (server API only supports the same file types as prepare_image)

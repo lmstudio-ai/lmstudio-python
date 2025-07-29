@@ -10,7 +10,9 @@ from .support import (
     TOOL_LLM_ID,
 )
 
-AsyncSessionModel = lms.async_api.AsyncSessionEmbedding | lms.async_api.AsyncSessionLlm
+AsyncSessionModel = (
+    lms.async_api._AsyncSessionEmbedding | lms.async_api._AsyncSessionLlm
+)
 
 
 async def _unload_model(session: AsyncSessionModel, model_identifier: str) -> None:

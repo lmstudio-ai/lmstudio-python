@@ -47,7 +47,7 @@ from ..._sdk_models import (
 )
 from ..config_schemas import BaseConfigSchema
 from .common import (
-    AsyncSessionPlugins,
+    _AsyncSessionPlugins,
     HookController,
     SendMessageCallback,
     ServerRequestError,
@@ -129,7 +129,7 @@ class PromptPreprocessorController(
 
     def __init__(
         self,
-        session: AsyncSessionPlugins,
+        session: _AsyncSessionPlugins,
         request: PromptPreprocessingRequest,
         plugin_config_schema: type[TPluginConfigSchema],
         global_config_schema: type[TGlobalConfigSchema],
@@ -210,7 +210,7 @@ class PromptPreprocessor(Generic[TPluginConfigSchema, TGlobalConfigSchema]):
         self._abort_events: dict[str, asyncio.Event] = {}
 
     async def process_requests(
-        self, session: AsyncSessionPlugins, notify_ready: Callable[[], Any]
+        self, session: _AsyncSessionPlugins, notify_ready: Callable[[], Any]
     ) -> None:
         """Create plugin channel and wait for server requests."""
         logger = self._logger
@@ -376,7 +376,7 @@ async def run_prompt_preprocessor(
     hook_impl: PromptPreprocessorHook,
     plugin_config_schema: type[BaseConfigSchema],
     global_config_schema: type[BaseConfigSchema],
-    session: AsyncSessionPlugins,
+    session: _AsyncSessionPlugins,
     notify_ready: Callable[[], Any],
 ) -> None:
     """Accept prompt preprocessing requests."""

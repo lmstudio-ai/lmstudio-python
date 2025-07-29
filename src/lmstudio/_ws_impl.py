@@ -11,7 +11,10 @@
 
 import asyncio
 
-from concurrent.futures import Future as SyncFuture
+
+# Python 3.10 compatibility: use concurrent.futures.TimeoutError instead of the builtin
+# In 3.11+, these are the same type, in 3.10 futures have their own timeout exception
+from concurrent.futures import Future as SyncFuture, TimeoutError as SyncFutureTimeout
 from contextlib import AsyncExitStack, contextmanager
 from functools import partial
 from typing import (
@@ -46,6 +49,12 @@ from ._logging import LogEventContext, new_logger
 # (Note: this implementation has the elements needed to run on *current* Python versions
 # and omits the generalised features that the SDK doesn't need)
 T = TypeVar("T")
+
+__all__ = [
+    "SyncFutureTimeout",
+    "AsyncTaskManager",
+    "AsyncWebsocketHandler",
+]
 
 
 class AsyncTaskManager:
@@ -429,7 +438,7 @@ class AsyncWebsocketHandler:
         future = self._task_manager.run_coroutine_threadsafe(rx_queue.get())
         try:
             return future.result(timeout)
-        except TimeoutError:
+        except SyncFutureTimeout:
             future.cancel()
             raise
 
