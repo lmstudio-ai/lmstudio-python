@@ -249,7 +249,7 @@ class AsyncLMStudioWebsocket(LMStudioWebsocket[AsyncWebSocketSession]):
     async def connect(self) -> Self:
         """Connect to and authenticate with the LM Studio API."""
         self._fail_if_connected("Attempted to connect already connected websocket")
-        self._logger.info(f"Connecting websocket session ({self._ws_url})")
+        self._logger.info("Connecting websocket session")
         ws_handler = self._ws_handler
         if not await self._ws_handler.connect():
             if ws_handler._connection_failure is not None:
@@ -265,7 +265,7 @@ class AsyncLMStudioWebsocket(LMStudioWebsocket[AsyncWebSocketSession]):
         """Drop the LM Studio API connection."""
         self._ws = None
         await self._ws_handler.disconnect()
-        self._logger.info(f"Websocket session disconnected ({self._ws_url})")
+        self._logger.info("Websocket session disconnected")
 
     aclose = disconnect
 

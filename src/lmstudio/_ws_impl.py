@@ -262,7 +262,7 @@ class AsyncWebsocketHandler:
         self._ws_disconnected = asyncio.Event()
         self._rx_task: asyncio.Task[None] | None = None
         self._logger = logger = new_logger(type(self).__name__)
-        logger.update_context(log_context)
+        logger.update_context(log_context, ws_url=ws_url)
         self._mux = MultiplexingManager(logger)
 
     async def connect(self) -> bool:
@@ -294,7 +294,7 @@ class AsyncWebsocketHandler:
         task_manager.run_coroutine_threadsafe(self.disconnect()).result()
 
     async def _logged_ws_handler(self) -> None:
-        self._logger.info("Websocket handling task started")
+        self._logger.debug("Websocket handling task started")
         try:
             await self._handle_ws()
         except (asyncio.CancelledError, GeneratorExit):
@@ -306,7 +306,7 @@ class AsyncWebsocketHandler:
             # Ensure connections attempt are unblocked even if the
             # background async task errors out completely
             self._connection_attempted.set()
-            self._logger.info("Websocket task terminated")
+            self._logger.debug("Websocket task terminated")
 
     async def _handle_ws(self) -> None:
         assert self._task_manager.check_running_in_task_loop()
@@ -330,12 +330,12 @@ class AsyncWebsocketHandler:
             if not await self._authenticate():
                 return
             self._connection_attempted.set()
-            self._logger.info(f"Websocket session established ({self._ws_url})")
+            self._logger.info("Websocket session established")
             # Task will run until message reception fails or is cancelled
             try:
                 await self._receive_messages()
             finally:
-                self._logger.info("Websocket demultiplexing task terminated.")
+                self._logger.debug("Websocket demultiplexing task terminated.")
                 # Notify foreground thread of background thread termination
                 # (this covers termination due to link failure)
                 await self.notify_client_termination()
