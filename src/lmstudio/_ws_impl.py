@@ -20,9 +20,12 @@ from typing import (
     Coroutine,
     Callable,
     Generator,
-    Self,
     TypeAlias,
     TypeVar,
+)
+from typing_extensions import (
+    # Native in 3.11+
+    Self,
 )
 
 from anyio import create_task_group, move_on_after
