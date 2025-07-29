@@ -68,8 +68,9 @@ async def test_session_not_started_async(caplog: LogCap) -> None:
 @pytest.mark.asyncio
 async def test_session_disconnected_async(caplog: LogCap) -> None:
     caplog.set_level(logging.DEBUG)
-    session = AsyncSessionSystem(AsyncClient())
-    async with session:
+    client = AsyncClient()
+    session = AsyncSessionSystem(client)
+    async with client._task_manager, session:
         assert session.connected
     # Session is disconnected after use
     assert not session.connected
@@ -80,12 +81,14 @@ async def test_session_disconnected_async(caplog: LogCap) -> None:
 @pytest.mark.asyncio
 async def test_session_closed_port_async(caplog: LogCap) -> None:
     caplog.set_level(logging.DEBUG)
-    session = AsyncSessionSystem(AsyncClient(closed_api_host()))
+    client = AsyncClient(closed_api_host())
+    session = AsyncSessionSystem(client)
     # Sessions start out disconnected
     assert not session.connected
     # Should get an SDK exception rather than the underlying exception
-    with pytest.raises(LMStudioWebsocketError, match="is not reachable"):
-        await session.connect()
+    async with client._task_manager:
+        with pytest.raises(LMStudioWebsocketError, match="is not reachable"):
+            await session.connect()
     # Session should still be considered disconnected
     assert not session.connected
     # Check server call errors are reported as expected
@@ -97,12 +100,14 @@ async def test_session_closed_port_async(caplog: LogCap) -> None:
 async def test_session_nonresponsive_port_async(caplog: LogCap) -> None:
     caplog.set_level(logging.DEBUG)
     with nonresponsive_api_host() as api_host:
-        session = AsyncSessionSystem(AsyncClient(api_host))
+        client = AsyncClient(api_host)
+        session = AsyncSessionSystem(client)
         # Sessions start out disconnected
         assert not session.connected
         # Should get an SDK exception rather than the underlying exception
-        with pytest.raises(LMStudioWebsocketError, match="is not reachable"):
-            await session.connect()
+        async with client._task_manager:
+            with pytest.raises(LMStudioWebsocketError, match="is not reachable"):
+                await session.connect()
     # Session should still be considered disconnected
     assert not session.connected
     # Check server call errors are reported as expected

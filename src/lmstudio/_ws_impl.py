@@ -20,6 +20,7 @@ from typing import (
     Coroutine,
     Callable,
     Generator,
+    Self,
     TypeAlias,
     TypeVar,
 )
@@ -45,13 +46,19 @@ T = TypeVar("T")
 
 
 class AsyncTaskManager:
-    def __init__(self, *, on_activation: Callable[[], Any] | None) -> None:
+    def __init__(self, *, on_activation: Callable[[], Any] | None = None) -> None:
         self._activated = False
         self._event_loop: asyncio.AbstractEventLoop | None = None
         self._on_activation = on_activation
         self._task_queue: asyncio.Queue[Callable[[], Awaitable[Any]]] = asyncio.Queue()
         self._terminate = asyncio.Event()
         self._terminated = asyncio.Event()
+        # For the case where the task manager is run via its context manager
+        self._tm_started = asyncio.Event()
+        self._tm_task: asyncio.Task[Any] | None = None
+
+    ACTIVATION_TIMEOUT = 5  # Just starts an async task, should be fast
+    TERMINATION_TIMEOUT = 20  # May have to shut down TCP links
 
     @property
     def activated(self) -> bool:
@@ -64,6 +71,20 @@ class AsyncTaskManager:
             and self._event_loop is not None
             and not self._terminated.is_set()
         )
+
+    async def __aenter__(self) -> Self:
+        # Handle reentrancy the same way files do:
+        # allow nested use as a CM, but close on the first exit
+        if self._tm_task is None:
+            self._tm_task = asyncio.create_task(self.run_until_terminated())
+        with move_on_after(self.ACTIVATION_TIMEOUT):
+            await self._tm_started.wait()
+        return self
+
+    async def __aexit__(self, *args: Any) -> None:
+        await self.request_termination()
+        with move_on_after(self.TERMINATION_TIMEOUT):
+            await self._terminated.wait()
 
     def check_running_in_task_loop(self, *, allow_inactive: bool = False) -> bool:
         """Returns if running in this manager's event loop, raises RuntimeError otherwise."""
@@ -138,6 +159,7 @@ class AsyncTaskManager:
         notify = self._on_activation
         if notify is not None:
             notify()
+        self._tm_started.set()
 
     async def run_until_terminated(
         self, func: Callable[[], Coroutine[Any, Any, Any]] | None = None
@@ -218,9 +240,6 @@ AsyncChannelInfo: TypeAlias = tuple[int, Callable[[], Awaitable[Any]]]
 AsyncRemoteCallInfo: TypeAlias = tuple[int, Callable[[], Awaitable[Any]]]
 
 
-# TODO: Improve code sharing between AsyncWebsocketHandler and
-#       the async-native AsyncLMStudioWebsocket implementation
-#       (likely by migrating the websocket over to using the handler)
 class AsyncWebsocketHandler:
     """Async task handler for a single websocket connection."""
 
