@@ -81,6 +81,7 @@ from .json_api import (
     LMStudioPredictionError,
     LMStudioTimeoutError,
     LMStudioWebsocket,
+    LMStudioWebsocketError,
     LoadModelEndpoint,
     ModelDownloadOptionBase,
     ModelHandleBase,
@@ -230,7 +231,7 @@ class SyncChannel(Generic[T]):
                 except TimeoutError:
                     raise LMStudioTimeoutError from None
                 if message is None:
-                    raise LMStudioRuntimeError("Client unexpectedly disconnected.")
+                    raise LMStudioWebsocketError("Client unexpectedly disconnected.")
                 contents = self._api_channel.handle_rx_message(message)
             if contents is None:
                 self._is_finished = True
@@ -286,7 +287,7 @@ class SyncRemoteCall:
         except TimeoutError:
             raise LMStudioTimeoutError from None
         if message is None:
-            raise LMStudioRuntimeError("Client unexpectedly disconnected.")
+            raise LMStudioWebsocketError("Client unexpectedly disconnected.")
         return self._rpc.handle_rx_message(message)
 
 
