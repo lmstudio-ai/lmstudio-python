@@ -100,7 +100,7 @@ class AsyncTaskManager:
 
     async def __aexit__(self, *args: Any) -> None:
         await self.request_termination()
-        with move_on_after(self.TERMINATION_TIMEOUT):
+        with move_on_after(self.TERMINATION_TIMEOUT, shield=True):
             await self._terminated.wait()
 
     @classmethod
