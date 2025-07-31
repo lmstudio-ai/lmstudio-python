@@ -2,10 +2,9 @@
 
 import asyncio
 
-from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from traceback import format_tb
-from typing import Any, AsyncIterator, Awaitable, Callable, Generic, Iterable, TypeAlias
+from typing import Any, Awaitable, Callable, Generic, Iterable, TypeAlias, TypeVar
 from typing_extensions import (
     # Native in 3.11+
     assert_never,
@@ -110,7 +109,7 @@ class ToolsProviderEndpoint(
     def handle_rx_event(self, event: PromptPreprocessingRxEvent) -> None:
         match event:
             case ProvideToolsDiscardSessionEvent(session_id):
-                self._logger.debug(f"Aborting {session_id}", session_id=session_id)
+                self._logger.debug(f"Terminating {session_id}", session_id=session_id)
             case ProvideToolsInitSessionEvent(request):
                 session_id = request.session_id
                 self._logger.debug(
@@ -143,6 +142,13 @@ ToolsProviderHook = Callable[
     [ToolsProviderController[Any, Any]], Awaitable[Iterable[ToolDefinition]]
 ]
 
+T = TypeVar("T")
+
+
+@dataclass(frozen=True, slots=True)
+class SessionRxEvent(Generic[T]):
+    arg: T
+
 
 # TODO: Define a common "PluginHookHandler" base class
 @dataclass()
@@ -157,7 +163,7 @@ class ToolsProvider(Generic[TPluginConfigSchema, TGlobalConfigSchema]):
     def __post_init__(self) -> None:
         self._logger = logger = new_logger(__name__)
         logger.update_context(plugin_name=self.plugin_name)
-        self._abort_events: dict[str, asyncio.Event] = {}
+        self._session_queues: dict[str, asyncio.Queue[SessionRxEvent[Any] | None]] = {}
 
     async def process_requests(
         self, session: _AsyncSessionPlugins, notify_ready: Callable[[], Any]
@@ -180,7 +186,7 @@ class ToolsProvider(Generic[TPluginConfigSchema, TGlobalConfigSchema]):
                         endpoint.handle_rx_event(event)
                         match event:
                             case ProvideToolsDiscardSessionEvent():
-                                self._discard_session(event.arg)
+                                await self._discard_session(event.arg)
                             case ProvideToolsInitSessionEvent():
                                 logger.debug("Running tools listing hook")
                                 ctl = ToolsProviderController(
@@ -193,11 +199,11 @@ class ToolsProvider(Generic[TPluginConfigSchema, TGlobalConfigSchema]):
                     if endpoint.is_finished:
                         break
 
-    def _discard_session(self, session_id: str) -> None:
+    async def _discard_session(self, session_id: str) -> None:
         """Abort the specified tools session (if it is still running)."""
-        abort_event = self._abort_events.get(session_id, None)
-        if abort_event is not None:
-            abort_event.set()
+        session_queue = self._session_queues.get(session_id, None)
+        if session_queue is not None:
+            await session_queue.put(None)
 
     async def _cancel_on_event(
         self, tg: TaskGroup, event: asyncio.Event, message: str
@@ -206,27 +212,27 @@ class ToolsProvider(Generic[TPluginConfigSchema, TGlobalConfigSchema]):
         self._logger.info(message)
         tg.cancel_scope.cancel()
 
-    @asynccontextmanager
-    async def _run_tools_session(self, session_id: str) -> AsyncIterator[asyncio.Event]:
+    async def _process_session_event(
+        self, session_id: str, rx_event: SessionRxEvent[Any]
+    ) -> None:
+        pass
+
+    async def _run_tools_session(self, session_id: str) -> None:
         logger = self._logger
-        abort_events = self._abort_events
-        if session_id in abort_events:
+        session_queues = self._session_queues
+        if session_id in session_queues:
             err_msg = f"Tools session already in progress for {session_id}"
             raise ServerRequestError(err_msg)
-        abort_events[session_id] = abort_event = asyncio.Event()
+        session_queue = session_queues[session_id] = asyncio.Queue()
         try:
-            async with create_task_group() as tg:
-                tg.start_soon(
-                    self._cancel_on_event,
-                    tg,
-                    abort_event,
-                    f"Aborting tools session {session_id}",
-                )
-                logger.info(f"Running tools session {session_id}")
-                yield abort_event
-                tg.cancel_scope.cancel()
+            logger.info(f"Running tools session {session_id}")
+            while True:
+                rx_event = await session_queue.get()
+                if rx_event is None:
+                    break
+                await self._process_session_event(session_id, rx_event)
         finally:
-            abort_events.pop(session_id, None)
+            session_queues.pop(session_id, None)
         logger.info(f"Terminated tools session {session_id}")
 
     async def _invoke_hook(
@@ -269,10 +275,7 @@ class ToolsProvider(Generic[TPluginConfigSchema, TGlobalConfigSchema]):
             toolDefinitions=llm_tools_list,
         )
         await send_response(init_message)
-        async with self._run_tools_session(session_id) as abort_event:
-            # TODO: Set up per-session queues to receive tool call requests
-            # Receiving None on the queue may replace the abort events...
-            await abort_event.wait()
+        await self._run_tools_session(session_id)
 
 
 async def run_tools_provider(
