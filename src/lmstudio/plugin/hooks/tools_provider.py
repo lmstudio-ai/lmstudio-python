@@ -12,6 +12,7 @@ from typing_extensions import (
 
 from anyio import create_task_group
 from anyio.abc import TaskGroup
+from msgspec import convert, to_builtins
 
 from ..._logging import new_logger, LogEventContext
 from ...schemas import DictObject, EmptyDict
@@ -21,6 +22,7 @@ from ...json_api import (
     ChannelFinishedEvent,
     ChannelRxEvent,
     ChatResponseEndpoint,
+    ClientToolMap,
     ToolDefinition,
 )
 from ..._sdk_models import (
@@ -30,10 +32,9 @@ from ..._sdk_models import (
     PluginsChannelSetToolsProviderToClientPacketCallTool as ProvideToolsCallTool,
     PluginsChannelSetToolsProviderToServerPacketSessionInitializationFailedDict as ProvideToolsInitFailedDict,
     PluginsChannelSetToolsProviderToServerPacketSessionInitializedDict as ProvideToolsInitializedDict,
-    # "PluginsChannelSetToolsProviderToServerPacketToolCallComplete",
-    # PluginsChannelSetToolsProviderToServerPacketToolCallCompleteDict as PluginToolCallCompleteDict,
-    # "PluginsChannelSetToolsProviderToServerPacketToolCallError",
-    # PluginsChannelSetToolsProviderToServerPacketToolCallErrorDict as PluginToolCallErrorDict,
+    PluginsChannelSetToolsProviderToServerPacketToolCallComplete as PluginToolCallComplete,
+    PluginsChannelSetToolsProviderToServerPacketToolCallCompleteDict as PluginToolCallCompleteDict,
+    PluginsChannelSetToolsProviderToServerPacketToolCallErrorDict as PluginToolCallErrorDict,
     # "PluginsChannelSetToolsProviderToServerPacketToolCallStatus",
     # PluginsChannelSetToolsProviderToServerPacketToolCallStatusDict as PluginToolCallStatusDict,
     # "PluginsChannelSetToolsProviderToServerPacketToolCallWarn",
@@ -171,8 +172,16 @@ T = TypeVar("T")
 
 
 class ToolCallHandler:
-    def __init__(self, session_id: str, log_context: LogEventContext) -> None:
+    def __init__(
+        self,
+        plugin_name: str,
+        session_id: str,
+        provided_tools: ClientToolMap,
+        log_context: LogEventContext,
+    ) -> None:
+        self.plugin_name = plugin_name
         self.session_id = session_id
+        self._provided_tools = provided_tools
         self._queue: asyncio.Queue[ProvideToolsCallTool | None] = asyncio.Queue()
         self._abort_events: dict[str, asyncio.Event] = {}
         self._logger = logger = new_logger(__name__)
@@ -188,13 +197,44 @@ class ToolCallHandler:
     async def start_tool_call(self, tool_call: ProvideToolsCallTool) -> None:
         await self._queue.put(tool_call)
 
-    async def _call_tool_implementation(self, tool_call: ProvideToolsCallTool) -> Any:
-        # TODO: Share the tool invocation logic with the .act() API implementations
-        # Note: synchronous tool calls must be run in asyncio.to_thread to avoid blocking
-        # For now, placeholder sleep allows for manual testing of the tool call abort processing
-        await asyncio.sleep(5)
-        raise NotImplementedError
+    # TODO: Reduce code duplication with the ChatResponseEndpoint definition
+    def _call_sync_tool(
+        self, call_id: str, sync_tool: Callable[..., Any], kwds: DictObject
+    ) -> Awaitable[PluginToolCallCompleteDict]:
+        # Ensure synchronous tools can't block the plugin's async comms thread
+        def _call_requested_tool() -> PluginToolCallCompleteDict:
+            call_result = sync_tool(**kwds)
+            return PluginToolCallComplete(
+                session_id=self.session_id,
+                call_id=call_id,
+                result=call_result,
+            ).to_dict()
 
+        return asyncio.to_thread(_call_requested_tool)
+
+    async def _call_tool_implementation(
+        self, tool_call: ProvideToolsCallTool
+    ) -> PluginToolCallCompleteDict:
+        # Find tool implementation
+        tool_name = tool_call.tool_name
+        tool_details = self._provided_tools.get(tool_name, None)
+        if tool_details is None:
+            raise ServerRequestError(
+                f"Plugin does not provide a tool named {tool_name!r}."
+            )
+        # Validate parameters against their specification
+        params_struct, tool_impl = tool_details
+        raw_kwds = tool_call.parameters
+        try:
+            parsed_kwds = convert(raw_kwds, params_struct)
+        except Exception as exc:
+            err_msg = f"Failed to parse arguments for tool {tool_name}: {exc}"
+            raise ServerRequestError(err_msg)
+        kwds = to_builtins(parsed_kwds)
+        # TODO: Also support async tool definitions and invocation
+        return await self._call_sync_tool(tool_call.call_id, tool_impl, kwds)
+
+    # TODO: Reduce code duplication with the ChatResponseEndpoint definition
     async def _call_tool(
         self, tool_call: ProvideToolsCallTool, send_message: SendMessageCallback
     ) -> None:
@@ -204,6 +244,8 @@ class ToolCallHandler:
             err_msg = f"Tool call already in progress for {call_id} in session {self.session_id}"
             raise ServerRequestError(err_msg)
         abort_events[call_id] = abort_event = asyncio.Event()
+        logger = new_logger(__name__)
+        logger.update_context(self._logger.event_context, call_id=call_id)
         try:
             async with create_task_group() as tg:
                 tg.start_soon(
@@ -212,11 +254,34 @@ class ToolCallHandler:
                     abort_event,
                     f"Aborting tool_call {call_id}",
                 )
-                self._logger.info(f"Running tool call {call_id}")
+                logger.info(f"Running tool call {call_id}")
                 # TODO: Set up context variable for status/warning message sending
-                await self._call_tool_implementation(tool_call)
-                # TODO: Send completed message with the result of the call
-                # TODO: Send error message with any raised exceptions
+                tool_call_response: PluginToolCallCompleteDict | PluginToolCallErrorDict
+                try:
+                    tool_call_response = await self._call_tool_implementation(tool_call)
+                except Exception as exc:
+                    # Only catch regular exceptions,
+                    # allowing the server to time out for client process termination events
+                    err_msg = "Error calling tool implementation"
+                    logger.error(err_msg, exc_info=True, exc=repr(exc))
+                    # TODO: Determine if it's worth sending the stack trace to the server
+                    tool_name = tool_call.tool_name
+                    ui_cause = f"{err_msg}\n({type(exc).__name__}: {exc})"
+                    # Tool calling UI only displays the title, so also embed the cause directly
+                    error_title = f"Error calling tool {tool_name} in plugin {self.plugin_name!r} ({ui_cause})"
+                    error_details = SerializedLMSExtendedErrorDict(
+                        title=error_title,
+                        rootTitle=error_title,
+                        cause=ui_cause,
+                        stack="\n".join(format_tb(exc.__traceback__)),
+                    )
+                    tool_call_response = PluginToolCallErrorDict(
+                        type="toolCallError",
+                        sessionId=self.session_id,
+                        callId=call_id,
+                        error=error_details,
+                    )
+                await send_message(tool_call_response)
                 tg.cancel_scope.cancel()
         finally:
             self._abort_events.pop(call_id, None)
@@ -323,7 +388,10 @@ class ToolsProvider(Generic[TPluginConfigSchema, TGlobalConfigSchema]):
             call_handler.abort_tool_call(abort_request.call_id)
 
     async def _run_tools_session(
-        self, session_id: str, send_message: SendMessageCallback
+        self,
+        session_id: str,
+        provided_tools: ClientToolMap,
+        send_message: SendMessageCallback,
     ) -> None:
         logger = self._logger
         call_handlers = self._call_handlers
@@ -331,7 +399,7 @@ class ToolsProvider(Generic[TPluginConfigSchema, TGlobalConfigSchema]):
             err_msg = f"Tools session already in progress for {session_id}"
             raise ServerRequestError(err_msg)
         call_handler = call_handlers[session_id] = ToolCallHandler(
-            session_id, self._logger.event_context
+            self.plugin_name, session_id, provided_tools, self._logger.event_context
         )
         try:
             logger.info(f"Running tools session {session_id}")
@@ -350,7 +418,7 @@ class ToolsProvider(Generic[TPluginConfigSchema, TGlobalConfigSchema]):
         error_details: SerializedLMSExtendedErrorDict | None = None
         try:
             plugin_tools_list = await self.hook_impl(ctl)
-            llm_tools_array, client_tools_map = ChatResponseEndpoint.parse_tools(
+            llm_tools_array, provided_tools = ChatResponseEndpoint.parse_tools(
                 plugin_tools_list
             )
             llm_tools_list = llm_tools_array.to_dict()["tools"]
@@ -381,7 +449,7 @@ class ToolsProvider(Generic[TPluginConfigSchema, TGlobalConfigSchema]):
         )
         await send_message(init_message)
         # Wait for further messages (until the session is discarded)
-        await self._run_tools_session(session_id, send_message)
+        await self._run_tools_session(session_id, provided_tools, send_message)
 
 
 async def run_tools_provider(

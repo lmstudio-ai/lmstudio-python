@@ -1445,6 +1445,7 @@ class PredictionEndpoint(
         )
         return ToolCallResultData(content=json.dumps(err_msg), tool_call_id=request.id)
 
+    # TODO: Reduce code duplication with the tools_provider plugin hook runner
     def request_tool_call(
         self, request: ToolCallRequest
     ) -> Callable[[], ToolCallResultData]:
