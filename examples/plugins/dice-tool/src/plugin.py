@@ -29,10 +29,12 @@ class ConfigSchema(BaseConfigSchema):
         default=True,
     )
 
+
 # This example plugin has no global configuration settings defined.
 # For a type hinted plugin with no configuration settings of a given type,
 # BaseConfigSchema may be used in the hook controller type hint.
 # Defining a config schema subclass with no fields is also a valid approach.
+
 
 # When reporting multiple values from a tool call, dictionaries
 # are the preferred format, as the field names allow the LLM
@@ -74,7 +76,8 @@ async def list_provided_tools(
             # TODO: Add a tool calling UI status/warning demo here
             time.sleep(inplace_status_duration)
         if permitted_sides and sides not in permitted_sides:
-            err_msg = f"{sides} is not a conventional polyhedral die type ({permitted_sides})"
+            expected_die_types = ",".join(map(str, sorted(permitted_sides)))
+            err_msg = f"{sides} is not a conventional polyhedral die type ({expected_die_types})"
             raise ValueError(err_msg)
         rolls = [randint(1, sides) for _ in range(count)]
         return DiceRollResult(rolls=rolls, total=sum(rolls))
