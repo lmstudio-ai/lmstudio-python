@@ -266,7 +266,7 @@ class ToolCallHandler:
                     logger.error(err_msg, exc_info=True, exc=repr(exc))
                     # TODO: Determine if it's worth sending the stack trace to the server
                     tool_name = tool_call.tool_name
-                    ui_cause = f"{err_msg}\n({type(exc).__name__}: {exc})"
+                    ui_cause = f"{type(exc).__name__}: {exc}"
                     # Tool calling UI only displays the title, so also embed the cause directly
                     error_title = f"Error calling tool {tool_name} in plugin {self.plugin_name!r} ({ui_cause})"
                     error_details = SerializedLMSExtendedErrorDict(
