@@ -21,7 +21,7 @@ from ...async_api import _AsyncSession
 from ..._sdk_models import (
     # TODO: Define aliases at schema generation time
     PluginsChannelSetGeneratorToClientPacketGenerate as TokenGenerationRequest,
-    PluginsChannelSetToolsProviderToClientPacketInitSession as ProvideToolsInitSession,
+    ProvideToolsInitSession,
     PromptPreprocessingRequest,
     SerializedKVConfigSettings,
     StatusStepStatus,

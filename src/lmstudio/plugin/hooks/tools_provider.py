@@ -28,17 +28,16 @@ from ...json_api import (
     ToolDefinition,
 )
 from ..._sdk_models import (
-    # TODO: Define aliases at schema generation time
-    PluginsChannelSetToolsProviderToClientPacketInitSession as ProvideToolsInitSession,
-    PluginsChannelSetToolsProviderToClientPacketAbortToolCall as ProvideToolsAbortCall,
-    PluginsChannelSetToolsProviderToClientPacketCallTool as ProvideToolsCallTool,
-    PluginsChannelSetToolsProviderToServerPacketSessionInitializationFailedDict as ProvideToolsInitFailedDict,
-    PluginsChannelSetToolsProviderToServerPacketSessionInitializedDict as ProvideToolsInitializedDict,
-    PluginsChannelSetToolsProviderToServerPacketToolCallComplete as PluginToolCallComplete,
-    PluginsChannelSetToolsProviderToServerPacketToolCallCompleteDict as PluginToolCallCompleteDict,
-    PluginsChannelSetToolsProviderToServerPacketToolCallErrorDict as PluginToolCallErrorDict,
-    PluginsChannelSetToolsProviderToServerPacketToolCallStatusDict as PluginToolCallStatusDict,
-    PluginsChannelSetToolsProviderToServerPacketToolCallWarnDict as PluginToolCallWarnDict,
+    PluginToolCallComplete,
+    PluginToolCallCompleteDict,
+    PluginToolCallErrorDict,
+    PluginToolCallStatusDict,
+    PluginToolCallWarnDict,
+    ProvideToolsInitSession,
+    ProvideToolsAbortCall,
+    ProvideToolsCallTool,
+    ProvideToolsInitFailedDict,
+    ProvideToolsInitializedDict,
     SerializedLMSExtendedErrorDict,
 )
 
@@ -54,7 +53,8 @@ from .common import (
 
 # Available as lmstudio.plugin.hooks.*
 __all__ = [
-    "_BaseToolCallContext",
+    "AsyncToolCallContext",
+    "ToolCallContext",
     "ToolsProviderController",
     "ToolsProviderHook",
     "run_tools_provider",

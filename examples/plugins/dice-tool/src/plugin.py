@@ -68,7 +68,6 @@ async def list_provided_tools(
     else:
         permitted_sides = None
 
-    # Return value may be any iterable, but a list will typically be simplest
     # Tool definitions may use any of the formats described in
     # https://lmstudio.ai/docs/python/agent/tools
     def roll_dice(count: int, sides: int) -> DiceRollResult:
@@ -88,8 +87,6 @@ async def list_provided_tools(
             for send_notification, status_text in status_updates:
                 time.sleep(status_duration)
                 send_notification(status_text)
-            # TODO: Add a tool calling UI status/warning demo here
-            time.sleep(inplace_status_duration)
         if permitted_sides and sides not in permitted_sides:
             expected_die_types = ",".join(map(str, sorted(permitted_sides)))
             err_msg = f"{sides} is not a conventional polyhedral die type ({expected_die_types})"

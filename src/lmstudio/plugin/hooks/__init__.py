@@ -9,9 +9,10 @@ from .tools_provider import *
 
 # Available as lmstudio.plugin.*
 __all__ = [
+    "AsyncToolCallContext",
     "PromptPreprocessorController",
     "TokenGeneratorController",
-    "_BaseToolCallContext",
+    "ToolCallContext",
     "ToolsProviderController",
     "get_tool_call_context",
 ]
