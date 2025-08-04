@@ -21,6 +21,7 @@ from dataclasses import dataclass, field
 from typing import (
     Any,
     Callable,
+    Coroutine,
     Generator,
     Generic,
     Iterable,
@@ -191,6 +192,9 @@ TStruct = TypeVar("TStruct", bound=AnyLMStudioStruct)
 
 DEFAULT_API_HOST = "localhost:1234"
 DEFAULT_TTL = 60 * 60  # By default, leaves idle models loaded for an hour
+
+# Require a coroutine (not just any awaitable) for run_coroutine_threadsafe compatibility
+SendMessageAsync: TypeAlias = Callable[[DictObject], Coroutine[Any, Any, None]]
 
 UnstructuredPrediction: TypeAlias = str
 StructuredPrediction: TypeAlias = DictObject
@@ -1445,6 +1449,7 @@ class PredictionEndpoint(
         )
         return ToolCallResultData(content=json.dumps(err_msg), tool_call_id=request.id)
 
+    # TODO: Reduce code duplication with the tools_provider plugin hook runner
     def request_tool_call(
         self, request: ToolCallRequest
     ) -> Callable[[], ToolCallResultData]:

@@ -380,6 +380,14 @@ __all__ = [
     "ParsedFileIdentifierLocalDict",
     "PluginManifest",
     "PluginManifestDict",
+    "PluginToolCallComplete",
+    "PluginToolCallCompleteDict",
+    "PluginToolCallError",
+    "PluginToolCallErrorDict",
+    "PluginToolCallStatus",
+    "PluginToolCallStatusDict",
+    "PluginToolCallWarn",
+    "PluginToolCallWarnDict",
     "PluginsChannelRegisterDevelopmentPluginCreationParameter",
     "PluginsChannelRegisterDevelopmentPluginCreationParameterDict",
     "PluginsChannelRegisterDevelopmentPluginToClientPacketReady",
@@ -420,26 +428,8 @@ __all__ = [
     "PluginsChannelSetPredictionLoopHandlerToServerPacketErrorDict",
     "PluginsChannelSetPromptPreprocessorToClientPacketAbort",
     "PluginsChannelSetPromptPreprocessorToClientPacketAbortDict",
-    "PluginsChannelSetToolsProviderToClientPacketAbortToolCall",
-    "PluginsChannelSetToolsProviderToClientPacketAbortToolCallDict",
-    "PluginsChannelSetToolsProviderToClientPacketCallTool",
-    "PluginsChannelSetToolsProviderToClientPacketCallToolDict",
     "PluginsChannelSetToolsProviderToClientPacketDiscardSession",
     "PluginsChannelSetToolsProviderToClientPacketDiscardSessionDict",
-    "PluginsChannelSetToolsProviderToClientPacketInitSession",
-    "PluginsChannelSetToolsProviderToClientPacketInitSessionDict",
-    "PluginsChannelSetToolsProviderToServerPacketSessionInitializationFailed",
-    "PluginsChannelSetToolsProviderToServerPacketSessionInitializationFailedDict",
-    "PluginsChannelSetToolsProviderToServerPacketSessionInitialized",
-    "PluginsChannelSetToolsProviderToServerPacketSessionInitializedDict",
-    "PluginsChannelSetToolsProviderToServerPacketToolCallComplete",
-    "PluginsChannelSetToolsProviderToServerPacketToolCallCompleteDict",
-    "PluginsChannelSetToolsProviderToServerPacketToolCallError",
-    "PluginsChannelSetToolsProviderToServerPacketToolCallErrorDict",
-    "PluginsChannelSetToolsProviderToServerPacketToolCallStatus",
-    "PluginsChannelSetToolsProviderToServerPacketToolCallStatusDict",
-    "PluginsChannelSetToolsProviderToServerPacketToolCallWarn",
-    "PluginsChannelSetToolsProviderToServerPacketToolCallWarnDict",
     "PluginsRpcProcessingGetOrLoadModelParameter",
     "PluginsRpcProcessingGetOrLoadModelParameterDict",
     "PluginsRpcProcessingGetOrLoadModelReturns",
@@ -528,6 +518,16 @@ __all__ = [
     "PromptPreprocessingErrorDict",
     "PromptPreprocessingRequest",
     "PromptPreprocessingRequestDict",
+    "ProvideToolsAbortCall",
+    "ProvideToolsAbortCallDict",
+    "ProvideToolsCallTool",
+    "ProvideToolsCallToolDict",
+    "ProvideToolsInitFailed",
+    "ProvideToolsInitFailedDict",
+    "ProvideToolsInitSession",
+    "ProvideToolsInitSessionDict",
+    "ProvideToolsInitialized",
+    "ProvideToolsInitializedDict",
     "PseudoDiagnostics",
     "PseudoDiagnosticsChannelStreamLogs",
     "PseudoDiagnosticsChannelStreamLogsDict",
@@ -5214,8 +5214,8 @@ class PluginsChannelSetToolsProviderToClientPacketDiscardSessionDict(TypedDict):
     sessionId: str
 
 
-class PluginsChannelSetToolsProviderToClientPacketCallTool(
-    LMStudioStruct["PluginsChannelSetToolsProviderToClientPacketCallToolDict"],
+class ProvideToolsCallTool(
+    LMStudioStruct["ProvideToolsCallToolDict"],
     kw_only=True,
     tag_field="type",
     tag="callTool",
@@ -5227,7 +5227,7 @@ class PluginsChannelSetToolsProviderToClientPacketCallTool(
     parameters: JsonSerializable
 
 
-class PluginsChannelSetToolsProviderToClientPacketCallToolDict(TypedDict):
+class ProvideToolsCallToolDict(TypedDict):
     """Corresponding typed dictionary definition for PluginsChannelSetToolsProviderToClientPacketCallTool.
 
     NOTE: Multi-word keys are defined using their camelCase form,
@@ -5241,8 +5241,8 @@ class PluginsChannelSetToolsProviderToClientPacketCallToolDict(TypedDict):
     parameters: JsonSerializable
 
 
-class PluginsChannelSetToolsProviderToClientPacketAbortToolCall(
-    LMStudioStruct["PluginsChannelSetToolsProviderToClientPacketAbortToolCallDict"],
+class ProvideToolsAbortCall(
+    LMStudioStruct["ProvideToolsAbortCallDict"],
     kw_only=True,
     tag_field="type",
     tag="abortToolCall",
@@ -5254,7 +5254,7 @@ class PluginsChannelSetToolsProviderToClientPacketAbortToolCall(
     call_id: str = field(name="callId")
 
 
-class PluginsChannelSetToolsProviderToClientPacketAbortToolCallDict(TypedDict):
+class ProvideToolsAbortCallDict(TypedDict):
     """Corresponding typed dictionary definition for PluginsChannelSetToolsProviderToClientPacketAbortToolCall.
 
     NOTE: Multi-word keys are defined using their camelCase form,
@@ -5266,10 +5266,8 @@ class PluginsChannelSetToolsProviderToClientPacketAbortToolCallDict(TypedDict):
     callId: str
 
 
-class PluginsChannelSetToolsProviderToServerPacketSessionInitializationFailed(
-    LMStudioStruct[
-        "PluginsChannelSetToolsProviderToServerPacketSessionInitializationFailedDict"
-    ],
+class ProvideToolsInitFailed(
+    LMStudioStruct["ProvideToolsInitFailedDict"],
     kw_only=True,
     tag_field="type",
     tag="sessionInitializationFailed",
@@ -5281,9 +5279,7 @@ class PluginsChannelSetToolsProviderToServerPacketSessionInitializationFailed(
     error: SerializedLMSExtendedError
 
 
-class PluginsChannelSetToolsProviderToServerPacketSessionInitializationFailedDict(
-    TypedDict
-):
+class ProvideToolsInitFailedDict(TypedDict):
     """Corresponding typed dictionary definition for PluginsChannelSetToolsProviderToServerPacketSessionInitializationFailed.
 
     NOTE: Multi-word keys are defined using their camelCase form,
@@ -5295,8 +5291,8 @@ class PluginsChannelSetToolsProviderToServerPacketSessionInitializationFailedDic
     error: SerializedLMSExtendedErrorDict
 
 
-class PluginsChannelSetToolsProviderToServerPacketToolCallComplete(
-    LMStudioStruct["PluginsChannelSetToolsProviderToServerPacketToolCallCompleteDict"],
+class PluginToolCallComplete(
+    LMStudioStruct["PluginToolCallCompleteDict"],
     kw_only=True,
     tag_field="type",
     tag="toolCallComplete",
@@ -5309,7 +5305,7 @@ class PluginsChannelSetToolsProviderToServerPacketToolCallComplete(
     result: JsonSerializable
 
 
-class PluginsChannelSetToolsProviderToServerPacketToolCallCompleteDict(TypedDict):
+class PluginToolCallCompleteDict(TypedDict):
     """Corresponding typed dictionary definition for PluginsChannelSetToolsProviderToServerPacketToolCallComplete.
 
     NOTE: Multi-word keys are defined using their camelCase form,
@@ -5322,8 +5318,8 @@ class PluginsChannelSetToolsProviderToServerPacketToolCallCompleteDict(TypedDict
     result: JsonSerializable
 
 
-class PluginsChannelSetToolsProviderToServerPacketToolCallError(
-    LMStudioStruct["PluginsChannelSetToolsProviderToServerPacketToolCallErrorDict"],
+class PluginToolCallError(
+    LMStudioStruct["PluginToolCallErrorDict"],
     kw_only=True,
     tag_field="type",
     tag="toolCallError",
@@ -5336,7 +5332,7 @@ class PluginsChannelSetToolsProviderToServerPacketToolCallError(
     error: SerializedLMSExtendedError
 
 
-class PluginsChannelSetToolsProviderToServerPacketToolCallErrorDict(TypedDict):
+class PluginToolCallErrorDict(TypedDict):
     """Corresponding typed dictionary definition for PluginsChannelSetToolsProviderToServerPacketToolCallError.
 
     NOTE: Multi-word keys are defined using their camelCase form,
@@ -5349,8 +5345,8 @@ class PluginsChannelSetToolsProviderToServerPacketToolCallErrorDict(TypedDict):
     error: SerializedLMSExtendedErrorDict
 
 
-class PluginsChannelSetToolsProviderToServerPacketToolCallStatus(
-    LMStudioStruct["PluginsChannelSetToolsProviderToServerPacketToolCallStatusDict"],
+class PluginToolCallStatus(
+    LMStudioStruct["PluginToolCallStatusDict"],
     kw_only=True,
     tag_field="type",
     tag="toolCallStatus",
@@ -5363,7 +5359,7 @@ class PluginsChannelSetToolsProviderToServerPacketToolCallStatus(
     status_text: str = field(name="statusText")
 
 
-class PluginsChannelSetToolsProviderToServerPacketToolCallStatusDict(TypedDict):
+class PluginToolCallStatusDict(TypedDict):
     """Corresponding typed dictionary definition for PluginsChannelSetToolsProviderToServerPacketToolCallStatus.
 
     NOTE: Multi-word keys are defined using their camelCase form,
@@ -5376,8 +5372,8 @@ class PluginsChannelSetToolsProviderToServerPacketToolCallStatusDict(TypedDict):
     statusText: str
 
 
-class PluginsChannelSetToolsProviderToServerPacketToolCallWarn(
-    LMStudioStruct["PluginsChannelSetToolsProviderToServerPacketToolCallWarnDict"],
+class PluginToolCallWarn(
+    LMStudioStruct["PluginToolCallWarnDict"],
     kw_only=True,
     tag_field="type",
     tag="toolCallWarn",
@@ -5390,7 +5386,7 @@ class PluginsChannelSetToolsProviderToServerPacketToolCallWarn(
     warn_text: str = field(name="warnText")
 
 
-class PluginsChannelSetToolsProviderToServerPacketToolCallWarnDict(TypedDict):
+class PluginToolCallWarnDict(TypedDict):
     """Corresponding typed dictionary definition for PluginsChannelSetToolsProviderToServerPacketToolCallWarn.
 
     NOTE: Multi-word keys are defined using their camelCase form,
@@ -7946,8 +7942,8 @@ class PluginsChannelSetPredictionLoopHandlerToClientPacketHandlePredictionLoopDi
     token: str
 
 
-class PluginsChannelSetToolsProviderToClientPacketInitSession(
-    LMStudioStruct["PluginsChannelSetToolsProviderToClientPacketInitSessionDict"],
+class ProvideToolsInitSession(
+    LMStudioStruct["ProvideToolsInitSessionDict"],
     kw_only=True,
     tag_field="type",
     tag="initSession",
@@ -7961,7 +7957,7 @@ class PluginsChannelSetToolsProviderToClientPacketInitSession(
     session_id: str = field(name="sessionId")
 
 
-class PluginsChannelSetToolsProviderToClientPacketInitSessionDict(TypedDict):
+class ProvideToolsInitSessionDict(TypedDict):
     """Corresponding typed dictionary definition for PluginsChannelSetToolsProviderToClientPacketInitSession.
 
     NOTE: Multi-word keys are defined using their camelCase form,
@@ -9129,15 +9125,15 @@ class PseudoPluginsChannelSetPredictionLoopHandlerDict(TypedDict):
 
 
 PluginsChannelSetToolsProviderToClientPacket = (
-    PluginsChannelSetToolsProviderToClientPacketInitSession
+    ProvideToolsInitSession
     | PluginsChannelSetToolsProviderToClientPacketDiscardSession
-    | PluginsChannelSetToolsProviderToClientPacketCallTool
-    | PluginsChannelSetToolsProviderToClientPacketAbortToolCall
+    | ProvideToolsCallTool
+    | ProvideToolsAbortCall
 )
 PluginsChannelSetToolsProviderToClientPacketDict = (
-    PluginsChannelSetToolsProviderToClientPacketAbortToolCallDict
-    | PluginsChannelSetToolsProviderToClientPacketCallToolDict
-    | PluginsChannelSetToolsProviderToClientPacketInitSessionDict
+    ProvideToolsAbortCallDict
+    | ProvideToolsCallToolDict
+    | ProvideToolsInitSessionDict
     | PluginsChannelSetToolsProviderToClientPacketDiscardSessionDict
 )
 PluginsChannelSetGeneratorToServerPacket = (
@@ -9339,10 +9335,8 @@ class LlmToolUseSettingToolArrayDict(TypedDict):
     force: NotRequired[bool | None]
 
 
-class PluginsChannelSetToolsProviderToServerPacketSessionInitialized(
-    LMStudioStruct[
-        "PluginsChannelSetToolsProviderToServerPacketSessionInitializedDict"
-    ],
+class ProvideToolsInitialized(
+    LMStudioStruct["ProvideToolsInitializedDict"],
     kw_only=True,
     tag_field="type",
     tag="sessionInitialized",
@@ -9354,7 +9348,7 @@ class PluginsChannelSetToolsProviderToServerPacketSessionInitialized(
     tool_definitions: Sequence[LlmTool] = field(name="toolDefinitions")
 
 
-class PluginsChannelSetToolsProviderToServerPacketSessionInitializedDict(TypedDict):
+class ProvideToolsInitializedDict(TypedDict):
     """Corresponding typed dictionary definition for PluginsChannelSetToolsProviderToServerPacketSessionInitialized.
 
     NOTE: Multi-word keys are defined using their camelCase form,
@@ -9486,20 +9480,20 @@ class ProcessingUpdateToolStatusUpdateDict(TypedDict):
 
 
 PluginsChannelSetToolsProviderToServerPacket = (
-    PluginsChannelSetToolsProviderToServerPacketSessionInitialized
-    | PluginsChannelSetToolsProviderToServerPacketSessionInitializationFailed
-    | PluginsChannelSetToolsProviderToServerPacketToolCallComplete
-    | PluginsChannelSetToolsProviderToServerPacketToolCallError
-    | PluginsChannelSetToolsProviderToServerPacketToolCallStatus
-    | PluginsChannelSetToolsProviderToServerPacketToolCallWarn
+    ProvideToolsInitialized
+    | ProvideToolsInitFailed
+    | PluginToolCallComplete
+    | PluginToolCallError
+    | PluginToolCallStatus
+    | PluginToolCallWarn
 )
 PluginsChannelSetToolsProviderToServerPacketDict = (
-    PluginsChannelSetToolsProviderToServerPacketToolCallWarnDict
-    | PluginsChannelSetToolsProviderToServerPacketToolCallStatusDict
-    | PluginsChannelSetToolsProviderToServerPacketToolCallErrorDict
-    | PluginsChannelSetToolsProviderToServerPacketToolCallCompleteDict
-    | PluginsChannelSetToolsProviderToServerPacketSessionInitializedDict
-    | PluginsChannelSetToolsProviderToServerPacketSessionInitializationFailedDict
+    PluginToolCallWarnDict
+    | PluginToolCallStatusDict
+    | PluginToolCallErrorDict
+    | PluginToolCallCompleteDict
+    | ProvideToolsInitializedDict
+    | ProvideToolsInitFailedDict
 )
 
 

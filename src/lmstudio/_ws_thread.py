@@ -24,6 +24,10 @@ from .schemas import DictObject
 from ._logging import new_logger, LogEventContext
 from ._ws_impl import AsyncTaskManager, AsyncWebsocketHandler
 
+# Allow the core client websocket management to be shared across all SDK interaction APIs
+# See https://discuss.python.org/t/daemon-threads-and-background-task-termination/77604
+# (Note: this implementation has the elements needed to run on *current* Python versions
+# and omits the generalised features that the SDK doesn't need)
 T = TypeVar("T")
 
 

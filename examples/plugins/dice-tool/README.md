@@ -1,3 +1,7 @@
-# `lmstudio/pydice`
+# `lmstudio/dice-tool`
 
-TODO: Example Python tools provider plugin
+Python tools provider plugin example
+
+Running a local dev instance:
+
+    pdm run python -m lmstudio.plugin --dev examples/plugins/dice-tool

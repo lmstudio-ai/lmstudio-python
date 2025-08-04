@@ -9,7 +9,6 @@ from random import randrange
 from typing import (
     Any,
     AsyncIterator,
-    Awaitable,
     Callable,
     Generic,
     TypeAlias,
@@ -19,11 +18,10 @@ from typing import (
 from anyio import move_on_after
 
 from ...async_api import _AsyncSession
-from ...schemas import DictObject
 from ..._sdk_models import (
     # TODO: Define aliases at schema generation time
     PluginsChannelSetGeneratorToClientPacketGenerate as TokenGenerationRequest,
-    PluginsChannelSetToolsProviderToClientPacketInitSession as ProvideToolsInitSession,
+    ProvideToolsInitSession,
     PromptPreprocessingRequest,
     SerializedKVConfigSettings,
     StatusStepStatus,
@@ -51,7 +49,6 @@ TPluginRequest = TypeVar("TPluginRequest", bound=PluginRequest)
 TPluginConfigSchema = TypeVar("TPluginConfigSchema", bound=BaseConfigSchema)
 TGlobalConfigSchema = TypeVar("TGlobalConfigSchema", bound=BaseConfigSchema)
 TConfig = TypeVar("TConfig", bound=BaseConfigSchema)
-SendMessageCallback: TypeAlias = Callable[[DictObject], Awaitable[Any]]
 
 
 class ServerRequestError(RuntimeError):

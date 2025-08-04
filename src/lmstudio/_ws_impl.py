@@ -47,10 +47,6 @@ from .json_api import (
 
 from ._logging import LogEventContext, new_logger
 
-# Allow the core client websocket management to be shared across all SDK interaction APIs
-# See https://discuss.python.org/t/daemon-threads-and-background-task-termination/77604
-# (Note: this implementation has the elements needed to run on *current* Python versions
-# and omits the generalised features that the SDK doesn't need)
 T = TypeVar("T")
 
 __all__ = [
@@ -100,7 +96,7 @@ class AsyncTaskManager:
 
     async def __aexit__(self, *args: Any) -> None:
         await self.request_termination()
-        with move_on_after(self.TERMINATION_TIMEOUT):
+        with move_on_after(self.TERMINATION_TIMEOUT, shield=True):
             await self._terminated.wait()
 
     @classmethod

@@ -17,18 +17,19 @@ from .runner import *
 # * refactor to allow hook invocation error handling to be common across hook invocation tasks
 # * [DONE] gracefully handle app termination while a dev plugin is still running
 # * [DONE] gracefully handle using Ctrl-C to terminate a running dev plugin
+# * add async tool handling support to SDK (as part of adding .act() to the async API)
 #
 # Controller APIs (may be limited to relevant hook controllers)
 #
 # * [DONE] status blocks (both simple "done" blocks, and blocks with in-place updates)
 # * citation blocks
 # * debug info blocks
-# * tool status reporting
+# * [DONE] tool status reporting
 # * full content block display
 # * chat history retrieval
 # * model handle retrieval
 # * UI block sender name configuration
-# * interactive tool call request confirmation
+# * [not necessary (handled directly by UI)] interactive tool call request confirmation
 #
 # Prompt preprocessing hook
 # * [DONE] emit a status notification block when the demo plugin fires
@@ -48,13 +49,14 @@ from .runner import *
 # * catch hook invocation failures and send "Error" responses
 #
 # Tools provider hook
-# * add example plugin or plugins for this (probably both dice rolling and Wikipedia lookup)
-# * define the channel, hook invocation task and hook invocation controller for this hook
-# * main request initiation message is "InitSession" (with Initialized/Failed responses)
-# * handle "Abort" requests from server (including sending "Aborted" responses)
-# * handle "CallTool" requests from server (including sending "CallComplete"/"CallError" response)
-# * handle "DiscardSession" requests from server
-# * add controller API for tool call status and warning reporting
+# * [DONE] add example synchronous tool plugin (dice rolling)
+# * add example asynchronous tool plugin (Wikipedia lookup) (note: requires async tool support in SDK)
+# * [DONE] define the channel, hook invocation task and hook invocation controller for this hook
+# * [DONE] main request initiation message is "InitSession" (with Initialized/Failed responses)
+# * [DONE] handle "AbortToolCall" requests from server
+# * [DONE] handle "CallTool" requests from server (including sending "CallComplete"/"CallError" response)
+# * [DONE] handle "DiscardSession" requests from server
+# * [DONE] add controller API for tool call status and warning reporting
 #
 # Plugin config field definitions
 # * define approach for specifying plugin config field constraints and style options (e.g. numeric sliders)
