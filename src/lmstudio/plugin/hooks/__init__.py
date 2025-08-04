@@ -11,5 +11,7 @@ from .tools_provider import *
 __all__ = [
     "PromptPreprocessorController",
     "TokenGeneratorController",
+    "_BaseToolCallContext",
     "ToolsProviderController",
+    "get_tool_call_context",
 ]

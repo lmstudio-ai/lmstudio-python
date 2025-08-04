@@ -47,10 +47,6 @@ from .json_api import (
 
 from ._logging import LogEventContext, new_logger
 
-# Allow the core client websocket management to be shared across all SDK interaction APIs
-# See https://discuss.python.org/t/daemon-threads-and-background-task-termination/77604
-# (Note: this implementation has the elements needed to run on *current* Python versions
-# and omits the generalised features that the SDK doesn't need)
 T = TypeVar("T")
 
 __all__ = [

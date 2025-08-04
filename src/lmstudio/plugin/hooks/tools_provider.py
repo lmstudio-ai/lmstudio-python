@@ -2,6 +2,7 @@
 
 import asyncio
 
+from contextvars import ContextVar
 from dataclasses import dataclass
 from traceback import format_tb
 from typing import Any, Awaitable, Callable, Generic, Iterable, TypeAlias, TypeVar
@@ -23,6 +24,7 @@ from ...json_api import (
     ChannelRxEvent,
     ChatResponseEndpoint,
     ClientToolMap,
+    SendMessageAsync,
     ToolDefinition,
 )
 from ..._sdk_models import (
@@ -35,18 +37,16 @@ from ..._sdk_models import (
     PluginsChannelSetToolsProviderToServerPacketToolCallComplete as PluginToolCallComplete,
     PluginsChannelSetToolsProviderToServerPacketToolCallCompleteDict as PluginToolCallCompleteDict,
     PluginsChannelSetToolsProviderToServerPacketToolCallErrorDict as PluginToolCallErrorDict,
-    # "PluginsChannelSetToolsProviderToServerPacketToolCallStatus",
-    # PluginsChannelSetToolsProviderToServerPacketToolCallStatusDict as PluginToolCallStatusDict,
-    # "PluginsChannelSetToolsProviderToServerPacketToolCallWarn",
-    # PluginsChannelSetToolsProviderToServerPacketToolCallWarnDict as PluginToolCallWarnDict,
+    PluginsChannelSetToolsProviderToServerPacketToolCallStatusDict as PluginToolCallStatusDict,
+    PluginsChannelSetToolsProviderToServerPacketToolCallWarnDict as PluginToolCallWarnDict,
     SerializedLMSExtendedErrorDict,
 )
 
 from ..config_schemas import BaseConfigSchema
+from ..sdk_api import LMStudioPluginRuntimeError
 from .common import (
     _AsyncSessionPlugins,
     HookController,
-    SendMessageCallback,
     ServerRequestError,
     TPluginConfigSchema,
     TGlobalConfigSchema,
@@ -54,9 +54,11 @@ from .common import (
 
 # Available as lmstudio.plugin.hooks.*
 __all__ = [
+    "_BaseToolCallContext",
     "ToolsProviderController",
     "ToolsProviderHook",
     "run_tools_provider",
+    "get_tool_call_context",
 ]
 
 
@@ -171,6 +173,98 @@ ToolsProviderHook = Callable[
 T = TypeVar("T")
 
 
+class _BaseToolCallContext:
+    """API access to update a tool call UI status block in-place."""
+
+    def __init__(
+        self,
+        session_id: str,
+        call_id: str,
+        send_json: SendMessageAsync,
+    ) -> None:
+        """Initialize status block controller."""
+        self.session_id = session_id
+        self.call_id = call_id
+        self._send_json = send_json
+
+    def _make_status(self, message: str) -> PluginToolCallStatusDict:
+        return PluginToolCallStatusDict(
+            type="toolCallStatus",
+            sessionId=self.session_id,
+            callId=self.call_id,
+            statusText=message,
+        )
+
+    def _make_warning(self, message: str) -> PluginToolCallWarnDict:
+        return PluginToolCallWarnDict(
+            type="toolCallWarn",
+            sessionId=self.session_id,
+            callId=self.call_id,
+            warnText=message,
+        )
+
+
+class AsyncToolCallContext(_BaseToolCallContext):
+    """Asynchronous API access to update a tool call UI status block in-place."""
+
+    async def notify_status(self, message: str) -> None:
+        """Report tool progress update in the task status block."""
+        await self._send_json(self._make_status(message))
+
+    async def notify_warning(self, message: str) -> None:
+        """Report tool warning in the task status block."""
+        await self._send_json(self._make_warning(message))
+
+
+class ToolCallContext(_BaseToolCallContext):
+    """Synchronous API access to update a tool call UI status block in-place."""
+
+    def __init__(
+        self,
+        session_id: str,
+        call_id: str,
+        send_json: SendMessageAsync,
+    ) -> None:
+        """Initialize synchronous status block controller."""
+        super().__init__(session_id, call_id, send_json)
+        # Sync call context is created in the plugin's async comms loop
+        self._loop = asyncio.get_running_loop()
+
+    def _send_json_sync(self, data: DictObject) -> None:
+        future = asyncio.run_coroutine_threadsafe(self._send_json(data), self._loop)
+        future.result()
+
+    def notify_status(self, message: str) -> None:
+        """Report tool progress update in the task status block."""
+        self._send_json_sync(self._make_status(message))
+
+    def notify_warning(self, message: str) -> None:
+        """Report tool warning in the task status block."""
+        self._send_json_sync(self._make_warning(message))
+
+
+_LMS_TOOL_CALL_SYNC: ContextVar[ToolCallContext] = ContextVar("_LMS_TOOL_CALL_SYNC")
+_LMS_TOOL_CALL_ASYNC: ContextVar[AsyncToolCallContext] = ContextVar(
+    "_LMS_TOOL_CALL_ASYNC"
+)
+
+
+def get_tool_call_context() -> ToolCallContext:
+    """Get synchronous tool call context."""
+    if _LMS_TOOL_CALL_ASYNC.get(None) is not None:
+        msg = "Use 'get_tool_call_context_async()' in asynchronous tool definition"
+        raise LMStudioPluginRuntimeError(msg)
+    return _LMS_TOOL_CALL_SYNC.get()
+
+
+def get_tool_call_context_async() -> AsyncToolCallContext:
+    """Get asynchronous tool call context."""
+    if _LMS_TOOL_CALL_SYNC.get(None) is not None:
+        msg = "Use 'get_tool_call_context()' in synchronous tool definition"
+        raise LMStudioPluginRuntimeError(msg)
+    return _LMS_TOOL_CALL_ASYNC.get()
+
+
 class ToolCallHandler:
     def __init__(
         self,
@@ -199,10 +293,18 @@ class ToolCallHandler:
 
     # TODO: Reduce code duplication with the ChatResponseEndpoint definition
     def _call_sync_tool(
-        self, call_id: str, sync_tool: Callable[..., Any], kwds: DictObject
+        self,
+        call_id: str,
+        sync_tool: Callable[..., Any],
+        kwds: DictObject,
+        send_json: SendMessageAsync,
     ) -> Awaitable[PluginToolCallCompleteDict]:
         # Ensure synchronous tools can't block the plugin's async comms thread
+        call_context = ToolCallContext(self.session_id, call_id, send_json)
+
         def _call_requested_tool() -> PluginToolCallCompleteDict:
+            assert _LMS_TOOL_CALL_ASYNC.get(None) is None
+            _LMS_TOOL_CALL_SYNC.set(call_context)
             call_result = sync_tool(**kwds)
             return PluginToolCallComplete(
                 session_id=self.session_id,
@@ -213,7 +315,7 @@ class ToolCallHandler:
         return asyncio.to_thread(_call_requested_tool)
 
     async def _call_tool_implementation(
-        self, tool_call: ProvideToolsCallTool
+        self, tool_call: ProvideToolsCallTool, send_json: SendMessageAsync
     ) -> PluginToolCallCompleteDict:
         # Find tool implementation
         tool_name = tool_call.tool_name
@@ -232,11 +334,11 @@ class ToolCallHandler:
             raise ServerRequestError(err_msg)
         kwds = to_builtins(parsed_kwds)
         # TODO: Also support async tool definitions and invocation
-        return await self._call_sync_tool(tool_call.call_id, tool_impl, kwds)
+        return await self._call_sync_tool(tool_call.call_id, tool_impl, kwds, send_json)
 
     # TODO: Reduce code duplication with the ChatResponseEndpoint definition
     async def _call_tool(
-        self, tool_call: ProvideToolsCallTool, send_message: SendMessageCallback
+        self, tool_call: ProvideToolsCallTool, send_json: SendMessageAsync
     ) -> None:
         call_id = tool_call.call_id
         abort_events = self._abort_events
@@ -258,7 +360,9 @@ class ToolCallHandler:
                 # TODO: Set up context variable for status/warning message sending
                 tool_call_response: PluginToolCallCompleteDict | PluginToolCallErrorDict
                 try:
-                    tool_call_response = await self._call_tool_implementation(tool_call)
+                    tool_call_response = await self._call_tool_implementation(
+                        tool_call, send_json
+                    )
                 except Exception as exc:
                     # Only catch regular exceptions,
                     # allowing the server to time out for client process termination events
@@ -281,7 +385,7 @@ class ToolCallHandler:
                         callId=call_id,
                         error=error_details,
                     )
-                await send_message(tool_call_response)
+                await send_json(tool_call_response)
                 tg.cancel_scope.cancel()
         finally:
             self._abort_events.pop(call_id, None)
@@ -300,7 +404,7 @@ class ToolCallHandler:
     async def discard_session(self) -> None:
         await self._queue.put(None)
 
-    async def receive_tool_calls(self, send_message: SendMessageCallback) -> None:
+    async def receive_tool_calls(self, send_message: SendMessageAsync) -> None:
         session_queue = self._queue
         try:
             while True:
@@ -391,7 +495,7 @@ class ToolsProvider(Generic[TPluginConfigSchema, TGlobalConfigSchema]):
         self,
         session_id: str,
         provided_tools: ClientToolMap,
-        send_message: SendMessageCallback,
+        send_json: SendMessageAsync,
     ) -> None:
         logger = self._logger
         call_handlers = self._call_handlers
@@ -403,7 +507,7 @@ class ToolsProvider(Generic[TPluginConfigSchema, TGlobalConfigSchema]):
         )
         try:
             logger.info(f"Running tools session {session_id}")
-            await call_handler.receive_tool_calls(send_message)
+            await call_handler.receive_tool_calls(send_json)
         finally:
             call_handlers.pop(session_id, None)
         logger.info(f"Terminated tools session {session_id}")
@@ -411,7 +515,7 @@ class ToolsProvider(Generic[TPluginConfigSchema, TGlobalConfigSchema]):
     async def _invoke_hook(
         self,
         ctl: ToolsProviderController[TPluginConfigSchema, TGlobalConfigSchema],
-        send_message: SendMessageCallback,
+        send_json: SendMessageAsync,
     ) -> None:
         logger = self._logger
         session_id = ctl.session_id
@@ -440,16 +544,16 @@ class ToolsProvider(Generic[TPluginConfigSchema, TGlobalConfigSchema]):
                 sessionId=session_id,
                 error=error_details,
             )
-            await send_message(error_message)
+            await send_json(error_message)
             return
         init_message = ProvideToolsInitializedDict(
             type="sessionInitialized",
             sessionId=session_id,
             toolDefinitions=llm_tools_list,
         )
-        await send_message(init_message)
+        await send_json(init_message)
         # Wait for further messages (until the session is discarded)
-        await self._run_tools_session(session_id, provided_tools, send_message)
+        await self._run_tools_session(session_id, provided_tools, send_json)
 
 
 async def run_tools_provider(

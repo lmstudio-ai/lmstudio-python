@@ -5,7 +5,12 @@ import time
 from random import randint
 from typing import TypedDict
 
-from lmstudio.plugin import BaseConfigSchema, config_field, ToolsProviderController
+from lmstudio.plugin import (
+    BaseConfigSchema,
+    ToolsProviderController,
+    config_field,
+    get_tool_call_context,
+)
 from lmstudio import ToolDefinition
 
 
@@ -73,6 +78,16 @@ async def list_provided_tools(
         `roll_dice` with the parameters { count: 2, sides: 6 }.
         """
         if inplace_status_duration:
+            tcc = get_tool_call_context()
+            status_updates = (
+                (tcc.notify_status, "Display status update in UI."),
+                (tcc.notify_warning, "Display task warning in UI."),
+                (tcc.notify_status, "Post-warning status update in UI."),
+            )
+            status_duration = inplace_status_duration / len(status_updates)
+            for send_notification, status_text in status_updates:
+                time.sleep(status_duration)
+                send_notification(status_text)
             # TODO: Add a tool calling UI status/warning demo here
             time.sleep(inplace_status_duration)
         if permitted_sides and sides not in permitted_sides:

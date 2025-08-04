@@ -30,6 +30,7 @@ from ...json_api import (
     ChannelEndpoint,
     ChannelFinishedEvent,
     ChannelRxEvent,
+    SendMessageAsync,
     load_struct,
 )
 from ..._sdk_models import (
@@ -49,7 +50,6 @@ from ..config_schemas import BaseConfigSchema
 from .common import (
     _AsyncSessionPlugins,
     HookController,
-    SendMessageCallback,
     ServerRequestError,
     StatusBlockController,
     TPluginConfigSchema,
@@ -250,7 +250,7 @@ class PromptPreprocessor(Generic[TPluginConfigSchema, TGlobalConfigSchema]):
                         break
 
     async def _abort_hook_invocation(
-        self, task_id: str, send_response: SendMessageCallback
+        self, task_id: str, send_json: SendMessageAsync
     ) -> None:
         """Abort the specified hook invocation (if it is still running)."""
         abort_event = self._abort_events.get(task_id, None)
@@ -260,7 +260,7 @@ class PromptPreprocessor(Generic[TPluginConfigSchema, TGlobalConfigSchema]):
             type="aborted",
             taskId=task_id,
         )
-        await send_response(response)
+        await send_json(response)
 
     async def _cancel_on_event(
         self, tg: TaskGroup, event: asyncio.Event, message: str
@@ -301,7 +301,7 @@ class PromptPreprocessor(Generic[TPluginConfigSchema, TGlobalConfigSchema]):
     async def _invoke_hook(
         self,
         ctl: PromptPreprocessorController[TPluginConfigSchema, TGlobalConfigSchema],
-        send_response: SendMessageCallback,
+        send_json: SendMessageAsync,
     ) -> None:
         logger = self._logger
         task_id = ctl.task_id
@@ -368,7 +368,7 @@ class PromptPreprocessor(Generic[TPluginConfigSchema, TGlobalConfigSchema]):
                 taskId=task_id,
                 processed=response_dict,
             )
-        await send_response(channel_message)
+        await send_json(channel_message)
 
 
 async def run_prompt_preprocessor(

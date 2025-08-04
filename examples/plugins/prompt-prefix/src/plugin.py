@@ -56,9 +56,9 @@ async def preprocess_prompt(
             status_updates
         )
         async with status_block.notify_aborted("Task genuinely cancelled."):
-            for notification, status_text in status_updates:
+            for send_notification, status_text in status_updates:
                 await asyncio.sleep(status_duration)
-                await notification(status_text)
+                await send_notification(status_text)
 
     modified_message = message.to_dict()
     # Add a prefix to all user messages

@@ -83,6 +83,7 @@ from .json_api import (
     PromptProcessingCallback,
     RemoteCallHandler,
     ResponseSchema,
+    SendMessageAsync,
     TModelInfo,
     check_model_namespace,
     load_struct,
@@ -132,7 +133,7 @@ class AsyncChannel(Generic[T]):
         channel_id: int,
         get_message: Callable[[], Awaitable[Any]],
         endpoint: ChannelEndpoint[T, Any, Any],
-        send_json: Callable[[DictObject], Awaitable[None]],
+        send_json: SendMessageAsync,
         log_context: LogEventContext,
     ) -> None:
         """Initialize asynchronous websocket streaming channel."""
