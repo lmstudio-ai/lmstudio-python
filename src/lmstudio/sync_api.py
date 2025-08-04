@@ -43,13 +43,13 @@ from .sdk_api import (
 from .schemas import AnyLMStudioStruct, DictObject
 from .history import (
     AssistantResponse,
-    ToolResultMessage,
     Chat,
     ChatHistoryDataDict,
     FileHandle,
     LocalFileInput,
     _LocalFileData,
     ToolCallRequest,
+    ToolResultMessage,
 )
 from .json_api import (
     ActResult,
@@ -1316,9 +1316,8 @@ class LLM(SyncModelHandle[SyncSessionLlm]):
             pass
         return prediction_stream.result()
 
-    # Multi-round predictions are currently a sync-only handle-only feature
-    # TODO: Refactor to allow for more code sharing with the async API
-    #       with defined aliases for the expected callback signatures
+    # TODO: Improve code sharing between sync and async multi-round predictions
+    # TODO: Accept async tools in the tools iterable
     @sdk_public_api()
     def act(
         self,
@@ -1395,6 +1394,9 @@ class LLM(SyncModelHandle[SyncSessionLlm]):
                 on_prompt_processing_progress(progress, round_index)
 
             on_prompt_processing_for_endpoint = _wrapped_on_prompt_processing_progress
+        # TODO: Implementation to this point is common between the sync and async APIs
+        # Implementation past this point differs (as the async API uses the loop's executor)
+
         # Request predictions until no more tool call requests are received in response
         # (or the maximum number of prediction rounds is reached)
         with ThreadPoolExecutor(max_parallel_tool_calls) as pool:
@@ -1436,6 +1438,7 @@ class LLM(SyncModelHandle[SyncSessionLlm]):
                     if isinstance(event, PredictionToolCallEvent):
                         tool_call_request = event.arg
                         tool_call_requests.append(tool_call_request)
+                        # TODO: Also handle async tool calls here
                         tool_call = endpoint.request_tool_call(tool_call_request)
                         pending_tool_calls[pool.submit(tool_call)] = tool_call_request
                 prediction = prediction_stream.result()

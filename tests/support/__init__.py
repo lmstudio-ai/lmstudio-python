@@ -1,5 +1,6 @@
 """Common test support interfaces and expected value definitions."""
 
+import logging
 import sys
 
 from contextlib import closing, contextmanager
@@ -21,6 +22,7 @@ from lmstudio import (
     LlmLoadModelConfig,
     LMStudioServerError,
     LMStudioChannelClosedError,
+    ToolFunctionDefDict,
 )
 from lmstudio.json_api import ChannelEndpoint
 from lmstudio._sdk_models import LlmPredictionConfigDict, LlmStructuredPredictionSetting
@@ -292,3 +294,30 @@ def check_unfiltered_error(
             ) from exc_info.value
     # Traceback should go all the way to the raising func
     assert tb.tb_frame.f_code is err_func.__code__
+
+
+####################################################
+# Tool definitions for tool use testing
+####################################################
+
+
+def divide(numerator: float, denominator: float) -> float:
+    """Divide the given numerator by the given denominator. Return the result."""
+    return numerator / denominator
+
+
+def log_adding_two_integers(a: int, b: int) -> int:
+    """Log adding two integers together."""
+    logging.info(f"Tool call: Adding {a!r} to {b!r} as integers")
+    return int(a) + int(b)
+
+
+ADDITION_TOOL_SPEC: ToolFunctionDefDict = {
+    "name": "add",
+    "description": "Add two numbers",
+    "parameters": {
+        "a": int,
+        "b": int,
+    },
+    "implementation": log_adding_two_integers,
+}
