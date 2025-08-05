@@ -479,7 +479,7 @@ async def test_tool_using_agent_callbacks_async(caplog: LogCap) -> None:
 
 
 # Also check coroutine support in the asynchronous API
-# (this become a regular sync tool in the sync API tests)
+# (this becomes a regular sync tool in the sync API tests)
 async def divide(numerator: float, denominator: float) -> float:
     """Divide the given numerator by the given denominator. Return the result."""
     return numerator / denominator
