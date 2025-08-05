@@ -39,7 +39,6 @@ from ..support import (
     SHORT_PREDICTION_CONFIG,
     TOOL_LLM_ID,
     check_sdk_error,
-    divide,
 )
 
 
@@ -477,6 +476,13 @@ async def test_tool_using_agent_callbacks_async(caplog: LogCap) -> None:
 
         cloned_chat = chat.copy()
         assert cloned_chat._messages == chat._messages
+
+
+# Also check coroutine support in the asynchronous API
+# (this become a regular sync tool in the sync API tests)
+async def divide(numerator: float, denominator: float) -> float:
+    """Divide the given numerator by the given denominator. Return the result."""
+    return numerator / denominator
 
 
 @pytest.mark.asyncio

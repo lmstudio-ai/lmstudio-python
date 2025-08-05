@@ -1188,8 +1188,11 @@ PredictionRxEvent: TypeAlias = (
     | ChannelCommonRxEvent
 )
 
-ClientToolSpec: TypeAlias = tuple[type[Struct], Callable[..., Any]]
+ClientToolSpec: TypeAlias = tuple[type[Struct], Callable[..., Any], bool]
 ClientToolMap: TypeAlias = Mapping[str, ClientToolSpec]
+SyncToolCall: TypeAlias = Callable[[], ToolCallResultData]
+# Require a coroutine (not just any awaitable) for ensure_future compatibility
+AsyncToolCall: TypeAlias = Callable[[], Coroutine[None, None, ToolCallResultData]]
 
 PredictionMessageCallback: TypeAlias = Callable[[AssistantResponse], Any]
 PredictionFirstTokenCallback: TypeAlias = Callable[[], Any]
@@ -1450,9 +1453,9 @@ class PredictionEndpoint(
         return ToolCallResultData(content=json.dumps(err_msg), tool_call_id=request.id)
 
     # TODO: Reduce code duplication with the tools_provider plugin hook runner
-    def request_tool_call(
+    def _request_any_tool_call(
         self, request: ToolCallRequest
-    ) -> Callable[[], ToolCallResultData]:
+    ) -> tuple[DictObject | None, Callable[[], Any], bool]:
         tool_name = request.name
         tool_call_id = request.id
         client_tool = self._client_tools.get(tool_name, None)
@@ -1461,9 +1464,9 @@ class PredictionEndpoint(
                 f"Cannot find tool with name {tool_name}.", request
             )
             result = ToolCallResultData(content=err_msg, tool_call_id=tool_call_id)
-            return lambda: result
+            return None, lambda: result, False
         # Validate parameters against their specification
-        params_struct, implementation = client_tool
+        params_struct, implementation, is_async = client_tool
         raw_kwds = request.arguments
         try:
             parsed_kwds = convert(raw_kwds, params_struct)
@@ -1472,16 +1475,55 @@ class PredictionEndpoint(
                 f"Failed to parse arguments for tool {tool_name}: {exc}", request
             )
             result = ToolCallResultData(content=err_msg, tool_call_id=tool_call_id)
-            return lambda: result
-        kwds = to_builtins(parsed_kwds)
+            return None, lambda: result, False
+        return to_builtins(parsed_kwds), implementation, is_async
 
+    def request_tool_call(self, request: ToolCallRequest) -> SyncToolCall:
+        kwds, implementation, is_async = self._request_any_tool_call(request)
+        if kwds is None:
+            # Tool def parsing failed, implementation emits an error response
+            return implementation
+        if is_async:
+            msg = f"Asynchronous tool {request.name!r} is not supported in synchronous API"
+            raise LMStudioValueError(msg)
         # Allow caller to schedule the tool call request for background execution
+        tool_call_id = request.id
+
         def _call_requested_tool() -> ToolCallResultData:
             call_result = implementation(**kwds)
             return ToolCallResultData(
                 content=json.dumps(call_result, ensure_ascii=False),
                 tool_call_id=tool_call_id,
             )
+
+        return _call_requested_tool
+
+    def request_tool_call_async(self, request: ToolCallRequest) -> AsyncToolCall:
+        kwds, implementation, is_async = self._request_any_tool_call(request)
+        if kwds is None:
+            # Tool def parsing failed, implementation emits an error response
+            async def _awaitable_error_response() -> ToolCallResultData:
+                return cast(ToolCallResultData, implementation())
+
+            return _awaitable_error_response
+        # Allow caller to schedule the tool call request as a coroutine
+        tool_call_id = request.id
+        if is_async:
+            # Async tool implementation can be awaited directly
+            async def _call_requested_tool() -> ToolCallResultData:
+                call_result = await implementation(**kwds)
+                return ToolCallResultData(
+                    content=json.dumps(call_result, ensure_ascii=False),
+                    tool_call_id=tool_call_id,
+                )
+        else:
+            # Sync tool implementation needs to be called in a thread
+            async def _call_requested_tool() -> ToolCallResultData:
+                call_result = await asyncio.to_thread(implementation, **kwds)
+                return ToolCallResultData(
+                    content=json.dumps(call_result, ensure_ascii=False),
+                    tool_call_id=tool_call_id,
+                )
 
         return _call_requested_tool
 
@@ -1541,8 +1583,11 @@ class ChatResponseEndpoint(PredictionEndpoint):
     @staticmethod
     def parse_tools(
         tools: Iterable[ToolDefinition],
+        allow_async: bool = False,
     ) -> tuple[LlmToolUseSettingToolArray, ClientToolMap]:
         """Split tool function definitions into server and client details."""
+        from inspect import iscoroutinefunction
+
         if not tools:
             raise LMStudioValueError(
                 "Tool using actions require at least one tool to be defined."
@@ -1561,7 +1606,12 @@ class ChatResponseEndpoint(PredictionEndpoint):
                     f"Duplicate tool names are not permitted ({tool_def.name!r} repeated)"
                 )
             params_struct, llm_tool_def = tool_def._to_llm_tool_def()
-            client_tool_map[tool_def.name] = (params_struct, tool_def.implementation)
+            tool_impl = tool_def.implementation
+            is_async = iscoroutinefunction(tool_impl)
+            if is_async and not allow_async:
+                msg = f"Asynchronous tool definition for {tool_def.name!r} is not supported in synchronous API"
+                raise LMStudioValueError(msg)
+            client_tool_map[tool_def.name] = (params_struct, tool_impl, is_async)
             llm_tool_defs.append(llm_tool_def)
         return LlmToolUseSettingToolArray(tools=llm_tool_defs), client_tool_map
 
