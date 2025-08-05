@@ -19,13 +19,17 @@ from lmstudio import (
     LlmPredictionFragment,
     LlmPredictionStats,
     LMStudioModelNotFoundError,
+    LMStudioPredictionError,
     LMStudioPresetNotFoundError,
     PredictionResult,
+    PredictionRoundResult,
     ResponseSchema,
     TextData,
+    ToolCallRequest,
 )
 
 from ..support import (
+    ADDITION_TOOL_SPEC,
     EXPECTED_LLM_ID,
     GBNF_GRAMMAR,
     PROMPT,
@@ -33,7 +37,9 @@ from ..support import (
     RESPONSE_SCHEMA,
     SCHEMA_FIELDS,
     SHORT_PREDICTION_CONFIG,
+    TOOL_LLM_ID,
     check_sdk_error,
+    divide,
 )
 
 
@@ -388,3 +394,126 @@ async def test_cancel_prediction_async(caplog: LogCap) -> None:
         assert stream.stats.stop_reason == "userStopped"
         # ensure __aiter__ closes correctly
         assert num_times == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.lmstudio
+async def test_tool_using_agent_async(caplog: LogCap) -> None:
+    caplog.set_level(logging.DEBUG)
+    model_id = TOOL_LLM_ID
+    async with AsyncClient() as client:
+        llm = await client.llm.model(model_id)
+        chat = Chat()
+        chat.add_user_message("What is the sum of 123 and 3210?")
+        tools = [ADDITION_TOOL_SPEC]
+        # Ensure ignoring the round index passes static type checks
+        predictions: list[PredictionResult] = []
+
+        act_result = await llm.act(
+            chat, tools, on_prediction_completed=predictions.append
+        )
+        assert len(predictions) > 1
+        assert act_result.rounds == len(predictions)
+        assert "3333" in predictions[-1].content
+
+    for _logger_name, log_level, message in caplog.record_tuples:
+        if log_level != logging.INFO:
+            continue
+        if message.startswith("Tool call:"):
+            break
+    else:
+        assert False, "Failed to find tool call logging entry"
+    assert "123" in message
+    assert "3210" in message
+
+
+@pytest.mark.asyncio
+@pytest.mark.lmstudio
+async def test_tool_using_agent_callbacks_async(caplog: LogCap) -> None:
+    caplog.set_level(logging.DEBUG)
+    model_id = TOOL_LLM_ID
+    async with AsyncClient() as client:
+        llm = await client.llm.model(model_id)
+        chat = Chat()
+        # Ensure the first response is a combination of text and tool use requests
+        chat.add_user_message("First say 'Hi'. Then calculate 1 + 3 with the tool.")
+        tools = [ADDITION_TOOL_SPEC]
+        round_starts: list[int] = []
+        round_ends: list[int] = []
+        first_tokens: list[int] = []
+        predictions: list[PredictionRoundResult] = []
+        fragments: list[LlmPredictionFragment] = []
+        fragment_round_indices: set[int] = set()
+
+        def _append_fragment(f: LlmPredictionFragment, round_index: int) -> None:
+            last_fragment_round_index = max(fragment_round_indices, default=-1)
+            assert round_index >= last_fragment_round_index
+            fragments.append(f)
+            fragment_round_indices.add(round_index)
+
+        # TODO: Also check on_prompt_processing_progress and handling invalid messages
+        # (although it isn't clear how to provoke calls to the latter without mocking)
+        act_result = await llm.act(
+            chat,
+            tools,
+            on_first_token=first_tokens.append,
+            on_prediction_fragment=_append_fragment,
+            on_message=chat.append,
+            on_round_start=round_starts.append,
+            on_round_end=round_ends.append,
+            on_prediction_completed=predictions.append,
+        )
+        num_rounds = act_result.rounds
+        sequential_round_indices = list(range(num_rounds))
+        assert num_rounds > 1
+        assert [p.round_index for p in predictions] == sequential_round_indices
+        assert round_starts == sequential_round_indices
+        assert round_ends == sequential_round_indices
+        expected_token_indices = [p.round_index for p in predictions if p.content]
+        assert expected_token_indices == sequential_round_indices
+        assert first_tokens == expected_token_indices
+        assert fragment_round_indices == set(expected_token_indices)
+        assert len(chat._messages) == 2 * num_rounds  # No tool results in last round
+
+        cloned_chat = chat.copy()
+        assert cloned_chat._messages == chat._messages
+
+
+@pytest.mark.asyncio
+@pytest.mark.lmstudio
+async def test_tool_using_agent_error_handling_async(caplog: LogCap) -> None:
+    caplog.set_level(logging.DEBUG)
+    model_id = TOOL_LLM_ID
+    async with AsyncClient() as client:
+        llm = await client.llm.model(model_id)
+        chat = Chat()
+        chat.add_user_message(
+            "Attempt to divide 1 by 0 using the tool. Explain the result."
+        )
+        tools = [divide]
+        predictions: list[PredictionRoundResult] = []
+        request_failures: list[LMStudioPredictionError] = []
+
+        def _handle_invalid_request(
+            exc: LMStudioPredictionError, request: ToolCallRequest | None
+        ) -> None:
+            if request is not None:
+                request_failures.append(exc)
+
+        act_result = await llm.act(
+            chat,
+            tools,
+            handle_invalid_tool_request=_handle_invalid_request,
+            on_prediction_completed=predictions.append,
+        )
+        assert len(predictions) > 1
+        assert act_result.rounds == len(predictions)
+        # Ensure the tool call failure was reported to the user callback
+        assert len(request_failures) == 1
+        tool_failure_exc = request_failures[0]
+        assert isinstance(tool_failure_exc, LMStudioPredictionError)
+        assert isinstance(tool_failure_exc.__cause__, ZeroDivisionError)
+        # If the content checks prove too flaky in practice, they can be dropped
+        completed_response = predictions[-1].content.lower()
+        assert "divid" in completed_response  # Accepts both "divide" and "dividing"
+        assert "zero" in completed_response
