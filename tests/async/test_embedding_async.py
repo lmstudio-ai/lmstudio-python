@@ -8,7 +8,7 @@ from pytest import LogCaptureFixture as LogCap
 
 from lmstudio import AsyncClient, EmbeddingLoadModelConfig, LMStudioModelNotFoundError
 
-from ..support import (
+from tests.support import (
     EXPECTED_EMBEDDING,
     EXPECTED_EMBEDDING_CONTEXT_LENGTH,
     EXPECTED_EMBEDDING_ID,
