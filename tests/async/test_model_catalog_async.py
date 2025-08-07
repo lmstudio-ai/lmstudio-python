@@ -12,7 +12,7 @@ from pytest_subtests import SubTests
 from lmstudio import AsyncClient, LMStudioModelNotFoundError, LMStudioServerError
 from lmstudio.json_api import DownloadedModelBase, ModelHandleBase
 
-from ..support import (
+from tests.support import (
     LLM_LOAD_CONFIG,
     EXPECTED_LLM,
     EXPECTED_LLM_ID,

@@ -19,7 +19,7 @@ from lmstudio._sdk_models import (
     ModelSpecifierQueryDict,
 )
 
-from .support import EXPECTED_LLM_ID
+from tests.support import EXPECTED_LLM_ID
 
 
 def test_lists_of_lists_rejected() -> None:

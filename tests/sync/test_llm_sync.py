@@ -20,7 +20,7 @@ from lmstudio import (
     history,
 )
 
-from ..support import EXPECTED_LLM, EXPECTED_LLM_ID, check_sdk_error
+from tests.support import EXPECTED_LLM, EXPECTED_LLM_ID, check_sdk_error
 
 
 @pytest.mark.lmstudio

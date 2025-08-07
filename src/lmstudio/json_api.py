@@ -419,8 +419,30 @@ class LMStudioChannelClosedError(LMStudioServerError):
 
 
 @sdk_public_type
+
+@sdk_public_type
 class LMStudioPredictionError(LMStudioServerError):
     """Problems reported by the LM Studio instance during a model prediction."""
+
+@sdk_public_type
+class LMStudioModelLoadError(LMStudioPredictionError):
+    """Raised when a model fails to load for a prediction."""
+
+@sdk_public_type
+class LMStudioInputValidationError(LMStudioPredictionError):
+    """Raised when input to a prediction is invalid (e.g., bad prompt, bad parameters)."""
+
+@sdk_public_type
+class LMStudioPredictionTimeoutError(LMStudioPredictionError):
+    """Raised when a prediction times out before completion."""
+
+@sdk_public_type
+class LMStudioPredictionCancelledError(LMStudioPredictionError):
+    """Raised when a prediction is cancelled before completion."""
+
+@sdk_public_type
+class LMStudioPredictionRuntimeError(LMStudioPredictionError):
+    """Raised for unexpected runtime errors during prediction."""
 
 
 @sdk_public_type

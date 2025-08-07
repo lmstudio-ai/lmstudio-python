@@ -17,6 +17,14 @@ from .sdk_api import *
 from .schemas import *
 from .history import *
 from .json_api import *
+from .json_api import (
+    LMStudioPredictionError,
+    LMStudioModelLoadError,
+    LMStudioInputValidationError,
+    LMStudioPredictionTimeoutError,
+    LMStudioPredictionCancelledError,
+    LMStudioPredictionRuntimeError,
+)
 from .async_api import *
 from .sync_api import *
 

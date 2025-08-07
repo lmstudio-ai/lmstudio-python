@@ -28,7 +28,7 @@ from lmstudio import (
     ToolCallRequest,
 )
 
-from ..support import (
+from tests.support import (
     ADDITION_TOOL_SPEC,
     EXPECTED_LLM_ID,
     GBNF_GRAMMAR,

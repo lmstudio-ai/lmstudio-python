@@ -8,7 +8,7 @@ from pytest import LogCaptureFixture as LogCap
 
 from lmstudio import AsyncClient
 
-from .support import InvalidEndpoint
+from tests.support import InvalidEndpoint
 
 
 @pytest.mark.asyncio

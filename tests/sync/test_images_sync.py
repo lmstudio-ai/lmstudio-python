@@ -16,7 +16,7 @@ from io import BytesIO
 
 from lmstudio import Client, Chat, FileHandle, LMStudioServerError
 
-from ..support import (
+from tests.support import (
     EXPECTED_VLM_ID,
     IMAGE_FILEPATH,
     SHORT_PREDICTION_CONFIG,

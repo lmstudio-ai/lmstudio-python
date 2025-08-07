@@ -20,7 +20,7 @@ from lmstudio import (
 from lmstudio.json_api import ChatResponseEndpoint
 from lmstudio._sdk_models import LlmToolParameters
 
-from .support import (
+from tests.support import (
     ADDITION_TOOL_SPEC,
     EXPECTED_LLM_ID,
     MAX_PREDICTED_TOKENS,

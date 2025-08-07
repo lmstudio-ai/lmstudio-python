@@ -35,7 +35,7 @@ from lmstudio._sdk_models import (
     ToolCallResultDataDict,
 )
 
-from .support import IMAGE_FILEPATH, check_sdk_error
+from tests.support import IMAGE_FILEPATH, check_sdk_error
 
 INPUT_ENTRIES: list[DictObject] = [
     # Entries with multi-word keys mix snake_case and camelCase

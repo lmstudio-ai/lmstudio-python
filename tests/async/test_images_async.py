@@ -9,7 +9,7 @@ from io import BytesIO
 
 from lmstudio import AsyncClient, Chat, FileHandle, LMStudioServerError
 
-from ..support import (
+from tests.support import (
     EXPECTED_VLM_ID,
     IMAGE_FILEPATH,
     SHORT_PREDICTION_CONFIG,

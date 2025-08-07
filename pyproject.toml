@@ -92,7 +92,8 @@ addopts = "--strict-markers"
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "lmstudio: marks tests as needing LM Studio (deselect with '-m \"not lmstudio\"')",
-    "wip: marks tests as a work-in-progress (select with '-m \"wip\"')"
+    "wip: marks tests as a work-in-progress (select with '-m \"wip\"')",
+    "asyncio: marks tests as asyncio-based",
 ]
 # Warnings should only be emitted when being specifically tested
 filterwarnings = [
@@ -102,7 +103,6 @@ filterwarnings = [
 log_format = "%(asctime)s %(levelname)s %(message)s"
 log_date_format = "%Y-%m-%d %H:%M:%S"
 # Each async test case gets a fresh event loop by default
-asyncio_default_fixture_loop_scope = "function"
 
 [tool.coverage.run]
 relative_files = true

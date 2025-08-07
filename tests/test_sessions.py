@@ -24,7 +24,7 @@ from lmstudio.sync_api import (
 from lmstudio._ws_impl import AsyncTaskManager
 from lmstudio._ws_thread import AsyncWebsocketThread
 
-from .support import LOCAL_API_HOST
+from tests.support import LOCAL_API_HOST
 
 
 async def check_connected_async_session(session: _AsyncSession) -> None:
