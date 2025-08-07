@@ -292,10 +292,27 @@ class ToolCallHandler:
         await self._queue.put(tool_call)
 
     # TODO: Reduce code duplication with the ChatResponseEndpoint definition
+    async def _call_async_tool(
+        self,
+        call_id: str,
+        implementation: Callable[..., Awaitable[Any]],
+        kwds: DictObject,
+        send_json: SendMessageAsync,
+    ) -> PluginToolCallCompleteDict:
+        assert _LMS_TOOL_CALL_SYNC.get(None) is None
+        call_context = AsyncToolCallContext(self.session_id, call_id, send_json)
+        _LMS_TOOL_CALL_ASYNC.set(call_context)
+        call_result = await implementation(**kwds)
+        return PluginToolCallComplete(
+            session_id=self.session_id,
+            call_id=call_id,
+            result=call_result,
+        ).to_dict()
+
     def _call_sync_tool(
         self,
         call_id: str,
-        sync_tool: Callable[..., Any],
+        implementation: Callable[..., Any],
         kwds: DictObject,
         send_json: SendMessageAsync,
     ) -> Awaitable[PluginToolCallCompleteDict]:
@@ -305,7 +322,7 @@ class ToolCallHandler:
         def _call_requested_tool() -> PluginToolCallCompleteDict:
             assert _LMS_TOOL_CALL_ASYNC.get(None) is None
             _LMS_TOOL_CALL_SYNC.set(call_context)
-            call_result = sync_tool(**kwds)
+            call_result = implementation(**kwds)
             return PluginToolCallComplete(
                 session_id=self.session_id,
                 call_id=call_id,
@@ -325,7 +342,7 @@ class ToolCallHandler:
                 f"Plugin does not provide a tool named {tool_name!r}."
             )
         # Validate parameters against their specification
-        params_struct, tool_impl = tool_details
+        params_struct, tool_impl, is_async = tool_details
         raw_kwds = tool_call.parameters
         try:
             parsed_kwds = convert(raw_kwds, params_struct)
@@ -333,7 +350,10 @@ class ToolCallHandler:
             err_msg = f"Failed to parse arguments for tool {tool_name}: {exc}"
             raise ServerRequestError(err_msg)
         kwds = to_builtins(parsed_kwds)
-        # TODO: Also support async tool definitions and invocation
+        if is_async:
+            return await self._call_async_tool(
+                tool_call.call_id, tool_impl, kwds, send_json
+            )
         return await self._call_sync_tool(tool_call.call_id, tool_impl, kwds, send_json)
 
     # TODO: Reduce code duplication with the ChatResponseEndpoint definition
@@ -523,7 +543,8 @@ class ToolsProvider(Generic[TPluginConfigSchema, TGlobalConfigSchema]):
         try:
             plugin_tools_list = await self.hook_impl(ctl)
             llm_tools_array, provided_tools = ChatResponseEndpoint.parse_tools(
-                plugin_tools_list
+                plugin_tools_list,
+                allow_async=True,
             )
             llm_tools_list = llm_tools_array.to_dict()["tools"]
             assert llm_tools_list is not None  # Ensured by the parse_tools method
