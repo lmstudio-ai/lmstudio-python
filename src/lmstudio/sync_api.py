@@ -1395,6 +1395,7 @@ class LLM(SyncModelHandle[SyncSessionLlm]):
 
             on_prompt_processing_for_endpoint = _wrapped_on_prompt_processing_progress
         # TODO: Implementation to this point is common between the sync and async APIs
+        # (aside from the allow_async flag when parsing the tool definitions)
         # Implementation past this point differs (as the async API uses the loop's executor)
 
         # Request predictions until no more tool call requests are received in response

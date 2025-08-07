@@ -138,3 +138,22 @@ def test_duplicate_tool_names_rejected() -> None:
         LMStudioValueError, match="Duplicate tool names are not permitted"
     ):
         ChatResponseEndpoint.parse_tools(tools)
+
+
+async def example_async_tool() -> int:
+    """Example asynchronous tool definition"""
+    return 42
+
+
+def test_async_tool_rejected() -> None:
+    tools: list[Any] = [example_async_tool]
+    with pytest.raises(LMStudioValueError, match=".*example_async_tool.*not supported"):
+        ChatResponseEndpoint.parse_tools(tools)
+
+
+def test_async_tool_accepted() -> None:
+    tools: list[Any] = [example_async_tool]
+    llm_tools, client_map = ChatResponseEndpoint.parse_tools(tools, allow_async=True)
+    assert llm_tools.tools is not None
+    assert len(llm_tools.tools) == 1
+    assert len(client_map) == 1

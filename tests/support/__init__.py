@@ -301,11 +301,6 @@ def check_unfiltered_error(
 ####################################################
 
 
-def divide(numerator: float, denominator: float) -> float:
-    """Divide the given numerator by the given denominator. Return the result."""
-    return numerator / denominator
-
-
 def log_adding_two_integers(a: int, b: int) -> int:
     """Log adding two integers together."""
     logging.info(f"Tool call: Adding {a!r} to {b!r} as integers")

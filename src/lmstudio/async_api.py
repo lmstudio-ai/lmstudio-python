@@ -53,6 +53,7 @@ from .json_api import (
     ActResult,
     AnyLoadConfig,
     AnyModelSpecifier,
+    AsyncToolCall,
     AvailableModelBase,
     ChannelEndpoint,
     ChannelHandler,
@@ -1314,7 +1315,7 @@ class AsyncLLM(AsyncModelHandle[_AsyncSessionLlm]):
             # Do not force a final round when no limit is specified
             final_round_index = -1
             round_counter = itertools.count()
-        llm_tool_args = ChatResponseEndpoint.parse_tools(tools)
+        llm_tool_args = ChatResponseEndpoint.parse_tools(tools, allow_async=True)
         del tools
         # Supply the round index to any endpoint callbacks that expect one
         round_index: int
@@ -1345,6 +1346,7 @@ class AsyncLLM(AsyncModelHandle[_AsyncSessionLlm]):
 
             on_prompt_processing_for_endpoint = _wrapped_on_prompt_processing_progress
         # TODO: Implementation to this point is common between the sync and async APIs
+        # (aside from the allow_async flag when parsing the tool definitions)
         # Implementation past this point differs (as the sync API uses its own thread pool)
 
         # Request predictions until no more tool call requests are received in response
@@ -1378,13 +1380,12 @@ class AsyncLLM(AsyncModelHandle[_AsyncSessionLlm]):
             channel_cm = self._session._create_channel(endpoint)
             prediction_stream = AsyncPredictionStream(channel_cm, endpoint)
             tool_call_requests: list[ToolCallRequest] = []
-            parsed_tool_calls: list[Callable[[], ToolCallResultData]] = []
+            parsed_tool_calls: list[AsyncToolCall] = []
             async for event in prediction_stream._iter_events():
                 if isinstance(event, PredictionToolCallEvent):
                     tool_call_request = event.arg
                     tool_call_requests.append(tool_call_request)
-                    # TODO: Also handle async tool calls here
-                    tool_call = endpoint.request_tool_call(tool_call_request)
+                    tool_call = endpoint.request_tool_call_async(tool_call_request)
                     parsed_tool_calls.append(tool_call)
             prediction = prediction_stream.result()
             self._logger.debug(
@@ -1409,10 +1410,7 @@ class AsyncLLM(AsyncModelHandle[_AsyncSessionLlm]):
                             tool_call_futures, return_when=asyncio.FIRST_COMPLETED
                         )
                         active_tool_calls = len(pending)
-                    # TODO: Also handle async tool calls here
-                    tool_call_futures.append(
-                        asyncio.ensure_future(asyncio.to_thread(tool_call))
-                    )
+                    tool_call_futures.append(asyncio.ensure_future(tool_call()))
                     active_tool_calls += 1
                 tool_call_results: list[ToolCallResultData] = []
                 for tool_call_request, tool_call_future in zip(
