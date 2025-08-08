@@ -153,6 +153,10 @@
         "propertyName": "type"
       }
     },
+    "artifactIdentifier": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*\\/[a-z0-9]+(?:[-.][a-z0-9]+)*$"
+    },
     "artifactManifestBase": {
       "type": "object",
       "properties": {
@@ -2910,6 +2914,23 @@
         "propertyName": "type"
       }
     },
+    "tokenSourceIdentifier": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/tokenSourceIdentifierModel"
+        },
+        {
+          "$ref": "#/definitions/tokenSourceIdentifierGenerator"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "model": "#/definitions/tokenSourceIdentifierModel",
+          "generator": "#/definitions/tokenSourceIdentifierGenerator"
+        },
+        "propertyName": "type"
+      }
+    },
     "modelCompatibilityType": {
       "type": "string",
       "enum": [
@@ -3152,6 +3173,23 @@
       "type": "string",
       "pattern": "^[\\p{L}\\p{N}!@#$%^&()\\-_+=,.;'[\\]{}~`][\\p{L}\\p{N}!@#$%^&()\\-_+=,.;'[\\]{}~` ]*(?<![. ])(?:\\/[\\p{L}\\p{N}!@#$%^&()\\-_+=,.;'[\\]{}~`][\\p{L}\\p{N}!@#$%^&()\\-_+=,.;'[\\]{}~` ]*(?<![. ]))*$"
     },
+    "pluginConfigSpecifier": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/pluginConfigSpecifierDirect"
+        },
+        {
+          "$ref": "#/definitions/pluginConfigSpecifierPredictionProcess"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "direct": "#/definitions/pluginConfigSpecifierDirect",
+          "predictionProcess": "#/definitions/pluginConfigSpecifierPredictionProcess"
+        },
+        "propertyName": "type"
+      }
+    },
     "pluginManifest": {
       "type": "object",
       "properties": {
@@ -3232,6 +3270,42 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 1024
+    },
+    "remotePluginInfo": {
+      "type": "object",
+      "properties": {
+        "identifier": {
+          "type": "string"
+        },
+        "isDev": {
+          "type": "boolean"
+        },
+        "isTrusted": {
+          "type": "boolean"
+        },
+        "hasPromptPreprocessor": {
+          "type": "boolean"
+        },
+        "hasPredictionLoopHandler": {
+          "type": "boolean"
+        },
+        "hasToolsProvider": {
+          "type": "boolean"
+        },
+        "hasGenerator": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "identifier",
+        "isDev",
+        "isTrusted",
+        "hasPromptPreprocessor",
+        "hasPredictionLoopHandler",
+        "hasToolsProvider",
+        "hasGenerator"
+      ],
+      "additionalProperties": false
     },
     "artifactDownloadPlanModelInfo": {
       "type": "object",
@@ -5486,114 +5560,6 @@
       ],
       "additionalProperties": false
     },
-    "llm/channel/generateWithGenerator/creationParameter": {
-      "type": "object",
-      "properties": {
-        "pluginIdentifier": {
-          "type": "string"
-        },
-        "pluginConfigStack": {
-          "$ref": "#/definitions/kvConfigStack"
-        },
-        "tools": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/llmTool"
-          }
-        },
-        "workingDirectoryPath": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "history": {
-          "$ref": "#/definitions/chatHistoryData"
-        }
-      },
-      "required": [
-        "pluginIdentifier",
-        "pluginConfigStack",
-        "tools",
-        "workingDirectoryPath",
-        "history"
-      ],
-      "additionalProperties": false
-    },
-    "llm/channel/generateWithGenerator/toClientPacket": {
-      "anyOf": [
-        {
-          "$ref": "#/definitions/llm/channel/generateWithGenerator/toClientPacketFragment"
-        },
-        {
-          "$ref": "#/definitions/llm/channel/generateWithGenerator/toClientPacketPromptProcessingProgress"
-        },
-        {
-          "$ref": "#/definitions/llm/channel/generateWithGenerator/toClientPacketToolCallGenerationStart"
-        },
-        {
-          "$ref": "#/definitions/llm/channel/generateWithGenerator/toClientPacketToolCallGenerationNameReceived"
-        },
-        {
-          "$ref": "#/definitions/llm/channel/generateWithGenerator/toClientPacketToolCallGenerationArgumentFragmentGenerated"
-        },
-        {
-          "$ref": "#/definitions/llm/channel/generateWithGenerator/toClientPacketToolCallGenerationEnd"
-        },
-        {
-          "$ref": "#/definitions/llm/channel/generateWithGenerator/toClientPacketToolCallGenerationFailed"
-        },
-        {
-          "$ref": "#/definitions/llm/channel/generateWithGenerator/toClientPacketSuccess"
-        }
-      ],
-      "discriminator": {
-        "mapping": {
-          "fragment": "#/definitions/llm/channel/generateWithGenerator/toClientPacketFragment",
-          "promptProcessingProgress": "#/definitions/llm/channel/generateWithGenerator/toClientPacketPromptProcessingProgress",
-          "toolCallGenerationStart": "#/definitions/llm/channel/generateWithGenerator/toClientPacketToolCallGenerationStart",
-          "toolCallGenerationNameReceived": "#/definitions/llm/channel/generateWithGenerator/toClientPacketToolCallGenerationNameReceived",
-          "toolCallGenerationArgumentFragmentGenerated": "#/definitions/llm/channel/generateWithGenerator/toClientPacketToolCallGenerationArgumentFragmentGenerated",
-          "toolCallGenerationEnd": "#/definitions/llm/channel/generateWithGenerator/toClientPacketToolCallGenerationEnd",
-          "toolCallGenerationFailed": "#/definitions/llm/channel/generateWithGenerator/toClientPacketToolCallGenerationFailed",
-          "success": "#/definitions/llm/channel/generateWithGenerator/toClientPacketSuccess"
-        },
-        "propertyName": "type"
-      }
-    },
-    "llm/channel/generateWithGenerator/toServerPacket": {
-      "anyOf": [
-        {
-          "$ref": "#/definitions/llm/channel/generateWithGenerator/toServerPacketCancel"
-        }
-      ],
-      "discriminator": {
-        "mapping": {
-          "cancel": "#/definitions/llm/channel/generateWithGenerator/toServerPacketCancel"
-        },
-        "propertyName": "type"
-      }
-    },
-    "pseudo/llm/channel/generateWithGenerator": {
-      "type": "object",
-      "properties": {
-        "creationParameter": {
-          "$ref": "#/definitions/llm/channel/generateWithGenerator/creationParameter"
-        },
-        "toClientPacket": {
-          "$ref": "#/definitions/llm/channel/generateWithGenerator/toClientPacket"
-        },
-        "toServerPacket": {
-          "$ref": "#/definitions/llm/channel/generateWithGenerator/toServerPacket"
-        }
-      },
-      "required": [
-        "creationParameter",
-        "toClientPacket",
-        "toServerPacket"
-      ],
-      "additionalProperties": false
-    },
     "pseudo/llm": {
       "type": "object",
       "properties": {
@@ -5629,9 +5595,6 @@
         },
         "channelPredict": {
           "$ref": "#/definitions/pseudo/llm/channel/predict"
-        },
-        "channelGenerateWithGenerator": {
-          "$ref": "#/definitions/pseudo/llm/channel/generateWithGenerator"
         }
       },
       "required": [
@@ -5645,8 +5608,7 @@
         "rpcPreloadDraftModel",
         "channelLoadModel",
         "channelGetOrLoad",
-        "channelPredict",
-        "channelGenerateWithGenerator"
+        "channelPredict"
       ],
       "additionalProperties": false
     },
@@ -5785,7 +5747,7 @@
       ],
       "additionalProperties": false
     },
-    "plugins/rpc/processingGetOrLoadModel/parameter": {
+    "plugins/rpc/processingGetOrLoadTokenSource/parameter": {
       "type": "object",
       "properties": {
         "pci": {
@@ -5801,26 +5763,26 @@
       ],
       "additionalProperties": false
     },
-    "plugins/rpc/processingGetOrLoadModel/returns": {
+    "plugins/rpc/processingGetOrLoadTokenSource/returns": {
       "type": "object",
       "properties": {
-        "identifier": {
-          "type": "string"
+        "tokenSourceIdentifier": {
+          "$ref": "#/definitions/tokenSourceIdentifier"
         }
       },
       "required": [
-        "identifier"
+        "tokenSourceIdentifier"
       ],
       "additionalProperties": false
     },
-    "pseudo/plugins/rpc/processingGetOrLoadModel": {
+    "pseudo/plugins/rpc/processingGetOrLoadTokenSource": {
       "type": "object",
       "properties": {
         "parameter": {
-          "$ref": "#/definitions/plugins/rpc/processingGetOrLoadModel/parameter"
+          "$ref": "#/definitions/plugins/rpc/processingGetOrLoadTokenSource/parameter"
         },
         "returns": {
-          "$ref": "#/definitions/plugins/rpc/processingGetOrLoadModel/returns"
+          "$ref": "#/definitions/plugins/rpc/processingGetOrLoadTokenSource/returns"
         }
       },
       "required": [
@@ -6019,6 +5981,193 @@
     "pseudo/plugins/rpc/pluginInitCompleted": {
       "type": "object",
       "properties": {},
+      "additionalProperties": false
+    },
+    "plugins/channel/startToolUseSession/creationParameter": {
+      "type": "object",
+      "properties": {
+        "pluginIdentifier": {
+          "type": "string"
+        },
+        "pluginConfigSpecifier": {
+          "$ref": "#/definitions/pluginConfigSpecifier"
+        }
+      },
+      "required": [
+        "pluginIdentifier",
+        "pluginConfigSpecifier"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/channel/startToolUseSession/toClientPacket": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/plugins/channel/startToolUseSession/toClientPacketSessionReady"
+        },
+        {
+          "$ref": "#/definitions/plugins/channel/startToolUseSession/toClientPacketToolCallComplete"
+        },
+        {
+          "$ref": "#/definitions/plugins/channel/startToolUseSession/toClientPacketToolCallError"
+        },
+        {
+          "$ref": "#/definitions/plugins/channel/startToolUseSession/toClientPacketToolCallStatus"
+        },
+        {
+          "$ref": "#/definitions/plugins/channel/startToolUseSession/toClientPacketToolCallWarn"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "sessionReady": "#/definitions/plugins/channel/startToolUseSession/toClientPacketSessionReady",
+          "toolCallComplete": "#/definitions/plugins/channel/startToolUseSession/toClientPacketToolCallComplete",
+          "toolCallError": "#/definitions/plugins/channel/startToolUseSession/toClientPacketToolCallError",
+          "toolCallStatus": "#/definitions/plugins/channel/startToolUseSession/toClientPacketToolCallStatus",
+          "toolCallWarn": "#/definitions/plugins/channel/startToolUseSession/toClientPacketToolCallWarn"
+        },
+        "propertyName": "type"
+      }
+    },
+    "plugins/channel/startToolUseSession/toServerPacket": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/plugins/channel/startToolUseSession/toServerPacketCallTool"
+        },
+        {
+          "$ref": "#/definitions/plugins/channel/startToolUseSession/toServerPacketAbortToolCall"
+        },
+        {
+          "$ref": "#/definitions/plugins/channel/startToolUseSession/toServerPacketDiscardSession"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "callTool": "#/definitions/plugins/channel/startToolUseSession/toServerPacketCallTool",
+          "abortToolCall": "#/definitions/plugins/channel/startToolUseSession/toServerPacketAbortToolCall",
+          "discardSession": "#/definitions/plugins/channel/startToolUseSession/toServerPacketDiscardSession"
+        },
+        "propertyName": "type"
+      }
+    },
+    "pseudo/plugins/channel/startToolUseSession": {
+      "type": "object",
+      "properties": {
+        "creationParameter": {
+          "$ref": "#/definitions/plugins/channel/startToolUseSession/creationParameter"
+        },
+        "toClientPacket": {
+          "$ref": "#/definitions/plugins/channel/startToolUseSession/toClientPacket"
+        },
+        "toServerPacket": {
+          "$ref": "#/definitions/plugins/channel/startToolUseSession/toServerPacket"
+        }
+      },
+      "required": [
+        "creationParameter",
+        "toClientPacket",
+        "toServerPacket"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/channel/generateWithGenerator/creationParameter": {
+      "type": "object",
+      "properties": {
+        "pluginIdentifier": {
+          "type": "string"
+        },
+        "pluginConfigSpecifier": {
+          "$ref": "#/definitions/pluginConfigSpecifier"
+        },
+        "tools": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/llmTool"
+          }
+        },
+        "history": {
+          "$ref": "#/definitions/plugins/rpc/processingPullHistory/returns"
+        }
+      },
+      "required": [
+        "pluginIdentifier",
+        "pluginConfigSpecifier",
+        "tools",
+        "history"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/channel/generateWithGenerator/toClientPacket": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/plugins/channel/generateWithGenerator/toClientPacketFragment"
+        },
+        {
+          "$ref": "#/definitions/plugins/channel/generateWithGenerator/toClientPacketPromptProcessingProgress"
+        },
+        {
+          "$ref": "#/definitions/plugins/channel/generateWithGenerator/toClientPacketToolCallGenerationStart"
+        },
+        {
+          "$ref": "#/definitions/plugins/channel/generateWithGenerator/toClientPacketToolCallGenerationNameReceived"
+        },
+        {
+          "$ref": "#/definitions/plugins/channel/generateWithGenerator/toClientPacketToolCallGenerationArgumentFragmentGenerated"
+        },
+        {
+          "$ref": "#/definitions/plugins/channel/generateWithGenerator/toClientPacketToolCallGenerationEnd"
+        },
+        {
+          "$ref": "#/definitions/plugins/channel/generateWithGenerator/toClientPacketToolCallGenerationFailed"
+        },
+        {
+          "$ref": "#/definitions/plugins/channel/generateWithGenerator/toClientPacketSuccess"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "fragment": "#/definitions/plugins/channel/generateWithGenerator/toClientPacketFragment",
+          "promptProcessingProgress": "#/definitions/plugins/channel/generateWithGenerator/toClientPacketPromptProcessingProgress",
+          "toolCallGenerationStart": "#/definitions/plugins/channel/generateWithGenerator/toClientPacketToolCallGenerationStart",
+          "toolCallGenerationNameReceived": "#/definitions/plugins/channel/generateWithGenerator/toClientPacketToolCallGenerationNameReceived",
+          "toolCallGenerationArgumentFragmentGenerated": "#/definitions/plugins/channel/generateWithGenerator/toClientPacketToolCallGenerationArgumentFragmentGenerated",
+          "toolCallGenerationEnd": "#/definitions/plugins/channel/generateWithGenerator/toClientPacketToolCallGenerationEnd",
+          "toolCallGenerationFailed": "#/definitions/plugins/channel/generateWithGenerator/toClientPacketToolCallGenerationFailed",
+          "success": "#/definitions/plugins/channel/generateWithGenerator/toClientPacketSuccess"
+        },
+        "propertyName": "type"
+      }
+    },
+    "plugins/channel/generateWithGenerator/toServerPacket": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/plugins/channel/generateWithGenerator/toServerPacketCancel"
+        }
+      ],
+      "discriminator": {
+        "mapping": {
+          "cancel": "#/definitions/plugins/channel/generateWithGenerator/toServerPacketCancel"
+        },
+        "propertyName": "type"
+      }
+    },
+    "pseudo/plugins/channel/generateWithGenerator": {
+      "type": "object",
+      "properties": {
+        "creationParameter": {
+          "$ref": "#/definitions/plugins/channel/generateWithGenerator/creationParameter"
+        },
+        "toClientPacket": {
+          "$ref": "#/definitions/plugins/channel/generateWithGenerator/toClientPacket"
+        },
+        "toServerPacket": {
+          "$ref": "#/definitions/plugins/channel/generateWithGenerator/toServerPacket"
+        }
+      },
+      "required": [
+        "creationParameter",
+        "toClientPacket",
+        "toServerPacket"
+      ],
       "additionalProperties": false
     },
     "plugins/channel/registerDevelopmentPlugin/creationParameter": {
@@ -6354,8 +6503,8 @@
         "rpcProcessingPullHistory": {
           "$ref": "#/definitions/pseudo/plugins/rpc/processingPullHistory"
         },
-        "rpcProcessingGetOrLoadModel": {
-          "$ref": "#/definitions/pseudo/plugins/rpc/processingGetOrLoadModel"
+        "rpcProcessingGetOrLoadTokenSource": {
+          "$ref": "#/definitions/pseudo/plugins/rpc/processingGetOrLoadTokenSource"
         },
         "rpcProcessingHasStatus": {
           "$ref": "#/definitions/pseudo/plugins/rpc/processingHasStatus"
@@ -6378,6 +6527,12 @@
         "rpcPluginInitCompleted": {
           "$ref": "#/definitions/pseudo/plugins/rpc/pluginInitCompleted"
         },
+        "channelStartToolUseSession": {
+          "$ref": "#/definitions/pseudo/plugins/channel/startToolUseSession"
+        },
+        "channelGenerateWithGenerator": {
+          "$ref": "#/definitions/pseudo/plugins/channel/generateWithGenerator"
+        },
         "channelRegisterDevelopmentPlugin": {
           "$ref": "#/definitions/pseudo/plugins/channel/registerDevelopmentPlugin"
         },
@@ -6399,7 +6554,7 @@
         "rpcProcessingHandleUpdate",
         "rpcProcessingHandleRequest",
         "rpcProcessingPullHistory",
-        "rpcProcessingGetOrLoadModel",
+        "rpcProcessingGetOrLoadTokenSource",
         "rpcProcessingHasStatus",
         "rpcProcessingNeedsNaming",
         "rpcProcessingSuggestName",
@@ -6407,6 +6562,8 @@
         "rpcSetConfigSchematics",
         "rpcSetGlobalConfigSchematics",
         "rpcPluginInitCompleted",
+        "channelStartToolUseSession",
+        "channelGenerateWithGenerator",
         "channelRegisterDevelopmentPlugin",
         "channelSetPromptPreprocessor",
         "channelSetPredictionLoopHandler",
@@ -8017,6 +8174,44 @@
       ],
       "additionalProperties": false
     },
+    "tokenSourceIdentifierModel": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "model",
+          "default": "model",
+          "title": "Type"
+        },
+        "identifier": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "identifier"
+      ],
+      "additionalProperties": false
+    },
+    "tokenSourceIdentifierGenerator": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "generator",
+          "default": "generator",
+          "title": "Type"
+        },
+        "pluginIdentifier": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "pluginIdentifier"
+      ],
+      "additionalProperties": false
+    },
     "modelSpecifierQuery": {
       "type": "object",
       "properties": {
@@ -8052,6 +8247,51 @@
       "required": [
         "type",
         "instanceReference"
+      ],
+      "additionalProperties": false
+    },
+    "pluginConfigSpecifierDirect": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "direct",
+          "default": "direct",
+          "title": "Type"
+        },
+        "config": {
+          "$ref": "#/definitions/kvConfig"
+        },
+        "workingDirectoryPath": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "config"
+      ],
+      "additionalProperties": false
+    },
+    "pluginConfigSpecifierPredictionProcess": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "predictionProcess",
+          "default": "predictionProcess",
+          "title": "Type"
+        },
+        "pci": {
+          "type": "string"
+        },
+        "token": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "pci",
+        "token"
       ],
       "additionalProperties": false
     },
@@ -8986,6 +9226,9 @@
           "const": "toolCallGenerationStart",
           "default": "toolCallGenerationStart",
           "title": "Type"
+        },
+        "toolCallId": {
+          "type": "string"
         }
       },
       "required": [
@@ -9121,7 +9364,182 @@
       ],
       "additionalProperties": false
     },
-    "llm/channel/generateWithGenerator/toClientPacketFragment": {
+    "plugins/channel/startToolUseSession/toClientPacketSessionReady": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "sessionReady",
+          "default": "sessionReady",
+          "title": "Type"
+        },
+        "toolDefinitions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/llmTool"
+          }
+        }
+      },
+      "required": [
+        "type",
+        "toolDefinitions"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/channel/startToolUseSession/toClientPacketToolCallComplete": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "toolCallComplete",
+          "default": "toolCallComplete",
+          "title": "Type"
+        },
+        "callId": {
+          "type": "number"
+        },
+        "result": {
+          "$ref": "#/definitions/jsonSerializable"
+        }
+      },
+      "required": [
+        "type",
+        "callId",
+        "result"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/channel/startToolUseSession/toClientPacketToolCallError": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "toolCallError",
+          "default": "toolCallError",
+          "title": "Type"
+        },
+        "callId": {
+          "type": "number"
+        },
+        "error": {
+          "$ref": "#/definitions/serializedLMSExtendedError"
+        }
+      },
+      "required": [
+        "type",
+        "callId",
+        "error"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/channel/startToolUseSession/toClientPacketToolCallStatus": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "toolCallStatus",
+          "default": "toolCallStatus",
+          "title": "Type"
+        },
+        "callId": {
+          "type": "number"
+        },
+        "statusText": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "callId",
+        "statusText"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/channel/startToolUseSession/toClientPacketToolCallWarn": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "toolCallWarn",
+          "default": "toolCallWarn",
+          "title": "Type"
+        },
+        "callId": {
+          "type": "number"
+        },
+        "warnText": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "callId",
+        "warnText"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/channel/startToolUseSession/toServerPacketCallTool": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "callTool",
+          "default": "callTool",
+          "title": "Type"
+        },
+        "callId": {
+          "type": "number"
+        },
+        "name": {
+          "type": "string"
+        },
+        "arguments": {
+          "$ref": "#/definitions/jsonSerializable"
+        }
+      },
+      "required": [
+        "type",
+        "callId",
+        "name",
+        "arguments"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/channel/startToolUseSession/toServerPacketAbortToolCall": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "abortToolCall",
+          "default": "abortToolCall",
+          "title": "Type"
+        },
+        "callId": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "type",
+        "callId"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/channel/startToolUseSession/toServerPacketDiscardSession": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "discardSession",
+          "default": "discardSession",
+          "title": "Type"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/channel/generateWithGenerator/toClientPacketFragment": {
       "type": "object",
       "properties": {
         "type": {
@@ -9140,7 +9558,7 @@
       ],
       "additionalProperties": false
     },
-    "llm/channel/generateWithGenerator/toClientPacketPromptProcessingProgress": {
+    "plugins/channel/generateWithGenerator/toClientPacketPromptProcessingProgress": {
       "type": "object",
       "properties": {
         "type": {
@@ -9159,7 +9577,7 @@
       ],
       "additionalProperties": false
     },
-    "llm/channel/generateWithGenerator/toClientPacketToolCallGenerationStart": {
+    "plugins/channel/generateWithGenerator/toClientPacketToolCallGenerationStart": {
       "type": "object",
       "properties": {
         "type": {
@@ -9167,6 +9585,9 @@
           "const": "toolCallGenerationStart",
           "default": "toolCallGenerationStart",
           "title": "Type"
+        },
+        "toolCallId": {
+          "type": "string"
         }
       },
       "required": [
@@ -9174,7 +9595,7 @@
       ],
       "additionalProperties": false
     },
-    "llm/channel/generateWithGenerator/toClientPacketToolCallGenerationNameReceived": {
+    "plugins/channel/generateWithGenerator/toClientPacketToolCallGenerationNameReceived": {
       "type": "object",
       "properties": {
         "type": {
@@ -9193,7 +9614,7 @@
       ],
       "additionalProperties": false
     },
-    "llm/channel/generateWithGenerator/toClientPacketToolCallGenerationArgumentFragmentGenerated": {
+    "plugins/channel/generateWithGenerator/toClientPacketToolCallGenerationArgumentFragmentGenerated": {
       "type": "object",
       "properties": {
         "type": {
@@ -9212,7 +9633,7 @@
       ],
       "additionalProperties": false
     },
-    "llm/channel/generateWithGenerator/toClientPacketToolCallGenerationEnd": {
+    "plugins/channel/generateWithGenerator/toClientPacketToolCallGenerationEnd": {
       "type": "object",
       "properties": {
         "type": {
@@ -9231,7 +9652,7 @@
       ],
       "additionalProperties": false
     },
-    "llm/channel/generateWithGenerator/toClientPacketToolCallGenerationFailed": {
+    "plugins/channel/generateWithGenerator/toClientPacketToolCallGenerationFailed": {
       "type": "object",
       "properties": {
         "type": {
@@ -9246,7 +9667,7 @@
       ],
       "additionalProperties": false
     },
-    "llm/channel/generateWithGenerator/toClientPacketSuccess": {
+    "plugins/channel/generateWithGenerator/toClientPacketSuccess": {
       "type": "object",
       "properties": {
         "type": {
@@ -9261,7 +9682,7 @@
       ],
       "additionalProperties": false
     },
-    "llm/channel/generateWithGenerator/toServerPacketCancel": {
+    "plugins/channel/generateWithGenerator/toServerPacketCancel": {
       "type": "object",
       "properties": {
         "type": {
@@ -9344,6 +9765,12 @@
             "null"
           ]
         },
+        "enabledPluginInfos": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/remotePluginInfo"
+          }
+        },
         "pci": {
           "type": "string"
         },
@@ -9359,6 +9786,7 @@
         "pluginConfig",
         "globalPluginConfig",
         "workingDirectoryPath",
+        "enabledPluginInfos",
         "pci",
         "token"
       ],
@@ -9475,6 +9903,12 @@
             "null"
           ]
         },
+        "enabledPluginInfos": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/remotePluginInfo"
+          }
+        },
         "pci": {
           "type": "string"
         },
@@ -9489,6 +9923,7 @@
         "pluginConfig",
         "globalPluginConfig",
         "workingDirectoryPath",
+        "enabledPluginInfos",
         "pci",
         "token"
       ],
@@ -10000,6 +10435,9 @@
           "title": "Type"
         },
         "taskId": {
+          "type": "string"
+        },
+        "toolCallId": {
           "type": "string"
         }
       },

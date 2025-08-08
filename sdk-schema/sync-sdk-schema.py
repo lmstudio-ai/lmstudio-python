@@ -224,7 +224,8 @@ class _SchemaProcessor:
         discriminator_map: dict[str, str] = {}
         tag_title = discriminator.capitalize()
         for idx, (spec_ref, resolved_spec) in enumerate(zip(spec_refs, resolved_specs)):
-            tag_spec = resolved_spec["properties"][discriminator]
+            field_defs = resolved_spec["properties"]
+            tag_spec = field_defs[discriminator]
             tag_value = tag_spec["const"]
             if spec_ref is None:
                 # Convert anonymous union member to a named subschema
@@ -233,6 +234,10 @@ class _SchemaProcessor:
                 new_defs[new_spec_name] = resolved_spec
                 union_member_specs[idx] = {"$ref": spec_ref}
                 print(f"  Extracted union member variant {new_spec_name}")
+                if field_defs.pop("$defs", None) is not None:
+                    print(
+                        "    Dropped non-identifier '$defs' field from union member variant"
+                    )
             else:
                 existing_spec_name = spec_ref.removeprefix("#/definitions/")
                 print(f"  Using existing union member variant {existing_spec_name}")
@@ -298,6 +303,8 @@ class _SchemaProcessor:
             case {"type": "object", "properties": {} as field_defs}:
                 # Object with defined properties, recurse into the field definitions
                 extracted_defs: _SchemaDef = {}
+                if field_defs.pop("$defs", None) is not None:
+                    print("Dropped non-identifier '$defs' field from object definition")
                 for field_name, field_spec in field_defs.items():
                     field_spec_name = _make_spec_name(name, field_name)
                     _merge_defs(
