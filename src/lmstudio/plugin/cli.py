@@ -50,7 +50,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         try:
             runner.run_plugin(plugin_path, allow_local_imports=True)
         except KeyboardInterrupt:
-            print("Plugin execution terminated with Ctrl-C")
+            print("Plugin execution terminated by user", flush=True)
     else:
         # Retrieve args from API host, spawn plugin in subprocess
         try:

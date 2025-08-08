@@ -1,6 +1,7 @@
 """Plugin dev client implementation."""
 
 import asyncio
+import io
 import os
 import subprocess
 import sys
@@ -159,8 +160,17 @@ def _run_plugin_in_child_process(
     package_name = __spec__.parent
     assert package_name is not None
     debug_option = ("--debug",) if debug else ()
+    # If stdout is unbuffered, specify the same in the child process
+    stdout = sys.__stdout__
+    unbuffered_arg: tuple[str, ...]
+    if stdout is None or not isinstance(stdout.buffer, io.BufferedWriter):
+        unbuffered_arg = ("-u",)
+    else:
+        unbuffered_arg = ()
+
     command: list[str] = [
         sys.executable,
+        *unbuffered_arg,
         "-m",
         package_name,
         *debug_option,
