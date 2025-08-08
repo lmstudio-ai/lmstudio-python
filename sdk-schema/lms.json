@@ -136,6 +136,10 @@
         }
       ]
     },
+    "artifactIdentifier": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*\\/[a-z0-9]+(?:[-.][a-z0-9]+)*$"
+    },
     "artifactManifestBase": {
       "type": "object",
       "properties": {
@@ -2296,6 +2300,12 @@
             },
             "additionalProperties": {
               "type": "boolean"
+            },
+            "$defs": {
+              "type": "object",
+              "additionalProperties": {
+                "$ref": "#/definitions/jsonSerializable"
+              }
             }
           },
           "required": [
@@ -3394,6 +3404,44 @@
         }
       ]
     },
+    "tokenSourceIdentifier": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "model"
+            },
+            "identifier": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "identifier"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "generator"
+            },
+            "pluginIdentifier": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "pluginIdentifier"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
     "modelCompatibilityType": {
       "type": "string",
       "enum": [
@@ -3633,6 +3681,51 @@
       "type": "string",
       "pattern": "^[\\p{L}\\p{N}!@#$%^&()\\-_+=,.;'[\\]{}~`][\\p{L}\\p{N}!@#$%^&()\\-_+=,.;'[\\]{}~` ]*(?<![. ])(?:\\/[\\p{L}\\p{N}!@#$%^&()\\-_+=,.;'[\\]{}~`][\\p{L}\\p{N}!@#$%^&()\\-_+=,.;'[\\]{}~` ]*(?<![. ]))*$"
     },
+    "pluginConfigSpecifier": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "direct"
+            },
+            "config": {
+              "$ref": "#/definitions/kvConfig"
+            },
+            "workingDirectoryPath": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "config"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "predictionProcess"
+            },
+            "pci": {
+              "type": "string"
+            },
+            "token": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "pci",
+            "token"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
     "pluginManifest": {
       "type": "object",
       "properties": {
@@ -3709,6 +3802,42 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 1024
+    },
+    "remotePluginInfo": {
+      "type": "object",
+      "properties": {
+        "identifier": {
+          "type": "string"
+        },
+        "isDev": {
+          "type": "boolean"
+        },
+        "isTrusted": {
+          "type": "boolean"
+        },
+        "hasPromptPreprocessor": {
+          "type": "boolean"
+        },
+        "hasPredictionLoopHandler": {
+          "type": "boolean"
+        },
+        "hasToolsProvider": {
+          "type": "boolean"
+        },
+        "hasGenerator": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "identifier",
+        "isDev",
+        "isTrusted",
+        "hasPromptPreprocessor",
+        "hasPredictionLoopHandler",
+        "hasToolsProvider",
+        "hasGenerator"
+      ],
+      "additionalProperties": false
     },
     "artifactDownloadPlanModelInfo": {
       "type": "object",
@@ -6434,6 +6563,9 @@
             "type": {
               "type": "string",
               "const": "toolCallGenerationStart"
+            },
+            "toolCallId": {
+              "type": "string"
             }
           },
           "required": [
@@ -6583,205 +6715,6 @@
       ],
       "additionalProperties": false
     },
-    "llm/channel/generateWithGenerator/creationParameter": {
-      "type": "object",
-      "properties": {
-        "pluginIdentifier": {
-          "type": "string"
-        },
-        "pluginConfigStack": {
-          "$ref": "#/definitions/kvConfigStack"
-        },
-        "tools": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/llmTool"
-          }
-        },
-        "workingDirectoryPath": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "history": {
-          "$ref": "#/definitions/chatHistoryData"
-        }
-      },
-      "required": [
-        "pluginIdentifier",
-        "pluginConfigStack",
-        "tools",
-        "workingDirectoryPath",
-        "history"
-      ],
-      "additionalProperties": false
-    },
-    "llm/channel/generateWithGenerator/toClientPacket": {
-      "anyOf": [
-        {
-          "type": "object",
-          "properties": {
-            "type": {
-              "type": "string",
-              "const": "fragment"
-            },
-            "fragment": {
-              "$ref": "#/definitions/llmPredictionFragment"
-            }
-          },
-          "required": [
-            "type",
-            "fragment"
-          ],
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "properties": {
-            "type": {
-              "type": "string",
-              "const": "promptProcessingProgress"
-            },
-            "progress": {
-              "type": "number"
-            }
-          },
-          "required": [
-            "type",
-            "progress"
-          ],
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "properties": {
-            "type": {
-              "type": "string",
-              "const": "toolCallGenerationStart"
-            }
-          },
-          "required": [
-            "type"
-          ],
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "properties": {
-            "type": {
-              "type": "string",
-              "const": "toolCallGenerationNameReceived"
-            },
-            "name": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "type",
-            "name"
-          ],
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "properties": {
-            "type": {
-              "type": "string",
-              "const": "toolCallGenerationArgumentFragmentGenerated"
-            },
-            "content": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "type",
-            "content"
-          ],
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "properties": {
-            "type": {
-              "type": "string",
-              "const": "toolCallGenerationEnd"
-            },
-            "toolCallRequest": {
-              "$ref": "#/definitions/toolCallRequest"
-            }
-          },
-          "required": [
-            "type",
-            "toolCallRequest"
-          ],
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "properties": {
-            "type": {
-              "type": "string",
-              "const": "toolCallGenerationFailed"
-            }
-          },
-          "required": [
-            "type"
-          ],
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "properties": {
-            "type": {
-              "type": "string",
-              "const": "success"
-            }
-          },
-          "required": [
-            "type"
-          ],
-          "additionalProperties": false
-        }
-      ]
-    },
-    "llm/channel/generateWithGenerator/toServerPacket": {
-      "anyOf": [
-        {
-          "type": "object",
-          "properties": {
-            "type": {
-              "type": "string",
-              "const": "cancel"
-            }
-          },
-          "required": [
-            "type"
-          ],
-          "additionalProperties": false
-        }
-      ]
-    },
-    "pseudo/llm/channel/generateWithGenerator": {
-      "type": "object",
-      "properties": {
-        "creationParameter": {
-          "$ref": "#/definitions/llm/channel/generateWithGenerator/creationParameter"
-        },
-        "toClientPacket": {
-          "$ref": "#/definitions/llm/channel/generateWithGenerator/toClientPacket"
-        },
-        "toServerPacket": {
-          "$ref": "#/definitions/llm/channel/generateWithGenerator/toServerPacket"
-        }
-      },
-      "required": [
-        "creationParameter",
-        "toClientPacket",
-        "toServerPacket"
-      ],
-      "additionalProperties": false
-    },
     "pseudo/llm": {
       "type": "object",
       "properties": {
@@ -6817,9 +6750,6 @@
         },
         "channelPredict": {
           "$ref": "#/definitions/pseudo/llm/channel/predict"
-        },
-        "channelGenerateWithGenerator": {
-          "$ref": "#/definitions/pseudo/llm/channel/generateWithGenerator"
         }
       },
       "required": [
@@ -6833,8 +6763,7 @@
         "rpcPreloadDraftModel",
         "channelLoadModel",
         "channelGetOrLoad",
-        "channelPredict",
-        "channelGenerateWithGenerator"
+        "channelPredict"
       ],
       "additionalProperties": false
     },
@@ -6973,7 +6902,7 @@
       ],
       "additionalProperties": false
     },
-    "plugins/rpc/processingGetOrLoadModel/parameter": {
+    "plugins/rpc/processingGetOrLoadTokenSource/parameter": {
       "type": "object",
       "properties": {
         "pci": {
@@ -6989,26 +6918,26 @@
       ],
       "additionalProperties": false
     },
-    "plugins/rpc/processingGetOrLoadModel/returns": {
+    "plugins/rpc/processingGetOrLoadTokenSource/returns": {
       "type": "object",
       "properties": {
-        "identifier": {
-          "type": "string"
+        "tokenSourceIdentifier": {
+          "$ref": "#/definitions/tokenSourceIdentifier"
         }
       },
       "required": [
-        "identifier"
+        "tokenSourceIdentifier"
       ],
       "additionalProperties": false
     },
-    "pseudo/plugins/rpc/processingGetOrLoadModel": {
+    "pseudo/plugins/rpc/processingGetOrLoadTokenSource": {
       "type": "object",
       "properties": {
         "parameter": {
-          "$ref": "#/definitions/plugins/rpc/processingGetOrLoadModel/parameter"
+          "$ref": "#/definitions/plugins/rpc/processingGetOrLoadTokenSource/parameter"
         },
         "returns": {
-          "$ref": "#/definitions/plugins/rpc/processingGetOrLoadModel/returns"
+          "$ref": "#/definitions/plugins/rpc/processingGetOrLoadTokenSource/returns"
         }
       },
       "required": [
@@ -7209,6 +7138,404 @@
       "properties": {},
       "additionalProperties": false
     },
+    "plugins/channel/startToolUseSession/creationParameter": {
+      "type": "object",
+      "properties": {
+        "pluginIdentifier": {
+          "type": "string"
+        },
+        "pluginConfigSpecifier": {
+          "$ref": "#/definitions/pluginConfigSpecifier"
+        }
+      },
+      "required": [
+        "pluginIdentifier",
+        "pluginConfigSpecifier"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/channel/startToolUseSession/toClientPacket": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "sessionReady"
+            },
+            "toolDefinitions": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/llmTool"
+              }
+            }
+          },
+          "required": [
+            "type",
+            "toolDefinitions"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "toolCallComplete"
+            },
+            "callId": {
+              "type": "number"
+            },
+            "result": {
+              "$ref": "#/definitions/jsonSerializable"
+            }
+          },
+          "required": [
+            "type",
+            "callId",
+            "result"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "toolCallError"
+            },
+            "callId": {
+              "type": "number"
+            },
+            "error": {
+              "$ref": "#/definitions/serializedLMSExtendedError"
+            }
+          },
+          "required": [
+            "type",
+            "callId",
+            "error"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "toolCallStatus"
+            },
+            "callId": {
+              "type": "number"
+            },
+            "statusText": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "callId",
+            "statusText"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "toolCallWarn"
+            },
+            "callId": {
+              "type": "number"
+            },
+            "warnText": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "callId",
+            "warnText"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "plugins/channel/startToolUseSession/toServerPacket": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "callTool"
+            },
+            "callId": {
+              "type": "number"
+            },
+            "name": {
+              "type": "string"
+            },
+            "arguments": {
+              "$ref": "#/definitions/jsonSerializable"
+            }
+          },
+          "required": [
+            "type",
+            "callId",
+            "name",
+            "arguments"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "abortToolCall"
+            },
+            "callId": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "type",
+            "callId"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "discardSession"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "pseudo/plugins/channel/startToolUseSession": {
+      "type": "object",
+      "properties": {
+        "creationParameter": {
+          "$ref": "#/definitions/plugins/channel/startToolUseSession/creationParameter"
+        },
+        "toClientPacket": {
+          "$ref": "#/definitions/plugins/channel/startToolUseSession/toClientPacket"
+        },
+        "toServerPacket": {
+          "$ref": "#/definitions/plugins/channel/startToolUseSession/toServerPacket"
+        }
+      },
+      "required": [
+        "creationParameter",
+        "toClientPacket",
+        "toServerPacket"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/channel/generateWithGenerator/creationParameter": {
+      "type": "object",
+      "properties": {
+        "pluginIdentifier": {
+          "type": "string"
+        },
+        "pluginConfigSpecifier": {
+          "$ref": "#/definitions/pluginConfigSpecifier"
+        },
+        "tools": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/llmTool"
+          }
+        },
+        "history": {
+          "$ref": "#/definitions/plugins/rpc/processingPullHistory/returns"
+        }
+      },
+      "required": [
+        "pluginIdentifier",
+        "pluginConfigSpecifier",
+        "tools",
+        "history"
+      ],
+      "additionalProperties": false
+    },
+    "plugins/channel/generateWithGenerator/toClientPacket": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "fragment"
+            },
+            "fragment": {
+              "$ref": "#/definitions/llmPredictionFragment"
+            }
+          },
+          "required": [
+            "type",
+            "fragment"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "promptProcessingProgress"
+            },
+            "progress": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "type",
+            "progress"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "toolCallGenerationStart"
+            },
+            "toolCallId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "toolCallGenerationNameReceived"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "name"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "toolCallGenerationArgumentFragmentGenerated"
+            },
+            "content": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "content"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "toolCallGenerationEnd"
+            },
+            "toolCallRequest": {
+              "$ref": "#/definitions/toolCallRequest"
+            }
+          },
+          "required": [
+            "type",
+            "toolCallRequest"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "toolCallGenerationFailed"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "success"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "plugins/channel/generateWithGenerator/toServerPacket": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "cancel"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "pseudo/plugins/channel/generateWithGenerator": {
+      "type": "object",
+      "properties": {
+        "creationParameter": {
+          "$ref": "#/definitions/plugins/channel/generateWithGenerator/creationParameter"
+        },
+        "toClientPacket": {
+          "$ref": "#/definitions/plugins/channel/generateWithGenerator/toClientPacket"
+        },
+        "toServerPacket": {
+          "$ref": "#/definitions/plugins/channel/generateWithGenerator/toServerPacket"
+        }
+      },
+      "required": [
+        "creationParameter",
+        "toClientPacket",
+        "toServerPacket"
+      ],
+      "additionalProperties": false
+    },
     "plugins/channel/registerDevelopmentPlugin/creationParameter": {
       "type": "object",
       "properties": {
@@ -7313,6 +7640,12 @@
                 "null"
               ]
             },
+            "enabledPluginInfos": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/remotePluginInfo"
+              }
+            },
             "pci": {
               "type": "string"
             },
@@ -7328,6 +7661,7 @@
             "pluginConfig",
             "globalPluginConfig",
             "workingDirectoryPath",
+            "enabledPluginInfos",
             "pci",
             "token"
           ],
@@ -7458,6 +7792,12 @@
                 "null"
               ]
             },
+            "enabledPluginInfos": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/remotePluginInfo"
+              }
+            },
             "pci": {
               "type": "string"
             },
@@ -7472,6 +7812,7 @@
             "pluginConfig",
             "globalPluginConfig",
             "workingDirectoryPath",
+            "enabledPluginInfos",
             "pci",
             "token"
           ],
@@ -7994,6 +8335,9 @@
             },
             "taskId": {
               "type": "string"
+            },
+            "toolCallId": {
+              "type": "string"
             }
           },
           "required": [
@@ -8119,8 +8463,8 @@
         "rpcProcessingPullHistory": {
           "$ref": "#/definitions/pseudo/plugins/rpc/processingPullHistory"
         },
-        "rpcProcessingGetOrLoadModel": {
-          "$ref": "#/definitions/pseudo/plugins/rpc/processingGetOrLoadModel"
+        "rpcProcessingGetOrLoadTokenSource": {
+          "$ref": "#/definitions/pseudo/plugins/rpc/processingGetOrLoadTokenSource"
         },
         "rpcProcessingHasStatus": {
           "$ref": "#/definitions/pseudo/plugins/rpc/processingHasStatus"
@@ -8143,6 +8487,12 @@
         "rpcPluginInitCompleted": {
           "$ref": "#/definitions/pseudo/plugins/rpc/pluginInitCompleted"
         },
+        "channelStartToolUseSession": {
+          "$ref": "#/definitions/pseudo/plugins/channel/startToolUseSession"
+        },
+        "channelGenerateWithGenerator": {
+          "$ref": "#/definitions/pseudo/plugins/channel/generateWithGenerator"
+        },
         "channelRegisterDevelopmentPlugin": {
           "$ref": "#/definitions/pseudo/plugins/channel/registerDevelopmentPlugin"
         },
@@ -8164,7 +8514,7 @@
         "rpcProcessingHandleUpdate",
         "rpcProcessingHandleRequest",
         "rpcProcessingPullHistory",
-        "rpcProcessingGetOrLoadModel",
+        "rpcProcessingGetOrLoadTokenSource",
         "rpcProcessingHasStatus",
         "rpcProcessingNeedsNaming",
         "rpcProcessingSuggestName",
@@ -8172,6 +8522,8 @@
         "rpcSetConfigSchematics",
         "rpcSetGlobalConfigSchematics",
         "rpcPluginInitCompleted",
+        "channelStartToolUseSession",
+        "channelGenerateWithGenerator",
         "channelRegisterDevelopmentPlugin",
         "channelSetPromptPreprocessor",
         "channelSetPredictionLoopHandler",

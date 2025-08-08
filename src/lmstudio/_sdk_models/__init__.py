@@ -9,6 +9,9 @@ AllowableEnvVarKeys = Literal["HSA_OVERRIDE_GFX_VERSION"]
 AllowableEnvVars = Mapping[str, str] | None
 ArtifactType = Literal["plugin", "preset", "model"]
 ArtifactDependencyPurpose = Literal["baseModel", "draftModel", "custom"]
+ArtifactIdentifier = Annotated[
+    str, Meta(pattern="^[a-z0-9]+(?:-[a-z0-9]+)*\\/[a-z0-9]+(?:[-.][a-z0-9]+)*$")
+]
 ModelKey = Annotated[str, Meta(min_length=1)]
 
 __all__ = [
@@ -216,26 +219,6 @@ __all__ = [
     "LlmAdditionalInfoDict",
     "LlmApplyPromptTemplateOpts",
     "LlmApplyPromptTemplateOptsDict",
-    "LlmChannelGenerateWithGeneratorCreationParameter",
-    "LlmChannelGenerateWithGeneratorCreationParameterDict",
-    "LlmChannelGenerateWithGeneratorToClientPacketFragment",
-    "LlmChannelGenerateWithGeneratorToClientPacketFragmentDict",
-    "LlmChannelGenerateWithGeneratorToClientPacketPromptProcessingProgress",
-    "LlmChannelGenerateWithGeneratorToClientPacketPromptProcessingProgressDict",
-    "LlmChannelGenerateWithGeneratorToClientPacketSuccess",
-    "LlmChannelGenerateWithGeneratorToClientPacketSuccessDict",
-    "LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationArgumentFragmentGenerated",
-    "LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationArgumentFragmentGeneratedDict",
-    "LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationEnd",
-    "LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationEndDict",
-    "LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationFailed",
-    "LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationFailedDict",
-    "LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationNameReceived",
-    "LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationNameReceivedDict",
-    "LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationStart",
-    "LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationStartDict",
-    "LlmChannelGenerateWithGeneratorToServerPacketCancel",
-    "LlmChannelGenerateWithGeneratorToServerPacketCancelDict",
     "LlmChannelGetOrLoadCreationParameter",
     "LlmChannelGetOrLoadCreationParameterDict",
     "LlmChannelGetOrLoadToClientPacketAlreadyLoaded",
@@ -378,6 +361,10 @@ __all__ = [
     "ParsedFileIdentifierBase64Dict",
     "ParsedFileIdentifierLocal",
     "ParsedFileIdentifierLocalDict",
+    "PluginConfigSpecifierDirect",
+    "PluginConfigSpecifierDirectDict",
+    "PluginConfigSpecifierPredictionProcess",
+    "PluginConfigSpecifierPredictionProcessDict",
     "PluginManifest",
     "PluginManifestDict",
     "PluginToolCallComplete",
@@ -388,6 +375,26 @@ __all__ = [
     "PluginToolCallStatusDict",
     "PluginToolCallWarn",
     "PluginToolCallWarnDict",
+    "PluginsChannelGenerateWithGeneratorCreationParameter",
+    "PluginsChannelGenerateWithGeneratorCreationParameterDict",
+    "PluginsChannelGenerateWithGeneratorToClientPacketFragment",
+    "PluginsChannelGenerateWithGeneratorToClientPacketFragmentDict",
+    "PluginsChannelGenerateWithGeneratorToClientPacketPromptProcessingProgress",
+    "PluginsChannelGenerateWithGeneratorToClientPacketPromptProcessingProgressDict",
+    "PluginsChannelGenerateWithGeneratorToClientPacketSuccess",
+    "PluginsChannelGenerateWithGeneratorToClientPacketSuccessDict",
+    "PluginsChannelGenerateWithGeneratorToClientPacketToolCallGenerationArgumentFragmentGenerated",
+    "PluginsChannelGenerateWithGeneratorToClientPacketToolCallGenerationArgumentFragmentGeneratedDict",
+    "PluginsChannelGenerateWithGeneratorToClientPacketToolCallGenerationEnd",
+    "PluginsChannelGenerateWithGeneratorToClientPacketToolCallGenerationEndDict",
+    "PluginsChannelGenerateWithGeneratorToClientPacketToolCallGenerationFailed",
+    "PluginsChannelGenerateWithGeneratorToClientPacketToolCallGenerationFailedDict",
+    "PluginsChannelGenerateWithGeneratorToClientPacketToolCallGenerationNameReceived",
+    "PluginsChannelGenerateWithGeneratorToClientPacketToolCallGenerationNameReceivedDict",
+    "PluginsChannelGenerateWithGeneratorToClientPacketToolCallGenerationStart",
+    "PluginsChannelGenerateWithGeneratorToClientPacketToolCallGenerationStartDict",
+    "PluginsChannelGenerateWithGeneratorToServerPacketCancel",
+    "PluginsChannelGenerateWithGeneratorToServerPacketCancelDict",
     "PluginsChannelRegisterDevelopmentPluginCreationParameter",
     "PluginsChannelRegisterDevelopmentPluginCreationParameterDict",
     "PluginsChannelRegisterDevelopmentPluginToClientPacketReady",
@@ -430,10 +437,28 @@ __all__ = [
     "PluginsChannelSetPromptPreprocessorToClientPacketAbortDict",
     "PluginsChannelSetToolsProviderToClientPacketDiscardSession",
     "PluginsChannelSetToolsProviderToClientPacketDiscardSessionDict",
-    "PluginsRpcProcessingGetOrLoadModelParameter",
-    "PluginsRpcProcessingGetOrLoadModelParameterDict",
-    "PluginsRpcProcessingGetOrLoadModelReturns",
-    "PluginsRpcProcessingGetOrLoadModelReturnsDict",
+    "PluginsChannelStartToolUseSessionCreationParameter",
+    "PluginsChannelStartToolUseSessionCreationParameterDict",
+    "PluginsChannelStartToolUseSessionToClientPacketSessionReady",
+    "PluginsChannelStartToolUseSessionToClientPacketSessionReadyDict",
+    "PluginsChannelStartToolUseSessionToClientPacketToolCallComplete",
+    "PluginsChannelStartToolUseSessionToClientPacketToolCallCompleteDict",
+    "PluginsChannelStartToolUseSessionToClientPacketToolCallError",
+    "PluginsChannelStartToolUseSessionToClientPacketToolCallErrorDict",
+    "PluginsChannelStartToolUseSessionToClientPacketToolCallStatus",
+    "PluginsChannelStartToolUseSessionToClientPacketToolCallStatusDict",
+    "PluginsChannelStartToolUseSessionToClientPacketToolCallWarn",
+    "PluginsChannelStartToolUseSessionToClientPacketToolCallWarnDict",
+    "PluginsChannelStartToolUseSessionToServerPacketAbortToolCall",
+    "PluginsChannelStartToolUseSessionToServerPacketAbortToolCallDict",
+    "PluginsChannelStartToolUseSessionToServerPacketCallTool",
+    "PluginsChannelStartToolUseSessionToServerPacketCallToolDict",
+    "PluginsChannelStartToolUseSessionToServerPacketDiscardSession",
+    "PluginsChannelStartToolUseSessionToServerPacketDiscardSessionDict",
+    "PluginsRpcProcessingGetOrLoadTokenSourceParameter",
+    "PluginsRpcProcessingGetOrLoadTokenSourceParameterDict",
+    "PluginsRpcProcessingGetOrLoadTokenSourceReturns",
+    "PluginsRpcProcessingGetOrLoadTokenSourceReturnsDict",
     "PluginsRpcProcessingHandleRequestParameter",
     "PluginsRpcProcessingHandleRequestParameterDict",
     "PluginsRpcProcessingHandleRequestReturns",
@@ -565,8 +590,6 @@ __all__ = [
     "PseudoFilesRpcUploadFileBase64",
     "PseudoFilesRpcUploadFileBase64Dict",
     "PseudoLlm",
-    "PseudoLlmChannelGenerateWithGenerator",
-    "PseudoLlmChannelGenerateWithGeneratorDict",
     "PseudoLlmChannelGetOrLoad",
     "PseudoLlmChannelGetOrLoadDict",
     "PseudoLlmChannelLoadModel",
@@ -591,6 +614,8 @@ __all__ = [
     "PseudoLlmRpcUnloadModel",
     "PseudoLlmRpcUnloadModelDict",
     "PseudoPlugins",
+    "PseudoPluginsChannelGenerateWithGenerator",
+    "PseudoPluginsChannelGenerateWithGeneratorDict",
     "PseudoPluginsChannelRegisterDevelopmentPlugin",
     "PseudoPluginsChannelRegisterDevelopmentPluginDict",
     "PseudoPluginsChannelSetGenerator",
@@ -601,10 +626,12 @@ __all__ = [
     "PseudoPluginsChannelSetPromptPreprocessorDict",
     "PseudoPluginsChannelSetToolsProvider",
     "PseudoPluginsChannelSetToolsProviderDict",
+    "PseudoPluginsChannelStartToolUseSession",
+    "PseudoPluginsChannelStartToolUseSessionDict",
     "PseudoPluginsDict",
     "PseudoPluginsRpcPluginInitCompleted",
-    "PseudoPluginsRpcProcessingGetOrLoadModel",
-    "PseudoPluginsRpcProcessingGetOrLoadModelDict",
+    "PseudoPluginsRpcProcessingGetOrLoadTokenSource",
+    "PseudoPluginsRpcProcessingGetOrLoadTokenSourceDict",
     "PseudoPluginsRpcProcessingHandleRequest",
     "PseudoPluginsRpcProcessingHandleRequestDict",
     "PseudoPluginsRpcProcessingHandleUpdate",
@@ -659,6 +686,8 @@ __all__ = [
     "PseudoSystemRpcSetExperimentFlagDict",
     "PseudoSystemRpcVersion",
     "PseudoSystemRpcVersionDict",
+    "RemotePluginInfo",
+    "RemotePluginInfoDict",
     "RepositoryChannelCreateArtifactDownloadPlanCreationParameter",
     "RepositoryChannelCreateArtifactDownloadPlanCreationParameterDict",
     "RepositoryChannelCreateArtifactDownloadPlanToClientPacketDownloadProgress",
@@ -745,6 +774,10 @@ __all__ = [
     "SystemRpcVersionReturnsDict",
     "TextData",
     "TextDataDict",
+    "TokenSourceIdentifierGenerator",
+    "TokenSourceIdentifierGeneratorDict",
+    "TokenSourceIdentifierModel",
+    "TokenSourceIdentifierModelDict",
     "ToolCallRequest",
     "ToolCallRequestData",
     "ToolCallRequestDataDict",
@@ -1732,6 +1765,32 @@ PluginRunnerType = Literal["ecmascript", "node", "mcpBridge"]
 ReasonableKeyString = Annotated[str, Meta(max_length=1024, min_length=1)]
 
 
+class RemotePluginInfo(LMStudioStruct["RemotePluginInfoDict"], kw_only=True):
+    identifier: str
+    is_dev: bool = field(name="isDev")
+    is_trusted: bool = field(name="isTrusted")
+    has_prompt_preprocessor: bool = field(name="hasPromptPreprocessor")
+    has_prediction_loop_handler: bool = field(name="hasPredictionLoopHandler")
+    has_tools_provider: bool = field(name="hasToolsProvider")
+    has_generator: bool = field(name="hasGenerator")
+
+
+class RemotePluginInfoDict(TypedDict):
+    """Corresponding typed dictionary definition for RemotePluginInfo.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    identifier: str
+    isDev: bool
+    isTrusted: bool
+    hasPromptPreprocessor: bool
+    hasPredictionLoopHandler: bool
+    hasToolsProvider: bool
+    hasGenerator: bool
+
+
 class ArtifactDownloadPlanModelInfo(
     LMStudioStruct["ArtifactDownloadPlanModelInfoDict"], kw_only=True
 ):
@@ -2631,15 +2690,16 @@ class PluginsRpcProcessingPullHistoryParameterDict(TypedDict):
     includeCurrent: bool
 
 
-class PluginsRpcProcessingGetOrLoadModelParameter(
-    LMStudioStruct["PluginsRpcProcessingGetOrLoadModelParameterDict"], kw_only=True
+class PluginsRpcProcessingGetOrLoadTokenSourceParameter(
+    LMStudioStruct["PluginsRpcProcessingGetOrLoadTokenSourceParameterDict"],
+    kw_only=True,
 ):
     pci: str
     token: str
 
 
-class PluginsRpcProcessingGetOrLoadModelParameterDict(TypedDict):
-    """Corresponding typed dictionary definition for PluginsRpcProcessingGetOrLoadModelParameter.
+class PluginsRpcProcessingGetOrLoadTokenSourceParameterDict(TypedDict):
+    """Corresponding typed dictionary definition for PluginsRpcProcessingGetOrLoadTokenSourceParameter.
 
     NOTE: Multi-word keys are defined using their camelCase form,
     as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
@@ -2647,40 +2707,6 @@ class PluginsRpcProcessingGetOrLoadModelParameterDict(TypedDict):
 
     pci: str
     token: str
-
-
-class PluginsRpcProcessingGetOrLoadModelReturns(
-    LMStudioStruct["PluginsRpcProcessingGetOrLoadModelReturnsDict"], kw_only=True
-):
-    identifier: str
-
-
-class PluginsRpcProcessingGetOrLoadModelReturnsDict(TypedDict):
-    """Corresponding typed dictionary definition for PluginsRpcProcessingGetOrLoadModelReturns.
-
-    NOTE: Multi-word keys are defined using their camelCase form,
-    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
-    """
-
-    identifier: str
-
-
-class PseudoPluginsRpcProcessingGetOrLoadModel(
-    LMStudioStruct["PseudoPluginsRpcProcessingGetOrLoadModelDict"], kw_only=True
-):
-    parameter: PluginsRpcProcessingGetOrLoadModelParameter
-    returns: PluginsRpcProcessingGetOrLoadModelReturns
-
-
-class PseudoPluginsRpcProcessingGetOrLoadModelDict(TypedDict):
-    """Corresponding typed dictionary definition for PseudoPluginsRpcProcessingGetOrLoadModel.
-
-    NOTE: Multi-word keys are defined using their camelCase form,
-    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
-    """
-
-    parameter: PluginsRpcProcessingGetOrLoadModelParameterDict
-    returns: PluginsRpcProcessingGetOrLoadModelReturnsDict
 
 
 class PluginsRpcProcessingHasStatusParameter(
@@ -3996,6 +4022,48 @@ class ToolStatusStepStateStatusToolCallSucceededDict(TypedDict):
     timeMs: int
 
 
+class TokenSourceIdentifierModel(
+    LMStudioStruct["TokenSourceIdentifierModelDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="model",
+):
+    type: ClassVar[Annotated[Literal["model"], Meta(title="Type")]] = "model"
+    identifier: str
+
+
+class TokenSourceIdentifierModelDict(TypedDict):
+    """Corresponding typed dictionary definition for TokenSourceIdentifierModel.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["model"]
+    identifier: str
+
+
+class TokenSourceIdentifierGenerator(
+    LMStudioStruct["TokenSourceIdentifierGeneratorDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="generator",
+):
+    type: ClassVar[Annotated[Literal["generator"], Meta(title="Type")]] = "generator"
+    plugin_identifier: str = field(name="pluginIdentifier")
+
+
+class TokenSourceIdentifierGeneratorDict(TypedDict):
+    """Corresponding typed dictionary definition for TokenSourceIdentifierGenerator.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["generator"]
+    pluginIdentifier: str
+
+
 class ModelSpecifierInstanceReference(
     LMStudioStruct["ModelSpecifierInstanceReferenceDict"],
     kw_only=True,
@@ -4017,6 +4085,56 @@ class ModelSpecifierInstanceReferenceDict(TypedDict):
 
     type: Literal["instanceReference"]
     instanceReference: str
+
+
+class PluginConfigSpecifierDirect(
+    LMStudioStruct["PluginConfigSpecifierDirectDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="direct",
+):
+    type: ClassVar[Annotated[Literal["direct"], Meta(title="Type")]] = "direct"
+    config: KvConfig
+    working_directory_path: str | None = field(
+        name="workingDirectoryPath", default=None
+    )
+
+
+class PluginConfigSpecifierDirectDict(TypedDict):
+    """Corresponding typed dictionary definition for PluginConfigSpecifierDirect.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["direct"]
+    config: KvConfigDict
+    workingDirectoryPath: NotRequired[str | None]
+
+
+class PluginConfigSpecifierPredictionProcess(
+    LMStudioStruct["PluginConfigSpecifierPredictionProcessDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="predictionProcess",
+):
+    type: ClassVar[Annotated[Literal["predictionProcess"], Meta(title="Type")]] = (
+        "predictionProcess"
+    )
+    pci: str
+    token: str
+
+
+class PluginConfigSpecifierPredictionProcessDict(TypedDict):
+    """Corresponding typed dictionary definition for PluginConfigSpecifierPredictionProcess.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["predictionProcess"]
+    pci: str
+    token: str
 
 
 class ArtifactDownloadPlanNodeArtifact(
@@ -4707,6 +4825,7 @@ class LlmChannelPredictToClientPacketToolCallGenerationStart(
     type: ClassVar[
         Annotated[Literal["toolCallGenerationStart"], Meta(title="Type")]
     ] = "toolCallGenerationStart"
+    tool_call_id: str | None = field(name="toolCallId", default=None)
 
 
 class LlmChannelPredictToClientPacketToolCallGenerationStartDict(TypedDict):
@@ -4717,6 +4836,7 @@ class LlmChannelPredictToClientPacketToolCallGenerationStartDict(TypedDict):
     """
 
     type: Literal["toolCallGenerationStart"]
+    toolCallId: NotRequired[str | None]
 
 
 class LlmChannelPredictToClientPacketToolCallGenerationNameReceived(
@@ -4812,8 +4932,179 @@ class LlmChannelPredictToServerPacketCancelDict(TypedDict):
     type: Annotated[Literal["cancel"], Meta(title="Type")]
 
 
-class LlmChannelGenerateWithGeneratorToClientPacketFragment(
-    LMStudioStruct["LlmChannelGenerateWithGeneratorToClientPacketFragmentDict"],
+class PluginsChannelStartToolUseSessionToClientPacketToolCallComplete(
+    LMStudioStruct[
+        "PluginsChannelStartToolUseSessionToClientPacketToolCallCompleteDict"
+    ],
+    kw_only=True,
+    tag_field="type",
+    tag="toolCallComplete",
+):
+    type: ClassVar[Annotated[Literal["toolCallComplete"], Meta(title="Type")]] = (
+        "toolCallComplete"
+    )
+    call_id: float = field(name="callId")
+    result: JsonSerializable
+
+
+class PluginsChannelStartToolUseSessionToClientPacketToolCallCompleteDict(TypedDict):
+    """Corresponding typed dictionary definition for PluginsChannelStartToolUseSessionToClientPacketToolCallComplete.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["toolCallComplete"]
+    callId: float
+    result: JsonSerializable
+
+
+class PluginsChannelStartToolUseSessionToClientPacketToolCallError(
+    LMStudioStruct["PluginsChannelStartToolUseSessionToClientPacketToolCallErrorDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="toolCallError",
+):
+    type: ClassVar[Annotated[Literal["toolCallError"], Meta(title="Type")]] = (
+        "toolCallError"
+    )
+    call_id: float = field(name="callId")
+    error: SerializedLMSExtendedError
+
+
+class PluginsChannelStartToolUseSessionToClientPacketToolCallErrorDict(TypedDict):
+    """Corresponding typed dictionary definition for PluginsChannelStartToolUseSessionToClientPacketToolCallError.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["toolCallError"]
+    callId: float
+    error: SerializedLMSExtendedErrorDict
+
+
+class PluginsChannelStartToolUseSessionToClientPacketToolCallStatus(
+    LMStudioStruct["PluginsChannelStartToolUseSessionToClientPacketToolCallStatusDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="toolCallStatus",
+):
+    type: ClassVar[Annotated[Literal["toolCallStatus"], Meta(title="Type")]] = (
+        "toolCallStatus"
+    )
+    call_id: float = field(name="callId")
+    status_text: str = field(name="statusText")
+
+
+class PluginsChannelStartToolUseSessionToClientPacketToolCallStatusDict(TypedDict):
+    """Corresponding typed dictionary definition for PluginsChannelStartToolUseSessionToClientPacketToolCallStatus.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["toolCallStatus"]
+    callId: float
+    statusText: str
+
+
+class PluginsChannelStartToolUseSessionToClientPacketToolCallWarn(
+    LMStudioStruct["PluginsChannelStartToolUseSessionToClientPacketToolCallWarnDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="toolCallWarn",
+):
+    type: ClassVar[Annotated[Literal["toolCallWarn"], Meta(title="Type")]] = (
+        "toolCallWarn"
+    )
+    call_id: float = field(name="callId")
+    warn_text: str = field(name="warnText")
+
+
+class PluginsChannelStartToolUseSessionToClientPacketToolCallWarnDict(TypedDict):
+    """Corresponding typed dictionary definition for PluginsChannelStartToolUseSessionToClientPacketToolCallWarn.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["toolCallWarn"]
+    callId: float
+    warnText: str
+
+
+class PluginsChannelStartToolUseSessionToServerPacketCallTool(
+    LMStudioStruct["PluginsChannelStartToolUseSessionToServerPacketCallToolDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="callTool",
+):
+    type: ClassVar[Annotated[Literal["callTool"], Meta(title="Type")]] = "callTool"
+    call_id: float = field(name="callId")
+    name: str
+    arguments: JsonSerializable
+
+
+class PluginsChannelStartToolUseSessionToServerPacketCallToolDict(TypedDict):
+    """Corresponding typed dictionary definition for PluginsChannelStartToolUseSessionToServerPacketCallTool.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["callTool"]
+    callId: float
+    name: str
+    arguments: JsonSerializable
+
+
+class PluginsChannelStartToolUseSessionToServerPacketAbortToolCall(
+    LMStudioStruct["PluginsChannelStartToolUseSessionToServerPacketAbortToolCallDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="abortToolCall",
+):
+    type: ClassVar[Annotated[Literal["abortToolCall"], Meta(title="Type")]] = (
+        "abortToolCall"
+    )
+    call_id: float = field(name="callId")
+
+
+class PluginsChannelStartToolUseSessionToServerPacketAbortToolCallDict(TypedDict):
+    """Corresponding typed dictionary definition for PluginsChannelStartToolUseSessionToServerPacketAbortToolCall.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["abortToolCall"]
+    callId: float
+
+
+class PluginsChannelStartToolUseSessionToServerPacketDiscardSession(
+    LMStudioStruct["PluginsChannelStartToolUseSessionToServerPacketDiscardSessionDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="discardSession",
+):
+    type: ClassVar[Annotated[Literal["discardSession"], Meta(title="Type")]] = (
+        "discardSession"
+    )
+
+
+class PluginsChannelStartToolUseSessionToServerPacketDiscardSessionDict(TypedDict):
+    """Corresponding typed dictionary definition for PluginsChannelStartToolUseSessionToServerPacketDiscardSession.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["discardSession"]
+
+
+class PluginsChannelGenerateWithGeneratorToClientPacketFragment(
+    LMStudioStruct["PluginsChannelGenerateWithGeneratorToClientPacketFragmentDict"],
     kw_only=True,
     tag_field="type",
     tag="fragment",
@@ -4822,8 +5113,8 @@ class LlmChannelGenerateWithGeneratorToClientPacketFragment(
     fragment: LlmPredictionFragment
 
 
-class LlmChannelGenerateWithGeneratorToClientPacketFragmentDict(TypedDict):
-    """Corresponding typed dictionary definition for LlmChannelGenerateWithGeneratorToClientPacketFragment.
+class PluginsChannelGenerateWithGeneratorToClientPacketFragmentDict(TypedDict):
+    """Corresponding typed dictionary definition for PluginsChannelGenerateWithGeneratorToClientPacketFragment.
 
     NOTE: Multi-word keys are defined using their camelCase form,
     as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
@@ -4833,9 +5124,9 @@ class LlmChannelGenerateWithGeneratorToClientPacketFragmentDict(TypedDict):
     fragment: LlmPredictionFragmentDict
 
 
-class LlmChannelGenerateWithGeneratorToClientPacketPromptProcessingProgress(
+class PluginsChannelGenerateWithGeneratorToClientPacketPromptProcessingProgress(
     LMStudioStruct[
-        "LlmChannelGenerateWithGeneratorToClientPacketPromptProcessingProgressDict"
+        "PluginsChannelGenerateWithGeneratorToClientPacketPromptProcessingProgressDict"
     ],
     kw_only=True,
     tag_field="type",
@@ -4847,10 +5138,10 @@ class LlmChannelGenerateWithGeneratorToClientPacketPromptProcessingProgress(
     progress: float
 
 
-class LlmChannelGenerateWithGeneratorToClientPacketPromptProcessingProgressDict(
+class PluginsChannelGenerateWithGeneratorToClientPacketPromptProcessingProgressDict(
     TypedDict
 ):
-    """Corresponding typed dictionary definition for LlmChannelGenerateWithGeneratorToClientPacketPromptProcessingProgress.
+    """Corresponding typed dictionary definition for PluginsChannelGenerateWithGeneratorToClientPacketPromptProcessingProgress.
 
     NOTE: Multi-word keys are defined using their camelCase form,
     as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
@@ -4860,9 +5151,9 @@ class LlmChannelGenerateWithGeneratorToClientPacketPromptProcessingProgressDict(
     progress: float
 
 
-class LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationStart(
+class PluginsChannelGenerateWithGeneratorToClientPacketToolCallGenerationStart(
     LMStudioStruct[
-        "LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationStartDict"
+        "PluginsChannelGenerateWithGeneratorToClientPacketToolCallGenerationStartDict"
     ],
     kw_only=True,
     tag_field="type",
@@ -4871,23 +5162,25 @@ class LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationStart(
     type: ClassVar[
         Annotated[Literal["toolCallGenerationStart"], Meta(title="Type")]
     ] = "toolCallGenerationStart"
+    tool_call_id: str | None = field(name="toolCallId", default=None)
 
 
-class LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationStartDict(
+class PluginsChannelGenerateWithGeneratorToClientPacketToolCallGenerationStartDict(
     TypedDict
 ):
-    """Corresponding typed dictionary definition for LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationStart.
+    """Corresponding typed dictionary definition for PluginsChannelGenerateWithGeneratorToClientPacketToolCallGenerationStart.
 
     NOTE: Multi-word keys are defined using their camelCase form,
     as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
     """
 
     type: Literal["toolCallGenerationStart"]
+    toolCallId: NotRequired[str | None]
 
 
-class LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationNameReceived(
+class PluginsChannelGenerateWithGeneratorToClientPacketToolCallGenerationNameReceived(
     LMStudioStruct[
-        "LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationNameReceivedDict"
+        "PluginsChannelGenerateWithGeneratorToClientPacketToolCallGenerationNameReceivedDict"
     ],
     kw_only=True,
     tag_field="type",
@@ -4899,10 +5192,10 @@ class LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationNameReceive
     name: str
 
 
-class LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationNameReceivedDict(
+class PluginsChannelGenerateWithGeneratorToClientPacketToolCallGenerationNameReceivedDict(
     TypedDict
 ):
-    """Corresponding typed dictionary definition for LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationNameReceived.
+    """Corresponding typed dictionary definition for PluginsChannelGenerateWithGeneratorToClientPacketToolCallGenerationNameReceived.
 
     NOTE: Multi-word keys are defined using their camelCase form,
     as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
@@ -4912,9 +5205,9 @@ class LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationNameReceive
     name: str
 
 
-class LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationArgumentFragmentGenerated(
+class PluginsChannelGenerateWithGeneratorToClientPacketToolCallGenerationArgumentFragmentGenerated(
     LMStudioStruct[
-        "LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationArgumentFragmentGeneratedDict"
+        "PluginsChannelGenerateWithGeneratorToClientPacketToolCallGenerationArgumentFragmentGeneratedDict"
     ],
     kw_only=True,
     tag_field="type",
@@ -4928,10 +5221,10 @@ class LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationArgumentFra
     content: str
 
 
-class LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationArgumentFragmentGeneratedDict(
+class PluginsChannelGenerateWithGeneratorToClientPacketToolCallGenerationArgumentFragmentGeneratedDict(
     TypedDict
 ):
-    """Corresponding typed dictionary definition for LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationArgumentFragmentGenerated.
+    """Corresponding typed dictionary definition for PluginsChannelGenerateWithGeneratorToClientPacketToolCallGenerationArgumentFragmentGenerated.
 
     NOTE: Multi-word keys are defined using their camelCase form,
     as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
@@ -4941,9 +5234,9 @@ class LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationArgumentFra
     content: str
 
 
-class LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationFailed(
+class PluginsChannelGenerateWithGeneratorToClientPacketToolCallGenerationFailed(
     LMStudioStruct[
-        "LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationFailedDict"
+        "PluginsChannelGenerateWithGeneratorToClientPacketToolCallGenerationFailedDict"
     ],
     kw_only=True,
     tag_field="type",
@@ -4954,10 +5247,10 @@ class LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationFailed(
     ] = "toolCallGenerationFailed"
 
 
-class LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationFailedDict(
+class PluginsChannelGenerateWithGeneratorToClientPacketToolCallGenerationFailedDict(
     TypedDict
 ):
-    """Corresponding typed dictionary definition for LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationFailed.
+    """Corresponding typed dictionary definition for PluginsChannelGenerateWithGeneratorToClientPacketToolCallGenerationFailed.
 
     NOTE: Multi-word keys are defined using their camelCase form,
     as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
@@ -4966,8 +5259,8 @@ class LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationFailedDict(
     type: Literal["toolCallGenerationFailed"]
 
 
-class LlmChannelGenerateWithGeneratorToClientPacketSuccess(
-    LMStudioStruct["LlmChannelGenerateWithGeneratorToClientPacketSuccessDict"],
+class PluginsChannelGenerateWithGeneratorToClientPacketSuccess(
+    LMStudioStruct["PluginsChannelGenerateWithGeneratorToClientPacketSuccessDict"],
     kw_only=True,
     tag_field="type",
     tag="success",
@@ -4975,8 +5268,8 @@ class LlmChannelGenerateWithGeneratorToClientPacketSuccess(
     type: ClassVar[Annotated[Literal["success"], Meta(title="Type")]] = "success"
 
 
-class LlmChannelGenerateWithGeneratorToClientPacketSuccessDict(TypedDict):
-    """Corresponding typed dictionary definition for LlmChannelGenerateWithGeneratorToClientPacketSuccess.
+class PluginsChannelGenerateWithGeneratorToClientPacketSuccessDict(TypedDict):
+    """Corresponding typed dictionary definition for PluginsChannelGenerateWithGeneratorToClientPacketSuccess.
 
     NOTE: Multi-word keys are defined using their camelCase form,
     as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
@@ -4985,15 +5278,15 @@ class LlmChannelGenerateWithGeneratorToClientPacketSuccessDict(TypedDict):
     type: Literal["success"]
 
 
-class LlmChannelGenerateWithGeneratorToServerPacketCancel(
-    LMStudioStruct["LlmChannelGenerateWithGeneratorToServerPacketCancelDict"],
+class PluginsChannelGenerateWithGeneratorToServerPacketCancel(
+    LMStudioStruct["PluginsChannelGenerateWithGeneratorToServerPacketCancelDict"],
     kw_only=True,
 ):
     type: Annotated[Literal["cancel"], Meta(title="Type")]
 
 
-class LlmChannelGenerateWithGeneratorToServerPacketCancelDict(TypedDict):
-    """Corresponding typed dictionary definition for LlmChannelGenerateWithGeneratorToServerPacketCancel.
+class PluginsChannelGenerateWithGeneratorToServerPacketCancelDict(TypedDict):
+    """Corresponding typed dictionary definition for PluginsChannelGenerateWithGeneratorToServerPacketCancel.
 
     NOTE: Multi-word keys are defined using their camelCase form,
     as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
@@ -5497,6 +5790,7 @@ class PluginsChannelSetGeneratorToServerPacketToolCallGenerationStarted(
         Annotated[Literal["toolCallGenerationStarted"], Meta(title="Type")]
     ] = "toolCallGenerationStarted"
     task_id: str = field(name="taskId")
+    tool_call_id: str | None = field(name="toolCallId", default=None)
 
 
 class PluginsChannelSetGeneratorToServerPacketToolCallGenerationStartedDict(TypedDict):
@@ -5508,6 +5802,7 @@ class PluginsChannelSetGeneratorToServerPacketToolCallGenerationStartedDict(Type
 
     type: Literal["toolCallGenerationStarted"]
     taskId: str
+    toolCallId: NotRequired[str | None]
 
 
 class PluginsChannelSetGeneratorToServerPacketToolCallGenerationNameReceived(
@@ -6592,6 +6887,10 @@ ToolStatusStepStateStatusDict = (
     | ToolStatusStepStateStatusGeneratingToolCallDict
     | ToolStatusStepStateStatusToolCallGenerationFailedDict
 )
+TokenSourceIdentifier = TokenSourceIdentifierModel | TokenSourceIdentifierGenerator
+TokenSourceIdentifierDict = (
+    TokenSourceIdentifierModelDict | TokenSourceIdentifierGeneratorDict
+)
 
 
 class HuggingFaceModelDownloadSource(
@@ -6697,6 +6996,12 @@ class ModelQueryDict(TypedDict):
     vision: NotRequired[bool | None]
 
 
+PluginConfigSpecifier = (
+    PluginConfigSpecifierDirect | PluginConfigSpecifierPredictionProcess
+)
+PluginConfigSpecifierDict = (
+    PluginConfigSpecifierDirectDict | PluginConfigSpecifierPredictionProcessDict
+)
 ArtifactDownloadPlanNode = (
     ArtifactDownloadPlanNodeArtifact | ArtifactDownloadPlanNodeModel
 )
@@ -7084,9 +7389,6 @@ class SerializedKVConfigSettingsDict(TypedDict):
 LlmChannelLoadModelToServerPacket = LlmChannelLoadModelToServerPacketCancel
 LlmChannelGetOrLoadToServerPacket = LlmChannelGetOrLoadToServerPacketCancel
 LlmChannelPredictToServerPacket = LlmChannelPredictToServerPacketCancel
-LlmChannelGenerateWithGeneratorToServerPacket = (
-    LlmChannelGenerateWithGeneratorToServerPacketCancel
-)
 
 
 class PluginsRpcProcessingHandleRequestParameter(
@@ -7109,6 +7411,72 @@ class PluginsRpcProcessingHandleRequestParameterDict(TypedDict):
     request: ProcessingRequestDict
 
 
+class PluginsRpcProcessingGetOrLoadTokenSourceReturns(
+    LMStudioStruct["PluginsRpcProcessingGetOrLoadTokenSourceReturnsDict"], kw_only=True
+):
+    token_source_identifier: TokenSourceIdentifier = field(name="tokenSourceIdentifier")
+
+
+class PluginsRpcProcessingGetOrLoadTokenSourceReturnsDict(TypedDict):
+    """Corresponding typed dictionary definition for PluginsRpcProcessingGetOrLoadTokenSourceReturns.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    tokenSourceIdentifier: TokenSourceIdentifierDict
+
+
+class PseudoPluginsRpcProcessingGetOrLoadTokenSource(
+    LMStudioStruct["PseudoPluginsRpcProcessingGetOrLoadTokenSourceDict"], kw_only=True
+):
+    parameter: PluginsRpcProcessingGetOrLoadTokenSourceParameter
+    returns: PluginsRpcProcessingGetOrLoadTokenSourceReturns
+
+
+class PseudoPluginsRpcProcessingGetOrLoadTokenSourceDict(TypedDict):
+    """Corresponding typed dictionary definition for PseudoPluginsRpcProcessingGetOrLoadTokenSource.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    parameter: PluginsRpcProcessingGetOrLoadTokenSourceParameterDict
+    returns: PluginsRpcProcessingGetOrLoadTokenSourceReturnsDict
+
+
+class PluginsChannelStartToolUseSessionCreationParameter(
+    LMStudioStruct["PluginsChannelStartToolUseSessionCreationParameterDict"],
+    kw_only=True,
+):
+    plugin_identifier: str = field(name="pluginIdentifier")
+    plugin_config_specifier: PluginConfigSpecifier = field(name="pluginConfigSpecifier")
+
+
+class PluginsChannelStartToolUseSessionCreationParameterDict(TypedDict):
+    """Corresponding typed dictionary definition for PluginsChannelStartToolUseSessionCreationParameter.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    pluginIdentifier: str
+    pluginConfigSpecifier: PluginConfigSpecifierDict
+
+
+PluginsChannelStartToolUseSessionToServerPacket = (
+    PluginsChannelStartToolUseSessionToServerPacketCallTool
+    | PluginsChannelStartToolUseSessionToServerPacketAbortToolCall
+    | PluginsChannelStartToolUseSessionToServerPacketDiscardSession
+)
+PluginsChannelStartToolUseSessionToServerPacketDict = (
+    PluginsChannelStartToolUseSessionToServerPacketDiscardSessionDict
+    | PluginsChannelStartToolUseSessionToServerPacketCallToolDict
+    | PluginsChannelStartToolUseSessionToServerPacketAbortToolCallDict
+)
+PluginsChannelGenerateWithGeneratorToServerPacket = (
+    PluginsChannelGenerateWithGeneratorToServerPacketCancel
+)
 PluginsChannelRegisterDevelopmentPluginToClientPacket = (
     PluginsChannelRegisterDevelopmentPluginToClientPacketReady
 )
@@ -7878,9 +8246,9 @@ class LlmChannelPredictToClientPacketSuccessDict(TypedDict):
     predictionConfig: SerializedKVConfigSettingsDict
 
 
-class LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationEnd(
+class PluginsChannelGenerateWithGeneratorToClientPacketToolCallGenerationEnd(
     LMStudioStruct[
-        "LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationEndDict"
+        "PluginsChannelGenerateWithGeneratorToClientPacketToolCallGenerationEndDict"
     ],
     kw_only=True,
     tag_field="type",
@@ -7892,8 +8260,10 @@ class LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationEnd(
     tool_call_request: ToolCallRequest = field(name="toolCallRequest")
 
 
-class LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationEndDict(TypedDict):
-    """Corresponding typed dictionary definition for LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationEnd.
+class PluginsChannelGenerateWithGeneratorToClientPacketToolCallGenerationEndDict(
+    TypedDict
+):
+    """Corresponding typed dictionary definition for PluginsChannelGenerateWithGeneratorToClientPacketToolCallGenerationEnd.
 
     NOTE: Multi-word keys are defined using their camelCase form,
     as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
@@ -7919,6 +8289,7 @@ class PluginsChannelSetPredictionLoopHandlerToClientPacketHandlePredictionLoop(
     plugin_config: SerializedKVConfigSettings = field(name="pluginConfig")
     global_plugin_config: SerializedKVConfigSettings = field(name="globalPluginConfig")
     working_directory_path: str | None = field(name="workingDirectoryPath")
+    enabled_plugin_infos: Sequence[RemotePluginInfo] = field(name="enabledPluginInfos")
     pci: str
     token: str
 
@@ -7938,6 +8309,7 @@ class PluginsChannelSetPredictionLoopHandlerToClientPacketHandlePredictionLoopDi
     pluginConfig: SerializedKVConfigSettingsDict
     globalPluginConfig: SerializedKVConfigSettingsDict
     workingDirectoryPath: NotRequired[str | None]
+    enabledPluginInfos: Sequence[RemotePluginInfoDict]
     pci: str
     token: str
 
@@ -9036,26 +9408,6 @@ LlmChannelPredictToClientPacketDict = (
     | LlmChannelPredictToClientPacketFragmentDict
     | LlmChannelPredictToClientPacketPromptProcessingProgressDict
 )
-LlmChannelGenerateWithGeneratorToClientPacket = (
-    LlmChannelGenerateWithGeneratorToClientPacketFragment
-    | LlmChannelGenerateWithGeneratorToClientPacketPromptProcessingProgress
-    | LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationStart
-    | LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationNameReceived
-    | LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationArgumentFragmentGenerated
-    | LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationEnd
-    | LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationFailed
-    | LlmChannelGenerateWithGeneratorToClientPacketSuccess
-)
-LlmChannelGenerateWithGeneratorToClientPacketDict = (
-    LlmChannelGenerateWithGeneratorToClientPacketSuccessDict
-    | LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationFailedDict
-    | LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationEndDict
-    | LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationArgumentFragmentGeneratedDict
-    | LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationNameReceivedDict
-    | LlmChannelGenerateWithGeneratorToClientPacketToolCallGenerationStartDict
-    | LlmChannelGenerateWithGeneratorToClientPacketFragmentDict
-    | LlmChannelGenerateWithGeneratorToClientPacketPromptProcessingProgressDict
-)
 
 
 class PluginsRpcProcessingHandleRequestReturns(
@@ -9092,6 +9444,26 @@ class PseudoPluginsRpcProcessingHandleRequestDict(TypedDict):
     returns: PluginsRpcProcessingHandleRequestReturnsDict
 
 
+PluginsChannelGenerateWithGeneratorToClientPacket = (
+    PluginsChannelGenerateWithGeneratorToClientPacketFragment
+    | PluginsChannelGenerateWithGeneratorToClientPacketPromptProcessingProgress
+    | PluginsChannelGenerateWithGeneratorToClientPacketToolCallGenerationStart
+    | PluginsChannelGenerateWithGeneratorToClientPacketToolCallGenerationNameReceived
+    | PluginsChannelGenerateWithGeneratorToClientPacketToolCallGenerationArgumentFragmentGenerated
+    | PluginsChannelGenerateWithGeneratorToClientPacketToolCallGenerationEnd
+    | PluginsChannelGenerateWithGeneratorToClientPacketToolCallGenerationFailed
+    | PluginsChannelGenerateWithGeneratorToClientPacketSuccess
+)
+PluginsChannelGenerateWithGeneratorToClientPacketDict = (
+    PluginsChannelGenerateWithGeneratorToClientPacketSuccessDict
+    | PluginsChannelGenerateWithGeneratorToClientPacketToolCallGenerationFailedDict
+    | PluginsChannelGenerateWithGeneratorToClientPacketToolCallGenerationEndDict
+    | PluginsChannelGenerateWithGeneratorToClientPacketToolCallGenerationArgumentFragmentGeneratedDict
+    | PluginsChannelGenerateWithGeneratorToClientPacketToolCallGenerationNameReceivedDict
+    | PluginsChannelGenerateWithGeneratorToClientPacketToolCallGenerationStartDict
+    | PluginsChannelGenerateWithGeneratorToClientPacketFragmentDict
+    | PluginsChannelGenerateWithGeneratorToClientPacketPromptProcessingProgressDict
+)
 PluginsChannelSetPredictionLoopHandlerToClientPacket = (
     PluginsChannelSetPredictionLoopHandlerToClientPacketHandlePredictionLoop
     | PluginsChannelSetPredictionLoopHandlerToClientPacketAbort
@@ -9335,6 +9707,29 @@ class LlmToolUseSettingToolArrayDict(TypedDict):
     force: NotRequired[bool | None]
 
 
+class PluginsChannelStartToolUseSessionToClientPacketSessionReady(
+    LMStudioStruct["PluginsChannelStartToolUseSessionToClientPacketSessionReadyDict"],
+    kw_only=True,
+    tag_field="type",
+    tag="sessionReady",
+):
+    type: ClassVar[Annotated[Literal["sessionReady"], Meta(title="Type")]] = (
+        "sessionReady"
+    )
+    tool_definitions: Sequence[LlmTool] = field(name="toolDefinitions")
+
+
+class PluginsChannelStartToolUseSessionToClientPacketSessionReadyDict(TypedDict):
+    """Corresponding typed dictionary definition for PluginsChannelStartToolUseSessionToClientPacketSessionReady.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    type: Literal["sessionReady"]
+    toolDefinitions: Sequence[LlmToolFunctionDict]
+
+
 class ProvideToolsInitialized(
     LMStudioStruct["ProvideToolsInitializedDict"],
     kw_only=True,
@@ -9479,6 +9874,48 @@ class ProcessingUpdateToolStatusUpdateDict(TypedDict):
     state: ToolStatusStepStateDict
 
 
+PluginsChannelStartToolUseSessionToClientPacket = (
+    PluginsChannelStartToolUseSessionToClientPacketSessionReady
+    | PluginsChannelStartToolUseSessionToClientPacketToolCallComplete
+    | PluginsChannelStartToolUseSessionToClientPacketToolCallError
+    | PluginsChannelStartToolUseSessionToClientPacketToolCallStatus
+    | PluginsChannelStartToolUseSessionToClientPacketToolCallWarn
+)
+PluginsChannelStartToolUseSessionToClientPacketDict = (
+    PluginsChannelStartToolUseSessionToClientPacketToolCallWarnDict
+    | PluginsChannelStartToolUseSessionToClientPacketToolCallStatusDict
+    | PluginsChannelStartToolUseSessionToClientPacketToolCallErrorDict
+    | PluginsChannelStartToolUseSessionToClientPacketSessionReadyDict
+    | PluginsChannelStartToolUseSessionToClientPacketToolCallCompleteDict
+)
+
+
+class PseudoPluginsChannelStartToolUseSession(
+    LMStudioStruct["PseudoPluginsChannelStartToolUseSessionDict"], kw_only=True
+):
+    creation_parameter: PluginsChannelStartToolUseSessionCreationParameter = field(
+        name="creationParameter"
+    )
+    to_client_packet: PluginsChannelStartToolUseSessionToClientPacket = field(
+        name="toClientPacket"
+    )
+    to_server_packet: PluginsChannelStartToolUseSessionToServerPacket = field(
+        name="toServerPacket"
+    )
+
+
+class PseudoPluginsChannelStartToolUseSessionDict(TypedDict):
+    """Corresponding typed dictionary definition for PseudoPluginsChannelStartToolUseSession.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    creationParameter: PluginsChannelStartToolUseSessionCreationParameterDict
+    toClientPacket: PluginsChannelStartToolUseSessionToClientPacketDict
+    toServerPacket: PluginsChannelStartToolUseSessionToServerPacketDict
+
+
 PluginsChannelSetToolsProviderToServerPacket = (
     ProvideToolsInitialized
     | ProvideToolsInitFailed
@@ -9532,6 +9969,7 @@ class PromptPreprocessingRequest(
     plugin_config: SerializedKVConfigSettings = field(name="pluginConfig")
     global_plugin_config: SerializedKVConfigSettings = field(name="globalPluginConfig")
     working_directory_path: str | None = field(name="workingDirectoryPath")
+    enabled_plugin_infos: Sequence[RemotePluginInfo] = field(name="enabledPluginInfos")
     pci: str
     token: str
 
@@ -9550,6 +9988,7 @@ class PromptPreprocessingRequestDict(TypedDict):
     pluginConfig: SerializedKVConfigSettingsDict
     globalPluginConfig: SerializedKVConfigSettingsDict
     workingDirectoryPath: NotRequired[str | None]
+    enabledPluginInfos: Sequence[RemotePluginInfoDict]
     pci: str
     token: str
 
@@ -9980,56 +10419,6 @@ class PseudoLlmChannelPredictDict(TypedDict):
     toServerPacket: LlmChannelPredictToServerPacketCancelDict
 
 
-class LlmChannelGenerateWithGeneratorCreationParameter(
-    LMStudioStruct["LlmChannelGenerateWithGeneratorCreationParameterDict"], kw_only=True
-):
-    plugin_identifier: str = field(name="pluginIdentifier")
-    plugin_config_stack: KvConfigStack = field(name="pluginConfigStack")
-    tools: Sequence[LlmTool]
-    working_directory_path: str | None = field(name="workingDirectoryPath")
-    history: ChatHistoryData
-
-
-class LlmChannelGenerateWithGeneratorCreationParameterDict(TypedDict):
-    """Corresponding typed dictionary definition for LlmChannelGenerateWithGeneratorCreationParameter.
-
-    NOTE: Multi-word keys are defined using their camelCase form,
-    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
-    """
-
-    pluginIdentifier: str
-    pluginConfigStack: KvConfigStackDict
-    tools: Sequence[LlmToolFunctionDict]
-    workingDirectoryPath: NotRequired[str | None]
-    history: ChatHistoryDataDict
-
-
-class PseudoLlmChannelGenerateWithGenerator(
-    LMStudioStruct["PseudoLlmChannelGenerateWithGeneratorDict"], kw_only=True
-):
-    creation_parameter: LlmChannelGenerateWithGeneratorCreationParameter = field(
-        name="creationParameter"
-    )
-    to_client_packet: LlmChannelGenerateWithGeneratorToClientPacket = field(
-        name="toClientPacket"
-    )
-    to_server_packet: LlmChannelGenerateWithGeneratorToServerPacket = field(
-        name="toServerPacket"
-    )
-
-
-class PseudoLlmChannelGenerateWithGeneratorDict(TypedDict):
-    """Corresponding typed dictionary definition for PseudoLlmChannelGenerateWithGenerator.
-
-    NOTE: Multi-word keys are defined using their camelCase form,
-    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
-    """
-
-    creationParameter: LlmChannelGenerateWithGeneratorCreationParameterDict
-    toClientPacket: LlmChannelGenerateWithGeneratorToClientPacketDict
-    toServerPacket: LlmChannelGenerateWithGeneratorToServerPacketCancelDict
-
-
 class PseudoLlm(LMStudioStruct["PseudoLlmDict"], kw_only=True):
     rpc_unload_model: PseudoLlmRpcUnloadModel = field(name="rpcUnloadModel")
     rpc_list_loaded: PseudoLlmRpcListLoaded = field(name="rpcListLoaded")
@@ -10046,9 +10435,6 @@ class PseudoLlm(LMStudioStruct["PseudoLlmDict"], kw_only=True):
     channel_load_model: PseudoLlmChannelLoadModel = field(name="channelLoadModel")
     channel_get_or_load: PseudoLlmChannelGetOrLoad = field(name="channelGetOrLoad")
     channel_predict: PseudoLlmChannelPredict = field(name="channelPredict")
-    channel_generate_with_generator: PseudoLlmChannelGenerateWithGenerator = field(
-        name="channelGenerateWithGenerator"
-    )
 
 
 class PseudoLlmDict(TypedDict):
@@ -10069,7 +10455,6 @@ class PseudoLlmDict(TypedDict):
     channelLoadModel: PseudoLlmChannelLoadModelDict
     channelGetOrLoad: PseudoLlmChannelGetOrLoadDict
     channelPredict: PseudoLlmChannelPredictDict
-    channelGenerateWithGenerator: PseudoLlmChannelGenerateWithGeneratorDict
 
 
 class PluginsRpcProcessingHandleUpdateParameter(
@@ -10140,6 +10525,55 @@ class PseudoPluginsRpcProcessingPullHistoryDict(TypedDict):
 
     parameter: PluginsRpcProcessingPullHistoryParameterDict
     returns: PluginsRpcProcessingPullHistoryReturnsDict
+
+
+class PluginsChannelGenerateWithGeneratorCreationParameter(
+    LMStudioStruct["PluginsChannelGenerateWithGeneratorCreationParameterDict"],
+    kw_only=True,
+):
+    plugin_identifier: str = field(name="pluginIdentifier")
+    plugin_config_specifier: PluginConfigSpecifier = field(name="pluginConfigSpecifier")
+    tools: Sequence[LlmTool]
+    history: PluginsRpcProcessingPullHistoryReturns
+
+
+class PluginsChannelGenerateWithGeneratorCreationParameterDict(TypedDict):
+    """Corresponding typed dictionary definition for PluginsChannelGenerateWithGeneratorCreationParameter.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    pluginIdentifier: str
+    pluginConfigSpecifier: PluginConfigSpecifierDict
+    tools: Sequence[LlmToolFunctionDict]
+    history: PluginsRpcProcessingPullHistoryReturnsDict
+
+
+class PseudoPluginsChannelGenerateWithGenerator(
+    LMStudioStruct["PseudoPluginsChannelGenerateWithGeneratorDict"], kw_only=True
+):
+    creation_parameter: PluginsChannelGenerateWithGeneratorCreationParameter = field(
+        name="creationParameter"
+    )
+    to_client_packet: PluginsChannelGenerateWithGeneratorToClientPacket = field(
+        name="toClientPacket"
+    )
+    to_server_packet: PluginsChannelGenerateWithGeneratorToServerPacket = field(
+        name="toServerPacket"
+    )
+
+
+class PseudoPluginsChannelGenerateWithGeneratorDict(TypedDict):
+    """Corresponding typed dictionary definition for PseudoPluginsChannelGenerateWithGenerator.
+
+    NOTE: Multi-word keys are defined using their camelCase form,
+    as that is what `to_dict()` emits, and what `_from_api_dict()` accepts.
+    """
+
+    creationParameter: PluginsChannelGenerateWithGeneratorCreationParameterDict
+    toClientPacket: PluginsChannelGenerateWithGeneratorToClientPacketDict
+    toServerPacket: PluginsChannelGenerateWithGeneratorToServerPacketCancelDict
 
 
 class PluginsChannelRegisterDevelopmentPluginCreationParameter(
@@ -10302,8 +10736,8 @@ class PseudoPlugins(LMStudioStruct["PseudoPluginsDict"], kw_only=True):
     rpc_processing_pull_history: PseudoPluginsRpcProcessingPullHistory = field(
         name="rpcProcessingPullHistory"
     )
-    rpc_processing_get_or_load_model: PseudoPluginsRpcProcessingGetOrLoadModel = field(
-        name="rpcProcessingGetOrLoadModel"
+    rpc_processing_get_or_load_token_source: PseudoPluginsRpcProcessingGetOrLoadTokenSource = field(
+        name="rpcProcessingGetOrLoadTokenSource"
     )
     rpc_processing_has_status: PseudoPluginsRpcProcessingHasStatus = field(
         name="rpcProcessingHasStatus"
@@ -10325,6 +10759,12 @@ class PseudoPlugins(LMStudioStruct["PseudoPluginsDict"], kw_only=True):
     )
     rpc_plugin_init_completed: PseudoPluginsRpcPluginInitCompleted = field(
         name="rpcPluginInitCompleted"
+    )
+    channel_start_tool_use_session: PseudoPluginsChannelStartToolUseSession = field(
+        name="channelStartToolUseSession"
+    )
+    channel_generate_with_generator: PseudoPluginsChannelGenerateWithGenerator = field(
+        name="channelGenerateWithGenerator"
     )
     channel_register_development_plugin: PseudoPluginsChannelRegisterDevelopmentPlugin = field(
         name="channelRegisterDevelopmentPlugin"
@@ -10354,7 +10794,9 @@ class PseudoPluginsDict(TypedDict):
     rpcProcessingHandleUpdate: PseudoPluginsRpcProcessingHandleUpdateDict
     rpcProcessingHandleRequest: PseudoPluginsRpcProcessingHandleRequestDict
     rpcProcessingPullHistory: PseudoPluginsRpcProcessingPullHistoryDict
-    rpcProcessingGetOrLoadModel: PseudoPluginsRpcProcessingGetOrLoadModelDict
+    rpcProcessingGetOrLoadTokenSource: (
+        PseudoPluginsRpcProcessingGetOrLoadTokenSourceDict
+    )
     rpcProcessingHasStatus: PseudoPluginsRpcProcessingHasStatusDict
     rpcProcessingNeedsNaming: PseudoPluginsRpcProcessingNeedsNamingDict
     rpcProcessingSuggestName: PseudoPluginsRpcProcessingSuggestNameDict
@@ -10362,6 +10804,8 @@ class PseudoPluginsDict(TypedDict):
     rpcSetConfigSchematics: PseudoPluginsRpcSetConfigSchematicsDict
     rpcSetGlobalConfigSchematics: PseudoPluginsRpcSetGlobalConfigSchematicsDict
     rpcPluginInitCompleted: PseudoPluginsRpcPluginInitCompleted
+    channelStartToolUseSession: PseudoPluginsChannelStartToolUseSessionDict
+    channelGenerateWithGenerator: PseudoPluginsChannelGenerateWithGeneratorDict
     channelRegisterDevelopmentPlugin: PseudoPluginsChannelRegisterDevelopmentPluginDict
     channelSetPromptPreprocessor: PseudoPluginsChannelSetPromptPreprocessorDict
     channelSetPredictionLoopHandler: PseudoPluginsChannelSetPredictionLoopHandlerDict
