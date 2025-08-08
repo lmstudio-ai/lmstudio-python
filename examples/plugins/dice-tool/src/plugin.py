@@ -1,4 +1,4 @@
-"""Example plugin that provide dice rolling tools."""
+"""Example plugin that provides dice rolling tools."""
 
 import time
 

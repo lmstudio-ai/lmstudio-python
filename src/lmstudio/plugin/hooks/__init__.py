@@ -15,4 +15,5 @@ __all__ = [
     "ToolCallContext",
     "ToolsProviderController",
     "get_tool_call_context",
+    "get_tool_call_context_async",
 ]

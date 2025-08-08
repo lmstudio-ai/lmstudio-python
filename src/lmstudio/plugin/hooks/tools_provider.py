@@ -59,6 +59,7 @@ __all__ = [
     "ToolsProviderHook",
     "run_tools_provider",
     "get_tool_call_context",
+    "get_tool_call_context_async",
 ]
 
 
