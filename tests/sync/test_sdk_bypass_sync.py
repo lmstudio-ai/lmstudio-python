@@ -20,15 +20,18 @@ import pytest
 
 from httpx_ws import connect_ws, WebSocketSession
 
+from lmstudio import Client
+
 
 @pytest.mark.lmstudio
 def test_connect_and_predict_sync(caplog: Any) -> None:
-    base_url = "localhost:1234"
+    # Access the default API host directly
+    api_host = Client.find_default_local_api_host()
     model_identifier = "hugging-quants/llama-3.2-1b-instruct"
     prompt = "Hello"
 
     caplog.set_level(logging.DEBUG)
-    ws_cm: ContextManager[WebSocketSession] = connect_ws(f"ws://{base_url}/llm")
+    ws_cm: ContextManager[WebSocketSession] = connect_ws(f"ws://{api_host}/llm")
 
     with ws_cm as ws:
         # Authenticate

@@ -13,17 +13,20 @@ import pytest
 
 from httpx_ws import aconnect_ws, AsyncWebSocketSession
 
+from lmstudio import AsyncClient
+
 
 @pytest.mark.asyncio
 @pytest.mark.lmstudio
 async def test_connect_and_predict_async(caplog: Any) -> None:
-    base_url = "localhost:1234"
+    # Access the default API host directly
+    api_host = await AsyncClient.find_default_local_api_host()
     model_identifier = "hugging-quants/llama-3.2-1b-instruct"
     prompt = "Hello"
 
     caplog.set_level(logging.DEBUG)
     ws_cm: AsyncContextManager[AsyncWebSocketSession] = aconnect_ws(
-        f"ws://{base_url}/llm"
+        f"ws://{api_host}/llm"
     )
 
     async with ws_cm as ws:

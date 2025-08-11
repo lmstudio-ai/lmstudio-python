@@ -43,9 +43,11 @@ from typing_extensions import (
     Self,
 )
 
+import httpx
 
 from msgspec import Struct, convert, defstruct, to_builtins
 
+from . import _api_server_ports
 from .sdk_api import (
     LMStudioError,
     LMStudioRuntimeError,
@@ -190,7 +192,6 @@ __all__ = [
 T = TypeVar("T")
 TStruct = TypeVar("TStruct", bound=AnyLMStudioStruct)
 
-DEFAULT_API_HOST = "localhost:1234"
 DEFAULT_TTL = 60 * 60  # By default, leaves idle models loaded for an hour
 
 # Require a coroutine (not just any awaitable) for run_coroutine_threadsafe compatibility
@@ -1964,8 +1965,44 @@ class ClientBase:
 
     def __init__(self, api_host: str | None = None) -> None:
         """Initialize API client."""
-        self.api_host = api_host if api_host else DEFAULT_API_HOST
+        self._api_host = api_host
         self._auth_details = self._create_auth_message()
+
+    @property
+    def api_host(self) -> str:
+        api_host = self._api_host
+        if api_host is None:
+            raise LMStudioRuntimeError("Local API host port is not yet resolved.")
+        return api_host
+
+    _DEFAULT_API_PORTS = _api_server_ports.default_api_ports
+
+    @staticmethod
+    def _get_probe_url(api_host: str) -> str:
+        return f"http://{api_host}/lmstudio-greeting"
+
+    @classmethod
+    def _iter_default_api_hosts(cls) -> Iterable[str]:
+        for port in cls._DEFAULT_API_PORTS:
+            api_host = f"127.0.0.1:{port}"
+            yield api_host
+
+    @staticmethod
+    def _check_probe_response(response: httpx.Response) -> bool:
+        """Returns true if the probe response indicates a valid API server."""
+        if response.status_code != httpx.codes.OK:
+            return False
+        response_data = response.json()
+        # Valid probe response format: {"lmstudio":true}
+        return isinstance(response_data, dict) and response_data.get("lmstudio", False)
+
+    @staticmethod
+    def _get_probe_failure_error(api_host: str | None) -> LMStudioClientError:
+        if api_host is None:
+            api_host = "any default port"
+        problem = f"LM Studio is not reachable at {api_host}"
+        suggestion = "Is LM Studio running?"
+        return LMStudioClientError(f"{problem}. {suggestion}")
 
     @staticmethod
     def _format_auth_message(
