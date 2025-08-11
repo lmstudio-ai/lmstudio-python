@@ -41,10 +41,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.print_usage()
         print(f"ERROR: Failed to find plugin folder at {plugin_path!r}")
         return 1
-    # TODO: Leave the warning enabled in the dev plugin wrapper
-    warnings.filterwarnings(
-        "ignore", ".*the plugin API is not yet stable", FutureWarning
-    )
     log_level = logging.DEBUG if args.debug else logging.INFO
     logging.basicConfig(level=log_level)
     if sys.platform == "win32":
@@ -61,6 +57,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         if not SetConsoleCtrlHandler(None, 0):
             print("Failed to enable Ctrl-C events, termination may be abrupt")
     if not args.dev:
+        warnings.filterwarnings(
+            "ignore", ".*the plugin API is not yet stable", FutureWarning
+        )
         try:
             runner.run_plugin(plugin_path, allow_local_imports=True)
         except KeyboardInterrupt:

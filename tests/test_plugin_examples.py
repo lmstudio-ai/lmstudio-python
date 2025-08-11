@@ -17,6 +17,8 @@ from lmstudio.plugin._dev_runner import (
     _start_child_process,
     _PLUGIN_STOP_TIMEOUT,
 )
+from lmstudio.plugin.runner import _PLUGIN_API_STABILITY_WARNING
+
 
 _THIS_DIR = Path(__file__).parent.resolve()
 _PLUGIN_EXAMPLES_DIR = (_THIS_DIR / "../examples/plugins").resolve()
@@ -110,7 +112,19 @@ def _plugin_case_id(plugin_path: Path) -> str:
 @pytest.mark.parametrize("plugin_path", _get_plugin_paths(), ids=_plugin_case_id)
 def test_plugin_execution(plugin_path: Path) -> None:
     startup_lines, shutdown_lines, stderr_lines = _exec_and_interrupt(plugin_path)
+    # Stderr should start with the API stability warning...
+    warning_lines = [
+        *_PLUGIN_API_STABILITY_WARNING.splitlines(keepends=True),
+        "\n",
+        "warnings.warn(_PLUGIN_API_STABILITY_WARNING, FutureWarning)\n",
+    ]
+    for warning_line in warning_lines:
+        stderr_line = stderr_lines.pop(0)
+        assert stderr_line.endswith(warning_line)
+    # ... and then consist solely of logged information messages
     for log_line in stderr_lines:
         assert log_line.startswith("INFO:")
+    # Startup should finish with the notification of how to terminate the dev plugin
     assert startup_lines[-1].endswith("Ctrl-C to terminate...\n")
+    # Shutdown should finish with a graceful shutdown notice from the plugin runner
     assert shutdown_lines[-1] == "Plugin execution terminated by console interrupt\n"
