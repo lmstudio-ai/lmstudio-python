@@ -41,16 +41,29 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.print_usage()
         print(f"ERROR: Failed to find plugin folder at {plugin_path!r}")
         return 1
-    warnings.filterwarnings(
-        "ignore", ".*the plugin API is not yet stable", FutureWarning
-    )
     log_level = logging.DEBUG if args.debug else logging.INFO
     logging.basicConfig(level=log_level)
+    if sys.platform == "win32":
+        # Accept Ctrl-C events even in non-default process groups
+        # (allows for graceful termination when Ctrl-C is received
+        # from a controlling process rather than from a console)
+        # Based on https://github.com/python/cpython/blob/3.14/Lib/test/win_console_handler.py
+        # and https://stackoverflow.com/questions/35772001/how-can-i-handle-a-signal-sigint-on-a-windows-os-machine/35792192#35792192
+        from ctypes import c_void_p, windll, wintypes
+
+        SetConsoleCtrlHandler = windll.kernel32.SetConsoleCtrlHandler
+        SetConsoleCtrlHandler.argtypes = (c_void_p, wintypes.BOOL)
+        SetConsoleCtrlHandler.restype = wintypes.BOOL
+        if not SetConsoleCtrlHandler(None, 0):
+            print("Failed to enable Ctrl-C events, termination may be abrupt")
     if not args.dev:
+        warnings.filterwarnings(
+            "ignore", ".*the plugin API is not yet stable", FutureWarning
+        )
         try:
             runner.run_plugin(plugin_path, allow_local_imports=True)
         except KeyboardInterrupt:
-            print("Plugin execution terminated with Ctrl-C")
+            print("Plugin execution terminated by console interrupt", flush=True)
     else:
         # Retrieve args from API host, spawn plugin in subprocess
         try:

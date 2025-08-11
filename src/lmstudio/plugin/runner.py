@@ -228,7 +228,9 @@ class PluginClient(AsyncClient):
             await asyncio.gather(*(e.wait() for e in hook_ready_events))
             await self.plugins.remote_call("pluginInitCompleted")
             # Indicate that prompt processing is ready
-            print(f"Plugin {plugin!r} running, press Ctrl-C to terminate...")
+            print(
+                f"Plugin {plugin!r} running, press Ctrl-C to terminate...", flush=True
+            )
             # Task group will wait for the plugins to run
         return 0
 
