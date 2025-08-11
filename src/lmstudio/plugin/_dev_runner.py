@@ -3,13 +3,15 @@
 import asyncio
 import io
 import os
+import signal
 import subprocess
 import sys
 
 from contextlib import asynccontextmanager
-from pathlib import Path
 from functools import partial
-from typing import AsyncGenerator, Iterable, TypeAlias
+from pathlib import Path
+from threading import Event as SyncEvent
+from typing import Any, AsyncGenerator, Iterable, TypeAlias
 
 from typing_extensions import (
     # Native in 3.11+
@@ -116,6 +118,7 @@ class DevPluginClient(PluginClient):
     async def _run_plugin_task(
         self, result_queue: asyncio.Queue[int], debug: bool = False
     ) -> None:
+        notify_subprocess_thread = SyncEvent()
         async with self.register_dev_plugin() as (client_id, client_key):
             wait_for_subprocess = asyncio.ensure_future(
                 asyncio.to_thread(
@@ -124,7 +127,8 @@ class DevPluginClient(PluginClient):
                         self._plugin_path,
                         client_id,
                         client_key,
-                        debug,
+                        notify_subprocess_thread,
+                        debug=debug,
                     )
                 )
             )
@@ -132,10 +136,11 @@ class DevPluginClient(PluginClient):
                 result = await wait_for_subprocess
             except asyncio.CancelledError:
                 # Likely a Ctrl-C press, which is the expected termination process
+                notify_subprocess_thread.set()
                 result_queue.put_nowait(0)
                 raise
             # Subprocess terminated, pass along its return code in the parent process
-            await result_queue.put(result.returncode)
+            await result_queue.put(result)
 
     async def run_plugin(
         self, *, allow_local_imports: bool = True, debug: bool = False
@@ -150,10 +155,49 @@ class DevPluginClient(PluginClient):
         return await result_queue.get()
 
 
+def _get_creation_flags() -> int:
+    if sys.platform == "win32":
+        return subprocess.CREATE_NEW_PROCESS_GROUP
+    return 0
+
+
+def _start_child_process(
+    command: list[str], *, text: bool | None = True, **kwds: Any
+) -> subprocess.Popen[str]:
+    creationflags = kwds.pop("creationflags", 0)
+    creationflags |= _get_creation_flags()
+    return subprocess.Popen(command, text=text, creationflags=creationflags, **kwds)
+
+
+def _get_interrupt_signal() -> signal.Signals:
+    if sys.platform == "win32":
+        return signal.CTRL_C_EVENT
+    return signal.SIGINT
+
+
+_PLUGIN_INTERRUPT_SIGNAL = _get_interrupt_signal()
+_PLUGIN_STATUS_POLL_INTERVAL = 1
+_PLUGIN_STOP_TIMEOUT = 2
+
+
+def _interrupt_child_process(process: subprocess.Popen[Any], timeout: float) -> int:
+    process.send_signal(_PLUGIN_INTERRUPT_SIGNAL)
+    try:
+        return process.wait(timeout)
+    except TimeoutError:
+        process.kill()
+        raise
+
+
 # TODO: support the same source code change monitoring features as `lms dev`
 def _run_plugin_in_child_process(
-    plugin_path: Path, client_id: str, client_key: str, debug: bool = False
-) -> subprocess.CompletedProcess[str]:
+    plugin_path: Path,
+    client_id: str,
+    client_key: str,
+    abort_event: SyncEvent,
+    *,
+    debug: bool = False,
+) -> int:
     env = os.environ.copy()
     env[ENV_CLIENT_ID] = client_id
     env[ENV_CLIENT_KEY] = client_key
@@ -176,7 +220,17 @@ def _run_plugin_in_child_process(
         *debug_option,
         os.fspath(plugin_path),
     ]
-    return subprocess.run(command, text=True, env=env)
+    process = _start_child_process(command, env=env)
+    while True:
+        result = process.poll()
+        if result is not None:
+            print("Child process terminated unexpectedly")
+            break
+        if abort_event.wait(_PLUGIN_STATUS_POLL_INTERVAL):
+            print("Gracefully terminating child process...")
+            result = _interrupt_child_process(process, _PLUGIN_STOP_TIMEOUT)
+            break
+    return result
 
 
 async def run_plugin_async(

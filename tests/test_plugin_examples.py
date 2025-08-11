@@ -1,6 +1,5 @@
 """Test plugin examples can run as dev plugins."""
 
-import signal
 import subprocess
 import sys
 import time
@@ -12,6 +11,12 @@ from threading import Thread
 from typing import Iterable, TextIO
 
 import pytest
+
+from lmstudio.plugin._dev_runner import (
+    _interrupt_child_process,
+    _start_child_process,
+    _PLUGIN_STOP_TIMEOUT,
+)
 
 _THIS_DIR = Path(__file__).parent.resolve()
 _PLUGIN_EXAMPLES_DIR = (_THIS_DIR / "../examples/plugins").resolve()
@@ -47,30 +52,18 @@ def _exec_plugin(plugin_path: Path) -> subprocess.Popen[str]:
         "--dev",
         str(plugin_path),
     ]
-    return subprocess.Popen(
-        cmd, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=1
-    )
+    return _start_child_process(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
 
 _PLUGIN_START_TIMEOUT = 5
-_PLUGIN_STOP_TIMEOUT = 5
 
-
-def _get_interrupt_signal() -> signal.Signals:
-    if sys.platform == "win32":
-        return signal.CTRL_C_EVENT
-    return signal.SIGINT
-
-
-_INTERRUPT_SIGNAL = _get_interrupt_signal()
 
 def _exec_and_interrupt(plugin_path: Path) -> tuple[list[str], list[str], list[str]]:
+    # Start the plugin in a child process
     process = _exec_plugin(plugin_path)
     # Ensure pipes don't fill up and block subprocess execution
     stdout_q: Queue[str] = Queue()
-    stdout_thread = Thread(
-        target=_monitor_stream, args=[process.stdout, stdout_q], kwargs={"debug": True}
-    )
+    stdout_thread = Thread(target=_monitor_stream, args=[process.stdout, stdout_q])
     stdout_thread.start()
     stderr_q: Queue[str] = Queue()
     stderr_thread = Thread(target=_monitor_stream, args=[process.stderr, stderr_q])
@@ -94,15 +87,14 @@ def _exec_and_interrupt(plugin_path: Path) -> tuple[list[str], list[str], list[s
     finally:
         # Instruct the process to terminate
         print("Sending termination request to plugin subprocess")
-        process.send_signal(_INTERRUPT_SIGNAL)
+        stop_deadline = time.monotonic() + _PLUGIN_STOP_TIMEOUT
+        _interrupt_child_process(process, (stop_deadline - time.monotonic()))
         # Give threads a chance to halt their file reads
         # (process terminating will close the pipes)
-        stop_deadline = time.monotonic() + _PLUGIN_STOP_TIMEOUT
         stdout_thread.join(timeout=(stop_deadline - time.monotonic()))
         stderr_thread.join(timeout=(stop_deadline - time.monotonic()))
-        process.wait(timeout=(stop_deadline - time.monotonic()))
         with process:
-            # Close pipes
+            # Closes open pipes
             pass
     # Collect remainder of subprocess output
     shutdown_lines = [*_drain_queue(stdout_q)]
@@ -121,9 +113,4 @@ def test_plugin_execution(plugin_path: Path) -> None:
     for log_line in stderr_lines:
         assert log_line.startswith("INFO:")
     assert startup_lines[-1].endswith("Ctrl-C to terminate...\n")
-    # Outside an actual terminal, pipe may be closed before the termination is reported
-    # TODO: Consider migrating to using pexpect, so this check can be more robust
-    assert (
-        not shutdown_lines
-        or shutdown_lines[-1] == "Plugin execution terminated by user\n"
-    )
+    assert shutdown_lines[-1] == "Plugin execution terminated by console interrupt\n"
