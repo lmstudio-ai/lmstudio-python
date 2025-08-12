@@ -23,13 +23,12 @@ def test_get_default_client() -> None:
     assert isinstance(client, lms.Client)
     # Setting the API host after creation is disallowed (even if it is consistent)
     with pytest.raises(lms.LMStudioClientError, match="already created"):
-        lms.get_default_client("localhost:1234")
+        lms.get_default_client(client.api_host)
     # Ensure configured API host is used
     lms.sync_api._reset_default_client()
     try:
-        with pytest.raises(lms.LMStudioWebsocketError, match="not reachable"):
-            # Actually try to use the client in order to force a connection attempt
-            lms.get_default_client(closed_api_host()).list_loaded_models()
+        with pytest.raises(lms.LMStudioClientError, match="not reachable"):
+            lms.get_default_client(closed_api_host())
     finally:
         lms.sync_api._reset_default_client()
 
@@ -41,14 +40,13 @@ def test_configure_default_client() -> None:
     assert isinstance(client, lms.Client)
     # Setting the API host after creation is disallowed (even if it is consistent)
     with pytest.raises(lms.LMStudioClientError, match="already created"):
-        lms.configure_default_client("localhost:1234")
+        lms.configure_default_client(client.api_host)
     # Ensure configured API host is used
     lms.sync_api._reset_default_client()
     try:
         lms.configure_default_client(closed_api_host())
-        with pytest.raises(lms.LMStudioWebsocketError, match="not reachable"):
-            # Actually try to use the client in order to force a connection attempt
-            lms.get_default_client().list_loaded_models()
+        with pytest.raises(lms.LMStudioClientError, match="not reachable"):
+            lms.get_default_client()
     finally:
         lms.sync_api._reset_default_client()
 

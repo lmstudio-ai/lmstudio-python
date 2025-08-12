@@ -32,8 +32,6 @@ from .lmstudio import ErrFunc
 
 THIS_DIR = Path(__file__).parent
 
-LOCAL_API_HOST = "localhost:1234"
-
 ####################################################
 # Embedding model testing
 ####################################################

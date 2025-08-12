@@ -28,6 +28,8 @@ from typing_extensions import (
     TypeIs,
 )
 
+import httpx
+
 from httpx_ws import AsyncWebSocketSession
 
 from .sdk_api import (
@@ -1518,6 +1520,8 @@ class AsyncClient(ClientBase):
     async def __aenter__(self) -> Self:
         # Handle reentrancy the same way files do:
         # allow nested use as a CM, but close on the first exit
+        with sdk_public_api():
+            await self._ensure_api_host_is_valid()
         if not self._sessions:
             rm = self._resources
             await rm.enter_async_context(self._task_manager)
@@ -1535,6 +1539,43 @@ class AsyncClient(ClientBase):
     async def aclose(self) -> None:
         """Close any started client sessions."""
         await self._resources.aclose()
+
+    @staticmethod
+    async def _query_probe_url(url: str) -> httpx.Response:
+        async with httpx.AsyncClient() as client:
+            return await client.get(url, timeout=1)
+
+    @classmethod
+    @sdk_public_api_async()
+    async def is_valid_api_host(cls, api_host: str) -> bool:
+        """Report whether the given API host is running an API server instance."""
+        probe_url = cls._get_probe_url(api_host)
+        try:
+            probe_response = await cls._query_probe_url(probe_url)
+        except (httpx.ConnectTimeout, httpx.ConnectError):
+            return False
+        return cls._check_probe_response(probe_response)
+
+    @classmethod
+    @sdk_public_api_async()
+    async def find_default_local_api_host(cls) -> str | None:
+        """Query local ports for a running API server instance."""
+        for api_host in cls._iter_default_api_hosts():
+            if await cls.is_valid_api_host(api_host):
+                return api_host
+        return None
+
+    async def _ensure_api_host_is_valid(self) -> None:
+        specified_api_host = self._api_host
+        if specified_api_host is None:
+            api_host = await self.find_default_local_api_host()
+        elif await self.is_valid_api_host(specified_api_host):
+            api_host = specified_api_host
+        else:
+            api_host = None
+        if api_host is None:
+            raise self._get_probe_failure_error(specified_api_host)
+        self._api_host = api_host
 
     def _get_session(self, cls: Type[TAsyncSession]) -> TAsyncSession:
         """Get the client session of the given type."""

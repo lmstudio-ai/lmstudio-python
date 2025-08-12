@@ -18,8 +18,8 @@ from lmstudio.async_api import (
 )
 from lmstudio.sync_api import (
     SyncLMStudioWebsocket,
-    SyncSession,
-    SyncSessionSystem,
+    _SyncSession,
+    _SyncSessionSystem,
 )
 
 from .support import (
@@ -68,7 +68,8 @@ async def test_session_not_started_async(caplog: LogCap) -> None:
 @pytest.mark.asyncio
 async def test_session_disconnected_async(caplog: LogCap) -> None:
     caplog.set_level(logging.DEBUG)
-    client = AsyncClient()
+    api_host = await AsyncClient.find_default_local_api_host()
+    client = AsyncClient(api_host)
     session = _AsyncSessionSystem(client)
     async with client._task_manager, session:
         assert session.connected
@@ -114,7 +115,7 @@ async def test_session_nonresponsive_port_async(caplog: LogCap) -> None:
     await check_call_errors_async(session)
 
 
-def check_call_errors_sync(session: SyncSession) -> None:
+def check_call_errors_sync(session: _SyncSession) -> None:
     # Remote calls are expected to fail when not connected
     with pytest.raises(
         LMStudioWebsocketError,
@@ -140,7 +141,7 @@ def check_call_errors_sync(session: SyncSession) -> None:
 
 def test_session_closed_port_sync(caplog: LogCap) -> None:
     caplog.set_level(logging.DEBUG)
-    session = SyncSessionSystem(Client(closed_api_host()))
+    session = _SyncSessionSystem(Client(closed_api_host()))
     # Sessions start out disconnected
     assert not session.connected
     # Should get an SDK exception rather than the underlying exception
@@ -156,7 +157,7 @@ def test_session_closed_port_sync(caplog: LogCap) -> None:
 def test_session_nonresponsive_port_sync(caplog: LogCap) -> None:
     caplog.set_level(logging.DEBUG)
     with nonresponsive_api_host() as api_host:
-        session = SyncSessionSystem(Client(api_host))
+        session = _SyncSessionSystem(Client(api_host))
         # Sessions start out disconnected
         assert not session.connected
         # Should get an SDK exception rather than the underlying exception

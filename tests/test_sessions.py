@@ -18,13 +18,11 @@ from lmstudio.async_api import (
 )
 from lmstudio.sync_api import (
     SyncLMStudioWebsocket,
-    SyncSession,
-    SyncSessionSystem,
+    _SyncSession,
+    _SyncSessionSystem,
 )
 from lmstudio._ws_impl import AsyncTaskManager
 from lmstudio._ws_thread import AsyncWebsocketThread
-
-from .support import LOCAL_API_HOST
 
 
 async def check_connected_async_session(session: _AsyncSession) -> None:
@@ -49,7 +47,8 @@ async def check_connected_async_session(session: _AsyncSession) -> None:
 @pytest.mark.lmstudio
 async def test_session_cm_async(caplog: LogCap) -> None:
     caplog.set_level(logging.DEBUG)
-    client = AsyncClient()
+    api_host = await AsyncClient.find_default_local_api_host()
+    client = AsyncClient(api_host)
     session = _AsyncSessionSystem(client)
     # Sessions start out disconnected
     assert not session.connected
@@ -66,7 +65,7 @@ async def test_session_cm_async(caplog: LogCap) -> None:
 # Check the synchronous session API
 
 
-def check_connected_sync_session(session: SyncSession) -> None:
+def check_connected_sync_session(session: _SyncSession) -> None:
     assert session.connected
     session_ws = session._lmsws
     assert session_ws is not None
@@ -87,7 +86,9 @@ def check_connected_sync_session(session: SyncSession) -> None:
 @pytest.mark.lmstudio
 def test_session_cm_sync(caplog: LogCap) -> None:
     caplog.set_level(logging.DEBUG)
-    session = SyncSessionSystem(Client())
+    api_host = Client.find_default_local_api_host()
+    client = Client(api_host)
+    session = _SyncSessionSystem(client)
     # Sessions start out disconnected
     assert not session.connected
     # Disconnecting should run without error
@@ -106,7 +107,9 @@ def test_session_cm_sync(caplog: LogCap) -> None:
 @pytest.mark.lmstudio
 def test_implicit_connection_sync(caplog: LogCap) -> None:
     caplog.set_level(logging.DEBUG)
-    session = SyncSessionSystem(Client())
+    api_host = Client.find_default_local_api_host()
+    client = Client(api_host)
+    session = _SyncSessionSystem(client)
     # Sessions start out disconnected
     assert not session.connected
     try:
@@ -123,7 +126,9 @@ def test_implicit_connection_sync(caplog: LogCap) -> None:
 @pytest.mark.lmstudio
 def test_implicit_reconnection_sync(caplog: LogCap) -> None:
     caplog.set_level(logging.DEBUG)
-    session = SyncSessionSystem(Client())
+    api_host = Client.find_default_local_api_host()
+    client = Client(api_host)
+    session = _SyncSessionSystem(client)
     with session:
         assert session.connected
     # Session is disconnected after use
@@ -154,9 +159,10 @@ WS_CLOSING_STATES = (WS_STATE_LOCAL_CLOSING, WS_STATE_CLOSED)
 @pytest.mark.lmstudio
 async def test_websocket_cm_async(caplog: LogCap) -> None:
     caplog.set_level(logging.DEBUG)
+    api_host = await AsyncClient.find_default_local_api_host()
     auth_details = AsyncClient._format_auth_message()
     tm = AsyncTaskManager(on_activation=None)
-    lmsws = _AsyncLMStudioWebsocket(tm, f"http://{LOCAL_API_HOST}/system", auth_details)
+    lmsws = _AsyncLMStudioWebsocket(tm, f"http://{api_host}/system", auth_details)
     # SDK client websockets start out disconnected
     assert not lmsws.connected
     # Entering the CM opens the websocket if it isn't already open
@@ -193,10 +199,9 @@ def ws_thread() -> Generator[AsyncWebsocketThread, None, None]:
 @pytest.mark.lmstudio
 def test_websocket_cm_sync(ws_thread: AsyncWebsocketThread, caplog: LogCap) -> None:
     caplog.set_level(logging.DEBUG)
+    api_host = Client.find_default_local_api_host()
     auth_details = Client._format_auth_message()
-    lmsws = SyncLMStudioWebsocket(
-        ws_thread, f"http://{LOCAL_API_HOST}/system", auth_details
-    )
+    lmsws = SyncLMStudioWebsocket(ws_thread, f"http://{api_host}/system", auth_details)
     # SDK client websockets start out disconnected
     assert not lmsws.connected
     # Entering the CM opens the websocket if it isn't already open

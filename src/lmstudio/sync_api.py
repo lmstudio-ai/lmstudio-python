@@ -31,6 +31,8 @@ from typing_extensions import (
     TypeIs,
 )
 
+import httpx
+
 # Synchronous API still uses an async websocket (just in a background thread)
 from httpx_ws import AsyncWebSocketSession
 
@@ -424,7 +426,7 @@ class SyncLMStudioWebsocket(LMStudioWebsocket[SyncToAsyncWebsocketBridge]):
             return rpc.receive_result()
 
 
-class SyncSession(ClientSession["Client", SyncLMStudioWebsocket]):
+class _SyncSession(ClientSession["Client", SyncLMStudioWebsocket]):
     """Sync client session interfaces applicable to all API namespaces."""
 
     def __init__(self, client: "Client") -> None:
@@ -502,7 +504,7 @@ class SyncSession(ClientSession["Client", SyncLMStudioWebsocket]):
 
 
 TSyncSessionModel = TypeVar(
-    "TSyncSessionModel", bound="SyncSessionModel[Any, Any, Any, Any]"
+    "TSyncSessionModel", bound="_SyncSessionModel[Any, Any, Any, Any]"
 )
 TModelHandle = TypeVar("TModelHandle", bound="SyncModelHandle[Any]")
 
@@ -558,7 +560,7 @@ class DownloadedModel(
 class DownloadedEmbeddingModel(
     DownloadedModel[
         EmbeddingModelInfo,
-        "SyncSessionEmbedding",
+        "_SyncSessionEmbedding",
         EmbeddingLoadModelConfig,
         EmbeddingLoadModelConfigDict,
         "EmbeddingModel",
@@ -566,7 +568,9 @@ class DownloadedEmbeddingModel(
 ):
     """Download listing for an embedding model."""
 
-    def __init__(self, model_info: DictObject, session: "SyncSessionEmbedding") -> None:
+    def __init__(
+        self, model_info: DictObject, session: "_SyncSessionEmbedding"
+    ) -> None:
         """Initialize downloaded embedding model details."""
         super().__init__(EmbeddingModelInfo, model_info, session)
 
@@ -574,7 +578,7 @@ class DownloadedEmbeddingModel(
 class DownloadedLlm(
     DownloadedModel[
         LlmInfo,
-        "SyncSessionLlm",
+        "_SyncSessionLlm",
         LlmLoadModelConfig,
         LlmLoadModelConfigDict,
         "LLM",
@@ -582,7 +586,7 @@ class DownloadedLlm(
 ):
     """Download listing for an LLM."""
 
-    def __init__(self, model_info: DictObject, session: "SyncSessionLlm") -> None:
+    def __init__(self, model_info: DictObject, session: "_SyncSessionLlm") -> None:
         """Initialize downloaded embedding model details."""
         super().__init__(LlmInfo, model_info, session)
 
@@ -590,7 +594,7 @@ class DownloadedLlm(
 AnyDownloadedModel: TypeAlias = DownloadedModel[Any, Any, Any, Any, Any]
 
 
-class SyncSessionSystem(SyncSession):
+class _SyncSessionSystem(_SyncSession):
     """Sync client session for the system namespace."""
 
     API_NAMESPACE = "system"
@@ -618,7 +622,7 @@ class SyncSessionSystem(SyncSession):
         )
 
 
-class _SyncSessionFiles(SyncSession):
+class _SyncSessionFiles(_SyncSession):
     """Sync client session for the files namespace."""
 
     API_NAMESPACE = "files"
@@ -645,7 +649,7 @@ class _SyncSessionFiles(SyncSession):
         return self._fetch_file_handle(file_data)
 
 
-class ModelDownloadOption(ModelDownloadOptionBase[SyncSession]):
+class ModelDownloadOption(ModelDownloadOptionBase[_SyncSession]):
     """A single download option for a model search result."""
 
     @sdk_public_api()
@@ -660,7 +664,7 @@ class ModelDownloadOption(ModelDownloadOptionBase[SyncSession]):
             return channel.wait_for_result()
 
 
-class AvailableModel(AvailableModelBase[SyncSession]):
+class AvailableModel(AvailableModelBase[_SyncSession]):
     """A model available for download from the model repository."""
 
     @sdk_public_api()
@@ -676,7 +680,7 @@ class AvailableModel(AvailableModelBase[SyncSession]):
         return final
 
 
-class SyncSessionRepository(SyncSession):
+class _SyncSessionRepository(_SyncSession):
     """Sync client session for the repository namespace."""
 
     API_NAMESPACE = "repository"
@@ -697,8 +701,8 @@ class SyncSessionRepository(SyncSession):
 TDownloadedModel = TypeVar("TDownloadedModel", bound=AnyDownloadedModel)
 
 
-class SyncSessionModel(
-    SyncSession,
+class _SyncSessionModel(
+    _SyncSession,
     Generic[TModelHandle, TLoadConfig, TLoadConfigDict, TDownloadedModel],
 ):
     """Sync client session for a model (LLM/embedding) namespace."""
@@ -706,7 +710,7 @@ class SyncSessionModel(
     _API_TYPES: Type[ModelSessionTypes[TLoadConfig]]
 
     @property
-    def _system_session(self) -> SyncSessionSystem:
+    def _system_session(self) -> _SyncSessionSystem:
         return self._client.system
 
     @property
@@ -990,8 +994,8 @@ class PredictionStream(PredictionStreamBase):
             self._channel.cancel()
 
 
-class SyncSessionLlm(
-    SyncSessionModel[
+class _SyncSessionLlm(
+    _SyncSessionModel[
         "LLM",
         LlmLoadModelConfig,
         LlmLoadModelConfigDict,
@@ -1100,8 +1104,8 @@ class SyncSessionLlm(
         return response.get("formatted", "") if response else ""
 
 
-class SyncSessionEmbedding(
-    SyncSessionModel[
+class _SyncSessionEmbedding(
+    _SyncSessionModel[
         "EmbeddingModel",
         EmbeddingLoadModelConfig,
         EmbeddingLoadModelConfigDict,
@@ -1187,7 +1191,7 @@ class SyncModelHandle(ModelHandleBase[TSyncSessionModel]):
 AnySyncModel: TypeAlias = SyncModelHandle[Any]
 
 
-class LLM(SyncModelHandle[SyncSessionLlm]):
+class LLM(SyncModelHandle[_SyncSessionLlm]):
     """Reference to a loaded LLM model."""
 
     @sdk_public_api()
@@ -1517,7 +1521,7 @@ class LLM(SyncModelHandle[SyncSessionLlm]):
         )
 
 
-class EmbeddingModel(SyncModelHandle[SyncSessionEmbedding]):
+class EmbeddingModel(SyncModelHandle[_SyncSessionEmbedding]):
     """Reference to a loaded embedding model."""
 
     # Alas, type hints don't properly support distinguishing str vs Iterable[str]:
@@ -1530,7 +1534,7 @@ class EmbeddingModel(SyncModelHandle[SyncSessionEmbedding]):
         return self._session._embed(self.identifier, input)
 
 
-TSyncSession = TypeVar("TSyncSession", bound=SyncSession)
+TSyncSession = TypeVar("TSyncSession", bound=_SyncSession)
 
 
 class Client(ClientBase):
@@ -1543,7 +1547,7 @@ class Client(ClientBase):
         self._ws_thread = ws_thread = AsyncWebsocketThread(dict(client=repr(self)))
         ws_thread.start()
         rm.callback(ws_thread.terminate)
-        self._sessions: dict[str, SyncSession] = {}
+        self._sessions: dict[str, _SyncSession] = {}
         # Support GC-based resource management in the sync API by
         # finalizing at the client layer, and letting its resource
         # manager handle clearing up everything else
@@ -1553,6 +1557,8 @@ class Client(ClientBase):
     def __enter__(self) -> Self:
         # Handle reentrancy the same way files do:
         # allow nested use as a CM, but close on the first exit
+        with sdk_public_api():
+            self._ensure_api_host_is_valid()
         return self
 
     def __exit__(self, *args: Any) -> None:
@@ -1561,6 +1567,42 @@ class Client(ClientBase):
     def close(self) -> None:
         """Close any started client sessions."""
         self._resources.close()
+
+    @staticmethod
+    def _query_probe_url(url: str) -> httpx.Response:
+        return httpx.get(url, timeout=1)
+
+    @classmethod
+    @sdk_public_api()
+    def is_valid_api_host(cls, api_host: str) -> bool:
+        """Report whether the given API host is running an API server instance."""
+        probe_url = cls._get_probe_url(api_host)
+        try:
+            probe_response = cls._query_probe_url(probe_url)
+        except (httpx.ConnectTimeout, httpx.ConnectError):
+            return False
+        return cls._check_probe_response(probe_response)
+
+    @classmethod
+    @sdk_public_api()
+    def find_default_local_api_host(cls) -> str | None:
+        """Query local ports for a running API server instance."""
+        for api_host in cls._iter_default_api_hosts():
+            if cls.is_valid_api_host(api_host):
+                return api_host
+        return None
+
+    def _ensure_api_host_is_valid(self) -> None:
+        specified_api_host = self._api_host
+        if specified_api_host is None:
+            api_host = self.find_default_local_api_host()
+        elif self.is_valid_api_host(specified_api_host):
+            api_host = specified_api_host
+        else:
+            api_host = None
+        if api_host is None:
+            raise self._get_probe_failure_error(specified_api_host)
+        self._api_host = api_host
 
     # Doing network I/O in properties is generally considered undesirable.
     # The async API can't perform network I/O in properties at all.
@@ -1593,20 +1635,20 @@ class Client(ClientBase):
 
     @property
     @sdk_public_api()
-    def llm(self) -> SyncSessionLlm:
+    def llm(self) -> _SyncSessionLlm:
         """Return the LLM API client session."""
-        return self._get_session(SyncSessionLlm)
+        return self._get_session(_SyncSessionLlm)
 
     @property
     @sdk_public_api()
-    def embedding(self) -> SyncSessionEmbedding:
+    def embedding(self) -> _SyncSessionEmbedding:
         """Return the embedding model API client session."""
-        return self._get_session(SyncSessionEmbedding)
+        return self._get_session(_SyncSessionEmbedding)
 
     @property
-    def system(self) -> SyncSessionSystem:
+    def system(self) -> _SyncSessionSystem:
         """Return the system API client session."""
-        return self._get_session(SyncSessionSystem)
+        return self._get_session(_SyncSessionSystem)
 
     @property
     def files(self) -> _SyncSessionFiles:
@@ -1614,9 +1656,9 @@ class Client(ClientBase):
         return self._get_session(_SyncSessionFiles)
 
     @property
-    def repository(self) -> SyncSessionRepository:
+    def repository(self) -> _SyncSessionRepository:
         """Return the repository API client session."""
-        return self._get_session(SyncSessionRepository)
+        return self._get_session(_SyncSessionRepository)
 
     # Convenience methods
     # Not yet implemented (server API only supports the same file types as prepare_image)
@@ -1681,6 +1723,7 @@ def get_default_client(api_host: str | None = None) -> Client:
         configure_default_client(api_host)
     if _default_client is None:
         _default_client = Client(_default_api_host)
+        _default_client._ensure_api_host_is_valid()
     return _default_client
 
 
