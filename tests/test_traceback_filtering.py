@@ -7,8 +7,8 @@ from lmstudio import LMStudioError
 from lmstudio.sdk_api import sdk_callback_invocation
 from lmstudio._logging import new_logger
 
-from .support import check_sdk_error, check_unfiltered_error
-from .support.lmstudio import (
+from tests.support import check_sdk_error, check_unfiltered_error
+from tests.support.lmstudio import (
     TestCoro,
     TestFunc,
     SYNC_API,

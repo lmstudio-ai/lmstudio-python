@@ -3,7 +3,7 @@
 import asyncio
 import lmstudio as lms
 
-from .support import (
+from tests.support import (
     EXPECTED_EMBEDDING_ID,
     EXPECTED_LLM_ID,
     EXPECTED_VLM_ID,

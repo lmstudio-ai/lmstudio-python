@@ -19,7 +19,7 @@ from pytest import LogCaptureFixture as LogCap
 
 from lmstudio import Client, PredictionResult
 
-from ..support import (
+from tests.support import (
     EXPECTED_EMBEDDING,
     EXPECTED_EMBEDDING_ID,
     EXPECTED_EMBEDDING_LENGTH,

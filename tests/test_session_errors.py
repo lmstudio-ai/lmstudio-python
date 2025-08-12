@@ -22,7 +22,7 @@ from lmstudio.sync_api import (
     SyncSessionSystem,
 )
 
-from .support import (
+from tests.support import (
     EXPECT_TB_TRUNCATION,
     InvalidEndpoint,
     nonresponsive_api_host,
@@ -31,7 +31,7 @@ from .support import (
     check_unfiltered_error,
 )
 
-from .support.lmstudio import ErrFunc
+from tests.support.lmstudio import ErrFunc
 
 
 async def check_call_errors_async(session: _AsyncSession) -> None:

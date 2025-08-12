@@ -14,7 +14,7 @@ from pytest import LogCaptureFixture as LogCap
 
 from lmstudio import Client, LMStudioClientError
 
-from ..support import SMALL_LLM_SEARCH_TERM
+from tests.support import SMALL_LLM_SEARCH_TERM
 
 
 # N.B. We can maybe provide a reference list for what should be available

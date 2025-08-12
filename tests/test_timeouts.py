@@ -16,7 +16,7 @@ from lmstudio import (
 )
 from lmstudio.sync_api import _DEFAULT_TIMEOUT
 
-from .support import EXPECTED_LLM_ID
+from tests.support import EXPECTED_LLM_ID
 
 # Sync only, as async API uses standard async timeout constructs like anyio.move_on_after
 
