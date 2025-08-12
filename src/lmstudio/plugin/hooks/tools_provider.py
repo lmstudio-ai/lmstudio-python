@@ -378,7 +378,6 @@ class ToolCallHandler:
                     f"Aborting tool_call {call_id}",
                 )
                 logger.info(f"Running tool call {call_id}")
-                # TODO: Set up context variable for status/warning message sending
                 tool_call_response: PluginToolCallCompleteDict | PluginToolCallErrorDict
                 try:
                     tool_call_response = await self._call_tool_implementation(
