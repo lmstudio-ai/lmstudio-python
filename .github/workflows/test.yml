@@ -110,7 +110,6 @@ jobs:
           # Load text LLMs
           docker exec llmster lms load llama-3.2-1b-instruct --identifier llama-3.2-1b-instruct -y
           docker exec llmster lms load qwen2.5-7b-instruct --identifier qwen2.5-7b-instruct-1m -y
-          docker exec llmster lms load smollm2-135m-instruct --identifier smollm2-135m-instruct -y
 
           # Load vision LLM
           docker exec llmster lms load ZiangWu/MobileVLM_V2-1.7B-GGUF --identifier mobilevlm_v2-1.7b
