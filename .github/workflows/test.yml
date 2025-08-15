@@ -74,6 +74,7 @@ jobs:
             pip-${{ matrix.os }}-${{ matrix.python-version }}-v1-
 
       - name: Run the built image
+        if: matrix.os == 'ubuntu-22.04'
         id: run
         uses: ./.github/actions/docker-daemon-run
         with:
