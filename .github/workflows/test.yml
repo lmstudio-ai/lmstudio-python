@@ -19,7 +19,7 @@ on:
       # Skip running the source code checks when only documentation has been updated
       - "!**.md"
       - "!**.rst"
-      - "!**.txt"  # Any requirements file changes will also involve changing other files
+      - "!**.txt" # Any requirements file changes will also involve changing other files
   push:
     branches:
       - main
@@ -37,7 +37,7 @@ jobs:
   tests:
     runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: false  # Always report results for all targets
+      fail-fast: false # Always report results for all targets
       max-parallel: 8
       matrix:
         python-version: ["3.10", "3.11", "3.12", "3.13"]
@@ -51,61 +51,114 @@ jobs:
     # for latest versions if the standard actions start emitting warnings
 
     steps:
-    - uses: actions/checkout@v4
-      with:
-        persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ matrix.python-version }}
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
 
-    - name: Get pip cache dir
-      id: pip-cache
-      run: |
-        echo "dir=$(python -m pip cache dir)" >> $GITHUB_OUTPUT
+      - name: Get pip cache dir
+        id: pip-cache
+        run: |
+          echo "dir=$(python -m pip cache dir)" >> $GITHUB_OUTPUT
 
-    - name: Cache bootstrapping dependencies
-      uses: actions/cache@v4
-      with:
-        path: ${{ steps.pip-cache.outputs.dir }}
-        key:
-          pip-${{ matrix.os }}-${{ matrix.python-version }}-v1-${{ hashFiles('pdm.lock') }}
-        restore-keys: |
-          pip-${{ matrix.os }}-${{ matrix.python-version }}-v1-
+      - name: Cache bootstrapping dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pip-cache.outputs.dir }}
+          key: pip-${{ matrix.os }}-${{ matrix.python-version }}-v1-${{ hashFiles('pdm.lock') }}
+          restore-keys: |
+            pip-${{ matrix.os }}-${{ matrix.python-version }}-v1-
 
-    - name: Install PDM
-      run: |
-        # Ensure `pdm` uses the same version as specified in `pdm.lock`
-        # while avoiding the error raised by https://github.com/pypa/pip/issues/12889
-        python -m pip install --upgrade -r ci-bootstrap-requirements.txt
+      - name: Run the built image
+        if: matrix.os == 'ubuntu-22.04'
+        id: run
+        uses: ./.github/actions/docker-daemon-run
+        with:
+          docker-image: lmstudio/llmster-preview:cpu
+          # Use the same port as the always on API server
+          port: "41343:1234"
+          container-name: llmster
 
-    - name: Create development virtual environment
-      run: |
-        python -m pdm sync --no-self --dev
-        # Handle Windows vs non-Windows differences in .venv layout
-        VIRTUAL_ENV_BIN_DIR="$PWD/.venv/bin"
-        test -e "$VIRTUAL_ENV_BIN_DIR" || VIRTUAL_ENV_BIN_DIR="$PWD/.venv/Scripts"
-        echo "VIRTUAL_ENV_BIN_DIR=$VIRTUAL_ENV_BIN_DIR" >> "$GITHUB_ENV"
+      - name: Download models for tests (Ubuntu only)
+        if: matrix.os == 'ubuntu-22.04'
+        run: |
+          echo "Downloading required models..."
 
-    - name: Static checks
-      run: |
-        source "$VIRTUAL_ENV_BIN_DIR/activate"
-        python -m tox -v -m static
+          # Download text LLMs
+          docker exec llmster lms get https://huggingface.co/hugging-quants/Llama-3.2-1B-Instruct-Q4_K_M-GGUF -y --quiet
+          docker exec llmster lms get https://huggingface.co/Qwen/Qwen2.5-7B-Instruct-GGUF -y --quiet
+          docker exec llmster lms get https://huggingface.co/ZiangWu/MobileVLM_V2-1.7B-GGUF -y --quiet
 
-    - name: CI-compatible tests
-      run: |
-        source "$VIRTUAL_ENV_BIN_DIR/activate"
-        python -m tox -v -- -m 'not lmstudio'
+          # Download additional model for speculative decoding examples
+          docker exec llmster lms get https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF -y --quiet
 
-    - name: Upload coverage data
-      uses: actions/upload-artifact@v4
-      with:
-        name: coverage-data-${{ matrix.os }}-py${{ matrix.python-version }}
-        path: .coverage.*
-        include-hidden-files: true
-        if-no-files-found: ignore
+          echo "Model downloads complete"
 
+      - name: Load models into LM Studio (Ubuntu only)
+        if: matrix.os == 'ubuntu-22.04'
+        run: |
+          echo "Loading models..."
+
+          # Load embedding model
+          docker exec llmster lms load nomic-embed-text-v1.5 --identifier text-embedding-nomic-embed-text-v1.5 -y
+
+          # Load text LLMs
+          docker exec llmster lms load llama-3.2-1b-instruct --identifier llama-3.2-1b-instruct -y
+          docker exec llmster lms load qwen2.5-7b-instruct --identifier qwen2.5-7b-instruct-1m -y
+
+          # Load vision LLM
+          docker exec llmster lms load ZiangWu/MobileVLM_V2-1.7B-GGUF --identifier mobilevlm_v2-1.7b
+
+          echo "Model loading complete"
+
+      - name: Install PDM
+        run: |
+          # Ensure `pdm` uses the same version as specified in `pdm.lock`
+          # while avoiding the error raised by https://github.com/pypa/pip/issues/12889
+          python -m pip install --upgrade -r ci-bootstrap-requirements.txt
+
+      - name: Create development virtual environment
+        run: |
+          python -m pdm sync --no-self --dev
+          # Handle Windows vs non-Windows differences in .venv layout
+          VIRTUAL_ENV_BIN_DIR="$PWD/.venv/bin"
+          test -e "$VIRTUAL_ENV_BIN_DIR" || VIRTUAL_ENV_BIN_DIR="$PWD/.venv/Scripts"
+          echo "VIRTUAL_ENV_BIN_DIR=$VIRTUAL_ENV_BIN_DIR" >> "$GITHUB_ENV"
+
+      - name: Static checks
+        run: |
+          source "$VIRTUAL_ENV_BIN_DIR/activate"
+          python -m tox -v -m static
+
+      - name: CI-compatible tests (Windows)
+        if: matrix.os == 'windows-2022'
+        run: |
+          source "$VIRTUAL_ENV_BIN_DIR/activate"
+          python -m tox -v -- -m 'not lmstudio'
+
+      - name: All tests including LM Studio (Ubuntu)
+        if: matrix.os == 'ubuntu-22.04'
+        run: |
+          source "$VIRTUAL_ENV_BIN_DIR/activate"
+          python -m tox -v
+
+      - name: Upload coverage data
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-data-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: .coverage.*
+          include-hidden-files: true
+          if-no-files-found: ignore
+
+      - name: Stop LM Studio Docker container (Ubuntu only)
+        if: matrix.os == 'ubuntu-22.04' && always()
+        run: |
+          docker stop llmster || true
+          docker rm llmster || true
 
   # Coverage check based on https://hynek.me/articles/ditch-codecov-python/
   coverage:
@@ -145,12 +198,10 @@ jobs:
           # Report again and fail if under 50%.
           # Highest historical coverage: 65%
           # Last noted local test coverage level: 94%
-          # CI coverage percentage is low because many of the tests
-          # aren't CI compatible (they need a local LM Studio instance).
-          # It's only as high as it is because the generated data model
-          # classes make up such a large portion of the total SDK code.
-          # Accept anything over 50% until CI is set up to run LM Studio
-          # in headless mode, and hence is able to run end-to-end tests.
+          # Ubuntu runners now run LM Studio in Docker, so they achieve higher
+          # coverage than Windows runners (which skip LM Studio tests).
+          # The generated data model classes make up a large portion of the SDK code.
+          # Accept anything over 50% as Windows runners still skip LM Studio tests.
           coverage report --fail-under=50
 
       - name: Upload HTML report if check failed
