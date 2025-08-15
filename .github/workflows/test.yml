@@ -81,6 +81,7 @@ jobs:
           docker-image: lmstudio/llmster-preview:cpu
           # Use the same port as the always on API server
           port: "41343:1234"
+          container-name: llmster
 
       - name: Download models for tests (Ubuntu only)
         if: matrix.os == 'ubuntu-22.04'
