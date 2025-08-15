@@ -73,6 +73,50 @@ jobs:
           restore-keys: |
             pip-${{ matrix.os }}-${{ matrix.python-version }}-v1-
 
+      - name: Run the built image
+        id: run
+        uses: ./.github/actions/docker-daemon-run
+        with:
+          docker-image: lmstudio/llmster-preview:cpu
+          # Use the same port as the always on API server
+          port: "41343:1234"
+
+      - name: Download models for tests (Ubuntu only)
+        if: matrix.os == 'ubuntu-22.04'
+        run: |
+          echo "Downloading required models..."
+
+          # Download text LLMs
+          docker exec llmster lms get https://huggingface.co/hugging-quants/Llama-3.2-1B-Instruct-Q4_K_M-GGUF -y
+          docker exec llmster lms get https://huggingface.co/Qwen/Qwen2.5-7B-Instruct-GGUF -y
+          docker exec llmster lms get https://huggingface.co/ZiangWu/MobileVLM_V2-1.7B-GGUF -y
+
+          # Download vision LLM
+          docker exec llmster lms get ZiangWu/MobileVLM_V2-1.7B-GGUF -y
+
+          # Download additional model for speculative decoding examples
+          docker exec llmster lms get qwen2.5-0.5b-instruct -y
+
+          echo "Model downloads complete"
+
+      - name: Load models into LM Studio (Ubuntu only)
+        if: matrix.os == 'ubuntu-22.04'
+        run: |
+          echo "Loading models..."
+
+          # Load embedding model
+          docker exec llmster lms load nomic-embed-text-v1.5 --identifier text-embedding-nomic-embed-text-v1.5 -y
+
+          # Load text LLMs
+          docker exec llmster lms load llama-3.2-1b-instruct --identifier llama-3.2-1b-instruct -y
+          docker exec llmster lms load qwen2.5-7b-instruct --identifier qwen2.5-7b-instruct-1m -y
+          docker exec llmster lms load smollm2-135m-instruct --identifier smollm2-135m-instruct -y
+
+          # Load vision LLM
+          docker exec llmster lms load ZiangWu/MobileVLM_V2-1.7B-GGUF --identifier mobilevlm_v2-1.7b
+
+          echo "Model loading complete"
+
       - name: Install PDM
         run: |
           # Ensure `pdm` uses the same version as specified in `pdm.lock`
@@ -92,10 +136,17 @@ jobs:
           source "$VIRTUAL_ENV_BIN_DIR/activate"
           python -m tox -v -m static
 
-      - name: CI-compatible tests
+      - name: CI-compatible tests (Windows)
+        if: matrix.os == 'windows-2022'
         run: |
           source "$VIRTUAL_ENV_BIN_DIR/activate"
           python -m tox -v -- -m 'not lmstudio'
+
+      - name: All tests including LM Studio (Ubuntu)
+        if: matrix.os == 'ubuntu-22.04'
+        run: |
+          source "$VIRTUAL_ENV_BIN_DIR/activate"
+          python -m tox -v
 
       - name: Upload coverage data
         uses: actions/upload-artifact@v4
@@ -104,6 +155,12 @@ jobs:
           path: .coverage.*
           include-hidden-files: true
           if-no-files-found: ignore
+
+      - name: Stop LM Studio Docker container (Ubuntu only)
+        if: matrix.os == 'ubuntu-22.04' && always()
+        run: |
+          docker stop llmster || true
+          docker rm llmster || true
 
   # Coverage check based on https://hynek.me/articles/ditch-codecov-python/
   coverage:
@@ -143,12 +200,10 @@ jobs:
           # Report again and fail if under 50%.
           # Highest historical coverage: 65%
           # Last noted local test coverage level: 94%
-          # CI coverage percentage is low because many of the tests
-          # aren't CI compatible (they need a local LM Studio instance).
-          # It's only as high as it is because the generated data model
-          # classes make up such a large portion of the total SDK code.
-          # Accept anything over 50% until CI is set up to run LM Studio
-          # in headless mode, and hence is able to run end-to-end tests.
+          # Ubuntu runners now run LM Studio in Docker, so they achieve higher
+          # coverage than Windows runners (which skip LM Studio tests).
+          # The generated data model classes make up a large portion of the SDK code.
+          # Accept anything over 50% as Windows runners still skip LM Studio tests.
           coverage report --fail-under=50
 
       - name: Upload HTML report if check failed
