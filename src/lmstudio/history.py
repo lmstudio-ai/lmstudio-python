@@ -18,6 +18,7 @@ from typing import (
     Sequence,
     Tuple,
     TypeAlias,
+    Union,
     cast,
     get_args as get_typeform_args,
     runtime_checkable,
@@ -27,6 +28,8 @@ from typing_extensions import (
     Self,
     # Native in 3.13+
     TypeIs,
+    # Native in Python 3.12+
+    Buffer
 )
 
 from msgspec import to_builtins
@@ -529,31 +532,47 @@ class Chat:
         return message
 
 
-LocalFileInput = BinaryIO | bytes | str | os.PathLike[str]
+LocalFileInput = BinaryIO | Buffer | str | os.PathLike[str]
 
 
 # Private until file handle caching support is part of the published SDK API
 
 
-def _get_file_details(src: LocalFileInput) -> Tuple[str, bytes]:
+def _get_file_details(src: LocalFileInput) -> Tuple[str, Buffer]:
     """Read file contents as binary data and generate a suitable default name."""
-    if isinstance(src, bytes):
-        # We process bytes as raw data, not a bytes filesystem path
-        data = src
-        name = str(uuid.uuid4())
-    elif hasattr(src, "read"):
+    # Try to handle buffer protocol objects first (unless it's a path)
+    if not isinstance(src, (str, os.PathLike)) and not hasattr(src, "read"):
         try:
-            data = src.read()
+            # If already a memoryview, just use it directly
+            if isinstance(src, memoryview):
+                data: Buffer = src
+            else:
+                # Try to create a memoryview - this will work for any buffer protocol object
+                # including bytes, bytearray, array.array, numpy arrays, etc.
+                data = memoryview(src)
+            name = str(uuid.uuid4())
+            return name, data
+        except TypeError:
+            # Not a buffer protocol object, fall through to other checks
+            pass
+    
+    if hasattr(src, "read"):
+        try:
+            data: Buffer = src.read()
         except OSError as exc:
             # Note: OSError details remain available via raised_exc.__context__
             err_msg = f"Error while reading {src!r} ({exc!r})"
             raise LMStudioOSError(err_msg) from None
         name = getattr(src, "name", str(uuid.uuid4()))
+        # data is bytes here, which is a Buffer type
+        return name, data
     else:
+        # At this point, src must be a path-like object
+        src_path_input = cast(Union[str, os.PathLike[str]], src)
         try:
-            src_path = Path(src)
+            src_path = Path(src_path_input)
         except Exception as exc:
-            err_msg = f"Expected file-like object, filesystem path, or bytes ({exc!r})"
+            err_msg = f"Expected file-like object, filesystem path, or buffer ({exc!r})"
             raise LMStudioValueError(err_msg) from None
         try:
             data = src_path.read_bytes()
@@ -562,7 +581,8 @@ def _get_file_details(src: LocalFileInput) -> Tuple[str, bytes]:
             err_msg = f"Error while reading {str(src_path)!r} ({exc!r})"
             raise LMStudioOSError(err_msg) from None
         name = str(src_path.name)
-    return name, data
+        # data is bytes here, which is a Buffer type
+        return name, data
 
 
 _ContentHash: TypeAlias = bytes
@@ -573,7 +593,7 @@ class _LocalFileData:
     """Local file data to be added to a chat history."""
 
     name: str
-    raw_data: bytes
+    raw_data: Buffer
 
     def __init__(self, src: LocalFileInput, name: str | None = None) -> None:
         default_name, raw_data = _get_file_details(src)
