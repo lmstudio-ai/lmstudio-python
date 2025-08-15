@@ -93,9 +93,6 @@ jobs:
           docker exec llmster lms get https://huggingface.co/Qwen/Qwen2.5-7B-Instruct-GGUF -y
           docker exec llmster lms get https://huggingface.co/ZiangWu/MobileVLM_V2-1.7B-GGUF -y
 
-          # Download vision LLM
-          docker exec llmster lms get ZiangWu/MobileVLM_V2-1.7B-GGUF -y
-
           # Download additional model for speculative decoding examples
           docker exec llmster lms get qwen2.5-0.5b-instruct -y
 
