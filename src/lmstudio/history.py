@@ -29,7 +29,7 @@ from typing_extensions import (
     # Native in 3.13+
     TypeIs,
     # Native in Python 3.12+
-    Buffer
+    Buffer,
 )
 
 from msgspec import to_builtins
@@ -555,10 +555,10 @@ def _get_file_details(src: LocalFileInput) -> Tuple[str, Buffer]:
         except TypeError:
             # Not a buffer protocol object, fall through to other checks
             pass
-    
+
     if hasattr(src, "read"):
         try:
-            data: Buffer = src.read()
+            data = src.read()
         except OSError as exc:
             # Note: OSError details remain available via raised_exc.__context__
             err_msg = f"Error while reading {src!r} ({exc!r})"
