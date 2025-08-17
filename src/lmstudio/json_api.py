@@ -11,6 +11,7 @@
 
 import asyncio
 import copy
+import inspect
 import json
 import uuid
 import warnings
@@ -1089,13 +1090,14 @@ class GetOrLoadEndpoint(
         super().__init__(model_key, params, on_load_progress)
 
 
-class ToolFunctionDefDict(TypedDict):
+class ToolFunctionDefDict(TypedDict, total=False):
     """SDK input format to specify an LLM tool call and its implementation (as a dict)."""
 
     name: str
     description: str
     parameters: Mapping[str, Any]
     implementation: Callable[..., Any]
+    parameter_defaults: Mapping[str, Any]
 
 
 @dataclass(kw_only=True, frozen=True, slots=True)
@@ -1106,10 +1108,21 @@ class ToolFunctionDef:
     description: str
     parameters: Mapping[str, Any]
     implementation: Callable[..., Any]
+    parameter_defaults: Mapping[str, Any] = field(default_factory=dict)
 
     def _to_llm_tool_def(self) -> tuple[type[Struct], LlmTool]:
         params_struct_name = f"{self.name.capitalize()}Parameters"
-        params_struct = defstruct(params_struct_name, self.parameters.items())
+        
+        # Build fields list with defaults
+        fields: list[tuple[str, Any] | tuple[str, Any, Any]] = []
+        for param_name, param_type in self.parameters.items():
+            if param_name in self.parameter_defaults:
+                default_value = self.parameter_defaults[param_name]
+                fields.append((param_name, param_type, default_value))
+            else:
+                fields.append((param_name, param_type))
+        
+        params_struct = defstruct(params_struct_name, fields, kw_only=True)
         return params_struct, LlmTool._from_api_dict(
             {
                 "type": "function",
@@ -1160,8 +1173,24 @@ class ToolFunctionDef:
             ) from exc
         # Tool definitions only annotate the input parameters, not the return type
         parameters.pop("return", None)
+        
+        # Extract default values from function signature
+        parameter_defaults: dict[str, Any] = {}
+        try:
+            sig = inspect.signature(f)
+            for param_name, param in sig.parameters.items():
+                if param.default is not inspect.Parameter.empty:
+                    parameter_defaults[param_name] = param.default
+        except Exception as exc:
+            # If we can't extract defaults, continue without them
+            pass
+        
         return cls(
-            name=name, description=description, parameters=parameters, implementation=f
+            name=name, 
+            description=description, 
+            parameters=parameters, 
+            implementation=f,
+            parameter_defaults=parameter_defaults
         )
 
 
@@ -1601,7 +1630,20 @@ class ChatResponseEndpoint(PredictionEndpoint):
             elif callable(tool):
                 tool_def = ToolFunctionDef.from_callable(tool)
             else:
-                tool_def = ToolFunctionDef(**tool)
+                # Handle dictionary-based tool definition
+                tool_dict = cast(ToolFunctionDefDict, tool)
+                name = cast(str, tool_dict["name"])
+                description = cast(str, tool_dict["description"])
+                parameters = cast(Mapping[str, Any], tool_dict["parameters"])
+                implementation = cast(Callable[..., Any], tool_dict["implementation"])
+                parameter_defaults = cast(Mapping[str, Any], tool_dict.get("parameter_defaults", {}))
+                tool_def = ToolFunctionDef(
+                    name=name,
+                    description=description,
+                    parameters=parameters,
+                    implementation=implementation,
+                    parameter_defaults=parameter_defaults
+                )
             if tool_def.name in client_tool_map:
                 raise LMStudioValueError(
                     f"Duplicate tool names are not permitted ({tool_def.name!r} repeated)"
