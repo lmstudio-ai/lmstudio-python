@@ -166,7 +166,7 @@ jobs:
       - name: All tests including LM Studio
         run: |
           source "$VIRTUAL_ENV_BIN_DIR/activate"
-          python -m tox -v
+          python -m tox -v -- -v --tb=short
 
       - name: Upload coverage data
         uses: actions/upload-artifact@v4
