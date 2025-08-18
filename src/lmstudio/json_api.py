@@ -1100,7 +1100,7 @@ class ToolParamDefDict(TypedDict, Generic[T]):
     type: type[T]
     default: NotRequired[T]
 
-class ToolFunctionDefDict(TypedDict, total=False):
+class ToolFunctionDefDict(TypedDict):
     """SDK input format to specify an LLM tool call and its implementation (as a dict)."""
 
     name: str
