@@ -78,6 +78,7 @@ __all__ = [
     "FileHandleDict",
     "FileHandleInput",
     "FileType",
+    "LocalFileInput",
     "SystemPrompt",
     "SystemPromptContent",
     "ToolCallRequest",
