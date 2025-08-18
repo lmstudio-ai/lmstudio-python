@@ -130,7 +130,7 @@ jobs:
 
           # Download text LLMs
           docker exec llmster lms get https://huggingface.co/hugging-quants/Llama-3.2-1B-Instruct-Q4_K_M-GGUF -y --quiet
-          docker exec llmster lms get https://huggingface.co/Qwen/Qwen2.5-7B-Instruct-GGUF -y --quiet
+          docker exec llmster lms get https://huggingface.co/Qwen/Qwen2.5-7B-Instruct-GGUF@q3_k_m -y --quiet
           docker exec llmster lms get https://huggingface.co/ZiangWu/MobileVLM_V2-1.7B-GGUF -y --quiet
 
           # Download additional model for speculative decoding examples
