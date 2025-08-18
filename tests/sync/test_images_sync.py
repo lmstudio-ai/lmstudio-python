@@ -14,7 +14,7 @@ from pytest import LogCaptureFixture as LogCap
 
 from io import BytesIO
 
-from lmstudio import Client, Chat, FileHandle, LMStudioServerError
+from lmstudio import Client, Chat, FileHandle, LMStudioServerError, LocalFileInput
 
 from ..support import (
     EXPECTED_VLM_ID,
@@ -24,26 +24,42 @@ from ..support import (
     check_sdk_error,
 )
 
+_IMAGE_DATA = IMAGE_FILEPATH.read_bytes()
+
+_FILE_INPUT_CASES: list[tuple[str, LocalFileInput]] = [
+    ("filesystem path", IMAGE_FILEPATH),
+    ("bytes IO stream", BytesIO(_IMAGE_DATA)),
+    ("raw bytes", _IMAGE_DATA),
+    ("mutable buffer", bytearray(_IMAGE_DATA)),
+    ("memoryview", memoryview(_IMAGE_DATA)),
+]
+_FILE_INPUT_CASE_IDS = [case[0] for case in _FILE_INPUT_CASES]
+
 
 @pytest.mark.lmstudio
-def test_upload_from_pathlike_sync(caplog: LogCap) -> None:
+@pytest.mark.parametrize(
+    "input_kind,file_input", _FILE_INPUT_CASES, ids=_FILE_INPUT_CASE_IDS
+)
+def test_prepare_sync(
+    caplog: LogCap, input_kind: str, file_input: LocalFileInput
+) -> None:
     caplog.set_level(logging.DEBUG)
     with Client() as client:
         session = client.files
-        file = session._prepare_file(IMAGE_FILEPATH)
+        file = session._prepare_file(file_input)
         assert file
         assert isinstance(file, FileHandle)
-        logging.info(f"Uploaded file: {file}")
-        image = session.prepare_image(IMAGE_FILEPATH)
+        logging.info(f"Uploaded file from {input_kind}: {file}")
+        image = session.prepare_image(file_input)
         assert image
         assert isinstance(image, FileHandle)
-        logging.info(f"Uploaded image: {image}")
+        logging.info(f"Uploaded image from {input_kind}: {image}")
         # Even with the same data uploaded, assigned identifiers should differ
         assert image != file
 
 
 @pytest.mark.lmstudio
-def test_upload_from_file_obj_sync(caplog: LogCap) -> None:
+def test_prepare_from_file_obj_sync(caplog: LogCap) -> None:
     caplog.set_level(logging.DEBUG)
     with Client() as client:
         session = client.files
@@ -51,29 +67,12 @@ def test_upload_from_file_obj_sync(caplog: LogCap) -> None:
             file = session._prepare_file(f)
         assert file
         assert isinstance(file, FileHandle)
-        logging.info(f"Uploaded file: {file}")
+        logging.info(f"Uploaded file from file object: {file}")
         with open(IMAGE_FILEPATH, "rb") as f:
             image = session.prepare_image(f)
         assert image
         assert isinstance(image, FileHandle)
-        logging.info(f"Uploaded image: {image}")
-        # Even with the same data uploaded, assigned identifiers should differ
-        assert image != file
-
-
-@pytest.mark.lmstudio
-def test_upload_from_bytesio_sync(caplog: LogCap) -> None:
-    caplog.set_level(logging.DEBUG)
-    with Client() as client:
-        session = client.files
-        file = session._prepare_file(BytesIO(IMAGE_FILEPATH.read_bytes()))
-        assert file
-        assert isinstance(file, FileHandle)
-        logging.info(f"Uploaded file: {file}")
-        image = session.prepare_image(BytesIO(IMAGE_FILEPATH.read_bytes()))
-        assert image
-        assert isinstance(image, FileHandle)
-        logging.info(f"Uploaded image: {image}")
+        logging.info(f"Uploaded image from file object: {image}")
         # Even with the same data uploaded, assigned identifiers should differ
         assert image != file
 
