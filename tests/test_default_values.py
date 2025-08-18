@@ -2,6 +2,7 @@
 
 import pytest
 from typing import Any
+from msgspec import defstruct
 
 from src.lmstudio.json_api import ToolFunctionDef, ToolFunctionDefDict
 from src.lmstudio.schemas import _to_json_schema
@@ -29,113 +30,154 @@ def calculate(expression: str, precision: int = 2) -> str:
         precision: Number of decimal places (default: 2)
     
     Returns:
-        The calculated result
+        The calculated result as a string
     """
     return f"Result: {eval(expression):.{precision}f}"
 
 
 class TestDefaultValues:
-    """Test default parameter value functionality."""
-    
+    """Test cases for default parameter values in tool definitions."""
+
     def test_extract_defaults_from_callable(self):
-        """Test extracting default values from function signature."""
+        """Test extracting default values from a callable function."""
         tool_def = ToolFunctionDef.from_callable(greet)
         
         assert tool_def.name == "greet"
-        assert tool_def.parameter_defaults == {
-            "greeting": "Hello",
-            "punctuation": "!"
-        }
-        assert "name" not in tool_def.parameter_defaults
+        # Check that defaults are converted to inline format
+        assert tool_def.parameters["greeting"] == {"type": str, "default": "Hello"}
+        assert tool_def.parameters["punctuation"] == {"type": str, "default": "!"}
+        assert tool_def.parameters["name"] == str  # No default, just type
     
-    def test_manual_defaults(self):
-        """Test manually specifying default values."""
+    def test_manual_inline_defaults(self):
+        """Test manually specifying default values in inline format."""
         tool_def = ToolFunctionDef(
             name="calculate",
             description="Calculate a mathematical expression",
-            parameters={"expression": str, "precision": int},
-            implementation=calculate,
-            parameter_defaults={"precision": 2}
+            parameters={
+                "expression": str,
+                "precision": {"type": int, "default": 2}
+            },
+            implementation=calculate
         )
         
-        assert tool_def.parameter_defaults == {"precision": 2}
-        assert "expression" not in tool_def.parameter_defaults
+        # Check that the inline format is preserved
+        assert tool_def.parameters["precision"] == {"type": int, "default": 2}
+        assert tool_def.parameters["expression"] == str  # No default, just type
     
     def test_json_schema_with_defaults(self):
-        """Test that JSON Schema includes default values."""
+        """Test that JSON schema includes default values."""
         tool_def = ToolFunctionDef.from_callable(greet)
         params_struct, _ = tool_def._to_llm_tool_def()
+        
         json_schema = _to_json_schema(params_struct)
         
-        properties = json_schema["properties"]
-        
-        # name should not have a default (required parameter)
-        assert "name" in properties
-        assert "default" not in properties["name"]
-        
-        # greeting should have default "Hello"
-        assert "greeting" in properties
-        assert properties["greeting"]["default"] == "Hello"
-        
-        # punctuation should have default "!"
-        assert "punctuation" in properties
-        assert properties["punctuation"]["default"] == "!"
-        
-        # Only name should be required
-        assert json_schema["required"] == ["name"]
+        # Check that default values are included in the schema
+        assert json_schema["properties"]["greeting"]["default"] == "Hello"
+        assert json_schema["properties"]["punctuation"]["default"] == "!"
+        assert "default" not in json_schema["properties"]["name"]
     
     def test_dict_based_definition(self):
-        """Test dictionary-based tool definition with defaults."""
+        """Test dictionary-based tool definition with inline defaults."""
         dict_tool: ToolFunctionDefDict = {
             "name": "format_text",
             "description": "Format text with specified style",
-            "parameters": {"text": str, "style": str, "uppercase": bool},
-            "implementation": lambda text, style="normal", uppercase=False: text.upper() if uppercase else text,
-            "parameter_defaults": {"style": "normal", "uppercase": False}
+            "parameters": {
+                "text": str,
+                "style": {"type": str, "default": "normal"},
+                "uppercase": {"type": bool, "default": False}
+            },
+            "implementation": lambda text, style="normal", uppercase=False: text.upper() if uppercase else text
         }
         
         # This should work without errors
         tool_def = ToolFunctionDef(**dict_tool)
-        assert tool_def.parameter_defaults == {"style": "normal", "uppercase": False}
+        assert tool_def.parameters["style"] == {"type": str, "default": "normal"}
+        assert tool_def.parameters["uppercase"] == {"type": bool, "default": False}
+        assert tool_def.parameters["text"] == str  # No default, just type
     
     def test_no_defaults(self):
         """Test function with no default values."""
         def no_defaults(a: int, b: str) -> str:
             """Function with no default parameters."""
-            return f"{a}{b}"
+            return f"{a}: {b}"
         
         tool_def = ToolFunctionDef.from_callable(no_defaults)
-        assert tool_def.parameter_defaults == {}
+        # All parameters should be simple types without defaults
+        assert tool_def.parameters["a"] == int
+        assert tool_def.parameters["b"] == str
         
         params_struct, _ = tool_def._to_llm_tool_def()
         json_schema = _to_json_schema(params_struct)
         
-        # All parameters should be required
-        assert json_schema["required"] == ["a", "b"]
-        
-        # No properties should have defaults
-        for prop in json_schema["properties"].values():
-            assert "default" not in prop
+        # No default values should be present
+        assert "default" not in json_schema["properties"]["a"]
+        assert "default" not in json_schema["properties"]["b"]
     
     def test_mixed_defaults(self):
-        """Test function with some parameters having defaults."""
+        """Test function with some parameters having defaults and others not."""
         def mixed_defaults(required: str, optional1: int = 42, optional2: bool = True) -> str:
             """Function with mixed required and optional parameters."""
-            return f"{required}{optional1}{optional2}"
+            return f"{required}: {optional1}, {optional2}"
         
         tool_def = ToolFunctionDef.from_callable(mixed_defaults)
-        assert tool_def.parameter_defaults == {
-            "optional1": 42,
-            "optional2": True
-        }
+        # Check inline format for parameters with defaults
+        assert tool_def.parameters["optional1"] == {"type": int, "default": 42}
+        assert tool_def.parameters["optional2"] == {"type": bool, "default": True}
+        assert tool_def.parameters["required"] == str  # No default, just type
         
         params_struct, _ = tool_def._to_llm_tool_def()
         json_schema = _to_json_schema(params_struct)
         
-        # Only required should be in required list
-        assert json_schema["required"] == ["required"]
-        
-        # Check defaults
+        # Check that default values are correctly included in schema
         assert json_schema["properties"]["optional1"]["default"] == 42
         assert json_schema["properties"]["optional2"]["default"] is True
         assert "default" not in json_schema["properties"]["required"]
+    
+    def test_extract_type_and_default_method(self):
+        """Test the _extract_type_and_default helper method."""
+        tool_def = ToolFunctionDef(
+            name="test",
+            description="Test tool",
+            parameters={
+                "simple": str,
+                "with_default": {"type": int, "default": 42},
+                "complex_default": {"type": list, "default": [1, 2, 3]}
+            },
+            implementation=lambda x, y, z: None
+        )
+        
+        # Test simple type
+        param_type, default = tool_def._extract_type_and_default("simple", str)
+        assert param_type == str
+        assert default is None
+        
+        # Test inline format with default
+        param_type, default = tool_def._extract_type_and_default("with_default", {"type": int, "default": 42})
+        assert param_type == int
+        assert default == 42
+        
+        # Test complex default
+        param_type, default = tool_def._extract_type_and_default("complex_default", {"type": list, "default": [1, 2, 3]})
+        assert param_type == list
+        assert default == [1, 2, 3]
+
+    def test_msgspec_auto_defaults(self):
+        """msgspec automatically reflects default values in the JSON schema."""
+        TestStruct = defstruct(
+            "TestStruct",
+            [
+                ("name", str),
+                ("age", int, 18),
+                ("active", bool, True),
+            ],
+            kw_only=True,
+        )
+
+        schema = _to_json_schema(TestStruct)
+        properties = schema.get("properties", {})
+        required = schema.get("required", [])
+
+        assert "name" in properties and "default" not in properties["name"]
+        assert properties["age"].get("default") == 18
+        assert properties["active"].get("default") is True
+        assert "name" in required and "age" not in required and "active" not in required

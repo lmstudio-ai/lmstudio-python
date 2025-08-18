@@ -66,27 +66,8 @@ def _to_json_schema(cls: type, *, omit: Sequence[str] = ()) -> DictSchema:
             named_schema.pop(field, None)
         json_schema.update(named_schema)
     
-    # Add default values to properties if they exist in the msgspec Struct
-    if hasattr(cls, "__struct_fields__") and hasattr(cls, "__struct_defaults__"):
-        properties = json_schema.get("properties", {})
-        if properties:
-            # Get ordered field names and default values
-            field_names = cls.__struct_fields__
-            default_values = cls.__struct_defaults__
-            
-            # Map default values to field names by position
-            # Only fields with defaults will have entries in default_values
-            default_count = len(default_values)
-            field_count = len(field_names)
-            
-            # For kw_only=True structs, default values correspond to the last N fields
-            # where N is the number of default values
-            for i, field_name in enumerate(field_names):
-                if field_name in properties:
-                    # Calculate the index into default_values
-                    default_index = i - (field_count - default_count)
-                    if 0 <= default_index < default_count:
-                        properties[field_name]["default"] = default_values[default_index]
+    # msgspec automatically handles default values in the generated JSON schema
+    # when they are properly defined in the Struct fields
     
     return json_schema
 
