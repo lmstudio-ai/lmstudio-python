@@ -26,10 +26,10 @@ from typing import (
 from typing_extensions import (
     # Native in 3.11+
     Self,
-    # Native in 3.13+
-    TypeIs,
     # Native in Python 3.12+
     Buffer,
+    # Native in 3.13+
+    TypeIs,
 )
 
 from msgspec import to_builtins
