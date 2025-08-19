@@ -25,6 +25,8 @@ from typing import (
 from typing_extensions import (
     # Native in 3.11+
     Self,
+    # Native in Python 3.12+
+    Buffer,
     # Native in 3.13+
     TypeIs,
 )
@@ -76,6 +78,7 @@ __all__ = [
     "FileHandleDict",
     "FileHandleInput",
     "FileType",
+    "LocalFileInput",
     "SystemPrompt",
     "SystemPromptContent",
     "ToolCallRequest",
@@ -529,17 +532,24 @@ class Chat:
         return message
 
 
-LocalFileInput = BinaryIO | bytes | str | os.PathLike[str]
+LocalFileInput = BinaryIO | Buffer | str | os.PathLike[str]
 
 
 # Private until file handle caching support is part of the published SDK API
 
 
-def _get_file_details(src: LocalFileInput) -> Tuple[str, bytes]:
+def _get_file_details(src: LocalFileInput) -> Tuple[str, Buffer]:
     """Read file contents as binary data and generate a suitable default name."""
-    if isinstance(src, bytes):
-        # We process bytes as raw data, not a bytes filesystem path
-        data = src
+    data: Buffer
+    if isinstance(src, Buffer):
+        if isinstance(src, memoryview):
+            # If already a memoryview, just use it directly
+            data = src
+        else:
+            # Try to create a memoryview - this will work for any buffer protocol object
+            # including bytes, bytearray, array.array, numpy arrays, etc.
+            data = memoryview(src)
+        # Received raw file data without any name information
         name = str(uuid.uuid4())
     elif hasattr(src, "read"):
         try:
@@ -550,10 +560,13 @@ def _get_file_details(src: LocalFileInput) -> Tuple[str, bytes]:
             raise LMStudioOSError(err_msg) from None
         name = getattr(src, "name", str(uuid.uuid4()))
     else:
+        # At this point, src must be a path-like object
         try:
             src_path = Path(src)
         except Exception as exc:
-            err_msg = f"Expected file-like object, filesystem path, or bytes ({exc!r})"
+            err_msg = (
+                f"Expected file-like object, filesystem path, or data buffer ({exc!r})"
+            )
             raise LMStudioValueError(err_msg) from None
         try:
             data = src_path.read_bytes()
@@ -573,7 +586,7 @@ class _LocalFileData:
     """Local file data to be added to a chat history."""
 
     name: str
-    raw_data: bytes
+    raw_data: Buffer
 
     def __init__(self, src: LocalFileInput, name: str | None = None) -> None:
         default_name, raw_data = _get_file_details(src)
