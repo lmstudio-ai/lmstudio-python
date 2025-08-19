@@ -1098,19 +1098,20 @@ if sys.version_info < (3, 11):
     class ToolParamDefDict(TypedDict):
         type: type[Any]
         default: NotRequired[Any]
+    ParamDefDict: TypeAlias = ToolParamDefDict
 else:
 
     class ToolParamDefDict(TypedDict, Generic[T]):
         type: type[T]
         default: NotRequired[T]
-
+    ParamDefDict: TypeAlias = ToolParamDefDict[Any]
 
 class ToolFunctionDefDict(TypedDict):
     """SDK input format to specify an LLM tool call and its implementation (as a dict)."""
 
     name: str
     description: str
-    parameters: Mapping[str, type[Any] | ToolParamDefDict[Any]]
+    parameters: Mapping[str, type[Any] | ParamDefDict]
     implementation: Callable[..., Any]
 
 
@@ -1124,12 +1125,12 @@ class ToolFunctionDef:
 
     name: str
     description: str
-    parameters: Mapping[str, type[Any] | ToolParamDefDict[Any]]
+    parameters: Mapping[str, type[Any] | ParamDefDict]
     implementation: Callable[..., Any]
 
     @staticmethod
     def _extract_type_and_default(
-        param_value: type[Any] | ToolParamDefDict[Any],
+        param_value: type[Any] | ParamDefDict,
     ) -> tuple[type[Any], Any]:
         """Extract type and default value from parameter definition."""
         if isinstance(param_value, dict):
