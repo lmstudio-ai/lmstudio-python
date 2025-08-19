@@ -19,7 +19,7 @@ on:
       # Skip running the source code checks when only documentation has been updated
       - "!**.md"
       - "!**.rst"
-      - "!**.txt"  # Any requirements file changes will also involve changing other files
+      - "!**.txt" # Any requirements file changes will also involve changing other files
   push:
     branches:
       - main
@@ -34,84 +34,159 @@ defaults:
     shell: bash
 
 jobs:
-  tests:
-    runs-on: ${{ matrix.os }}
+  tests-windows:
+    runs-on: windows-2022
     strategy:
-      fail-fast: false  # Always report results for all targets
-      max-parallel: 8
+      fail-fast: false
       matrix:
         python-version: ["3.10", "3.11", "3.12", "3.13"]
-        # While the main SDK is platform independent, the subprocess execution
-        # in the plugin runner and tests requires some Windows-specific code
-        # Note: a green tick in CI is currently misleading due to
-        # https://github.com/lmstudio-ai/lmstudio-python/issues/140
-        os: [ubuntu-22.04, windows-2022]
-
-    # Check https://github.com/actions/action-versions/tree/main/config/actions
-    # for latest versions if the standard actions start emitting warnings
 
     steps:
-    - uses: actions/checkout@v4
-      with:
-        persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ matrix.python-version }}
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
 
-    - name: Get pip cache dir
-      id: pip-cache
-      run: |
-        echo "dir=$(python -m pip cache dir)" >> $GITHUB_OUTPUT
+      - name: Get pip cache dir
+        id: pip-cache
+        run: |
+          echo "dir=$(python -m pip cache dir)" >> $GITHUB_OUTPUT
 
-    - name: Cache bootstrapping dependencies
-      uses: actions/cache@v4
-      with:
-        path: ${{ steps.pip-cache.outputs.dir }}
-        key:
-          pip-${{ matrix.os }}-${{ matrix.python-version }}-v1-${{ hashFiles('pdm.lock') }}
-        restore-keys: |
-          pip-${{ matrix.os }}-${{ matrix.python-version }}-v1-
+      - name: Cache bootstrapping dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pip-cache.outputs.dir }}
+          key: pip-windows-2022-${{ matrix.python-version }}-v1-${{ hashFiles('pdm.lock') }}
+          restore-keys: |
+            pip-windows-2022-${{ matrix.python-version }}-v1-
 
-    - name: Install PDM
-      run: |
-        # Ensure `pdm` uses the same version as specified in `pdm.lock`
-        # while avoiding the error raised by https://github.com/pypa/pip/issues/12889
-        python -m pip install --upgrade -r ci-bootstrap-requirements.txt
+      - name: Install PDM
+        run: |
+          python -m pip install --upgrade -r ci-bootstrap-requirements.txt
 
-    - name: Create development virtual environment
-      run: |
-        python -m pdm sync --no-self --dev
-        # Handle Windows vs non-Windows differences in .venv layout
-        VIRTUAL_ENV_BIN_DIR="$PWD/.venv/bin"
-        test -e "$VIRTUAL_ENV_BIN_DIR" || VIRTUAL_ENV_BIN_DIR="$PWD/.venv/Scripts"
-        echo "VIRTUAL_ENV_BIN_DIR=$VIRTUAL_ENV_BIN_DIR" >> "$GITHUB_ENV"
+      - name: Create development virtual environment
+        run: |
+          python -m pdm sync --no-self --dev
+          echo "VIRTUAL_ENV_BIN_DIR=$PWD/.venv/Scripts" >> "$GITHUB_ENV"
 
-    - name: Static checks
-      run: |
-        source "$VIRTUAL_ENV_BIN_DIR/activate"
-        python -m tox -v -m static
+      - name: CI-compatible tests (Windows)
+        run: |
+          source "$VIRTUAL_ENV_BIN_DIR/activate"
+          python -m tox -v -- -m 'not lmstudio'
 
-    - name: CI-compatible tests
-      run: |
-        source "$VIRTUAL_ENV_BIN_DIR/activate"
-        python -m tox -v -- -m 'not lmstudio'
+      - name: Upload coverage data
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-data-windows-py${{ matrix.python-version }}
+          path: .coverage.*
+          include-hidden-files: true
+          if-no-files-found: ignore
 
-    - name: Upload coverage data
-      uses: actions/upload-artifact@v4
-      with:
-        name: coverage-data-${{ matrix.os }}-py${{ matrix.python-version }}
-        path: .coverage.*
-        include-hidden-files: true
-        if-no-files-found: ignore
+  tests-docker:
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
 
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
-  # Coverage check based on https://hynek.me/articles/ditch-codecov-python/
-  coverage:
-    name: Combine & check coverage
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Get pip cache dir
+        id: pip-cache
+        run: |
+          echo "dir=$(python -m pip cache dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache bootstrapping dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pip-cache.outputs.dir }}
+          key: pip-ubuntu-22.04-${{ matrix.python-version }}-v1-${{ hashFiles('pdm.lock') }}
+          restore-keys: |
+            pip-ubuntu-22.04-${{ matrix.python-version }}-v1-
+
+      - name: Run the built image
+        id: run
+        uses: ./.github/actions/docker-daemon-run
+        with:
+          docker-image: lmstudio/llmster-preview:cpu
+          port: "41343:1234"
+          container-name: llmster
+
+      - name: Download models for tests
+        run: |
+          echo "Downloading required models..."
+
+          # Download text LLMs
+          docker exec llmster lms get https://huggingface.co/hugging-quants/Llama-3.2-1B-Instruct-Q4_K_M-GGUF -y --quiet
+          docker exec llmster lms get https://huggingface.co/Qwen/Qwen2.5-7B-Instruct-GGUF@q3_k_m -y --quiet
+          docker exec llmster lms get https://huggingface.co/ZiangWu/MobileVLM_V2-1.7B-GGUF -y --quiet
+
+          # Download additional model for speculative decoding examples
+          docker exec llmster lms get https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF -y --quiet
+
+          echo "Model downloads complete"
+
+      - name: Load models into LM Studio
+        run: |
+          echo "Loading models..."
+
+          # Load embedding model
+          docker exec llmster lms load nomic-embed-text-v1.5 --identifier text-embedding-nomic-embed-text-v1.5 -y
+
+          # Load text LLMs
+          docker exec llmster lms load llama-3.2-1b-instruct --identifier llama-3.2-1b-instruct -y
+          docker exec llmster lms load qwen2.5-7b-instruct --identifier qwen2.5-7b-instruct-1m -y
+
+          # Load vision LLM
+          docker exec llmster lms load ZiangWu/MobileVLM_V2-1.7B-GGUF --identifier mobilevlm_v2-1.7b
+
+          echo "Model loading complete"
+
+      - name: Install PDM
+        run: |
+          python -m pip install --upgrade -r ci-bootstrap-requirements.txt
+
+      - name: Create development virtual environment
+        run: |
+          python -m pdm sync --no-self --dev
+          echo "VIRTUAL_ENV_BIN_DIR=$PWD/.venv/bin" >> "$GITHUB_ENV"
+
+      - name: All tests including LM Studio
+        run: |
+          source "$VIRTUAL_ENV_BIN_DIR/activate"
+          python -m tox -v -- -v --tb=short
+
+      - name: Upload coverage data
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-data-docker-py${{ matrix.python-version }}
+          path: .coverage.*
+          include-hidden-files: true
+          if-no-files-found: ignore
+
+      - name: Stop LM Studio Docker container
+        if: always()
+        run: |
+          docker stop llmster || true
+          docker rm llmster || true
+
+  # Coverage check for Docker tests (higher target since they include LM Studio tests)
+  coverage-docker:
+    name: Docker test coverage
     if: always()
-    needs: tests
+    needs: tests-docker
     runs-on: ubuntu-latest
 
     steps:
@@ -121,15 +196,56 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          # Use latest Python, so it understands all syntax.
           python-version: "3.13"
 
-      # https://github.com/hynek/setup-cached-uv/releases/tag/v2.3.0
       - uses: hynek/setup-cached-uv@757bedc3f972eb7227a1aa657651f15a8527c817
 
       - uses: actions/download-artifact@v4
         with:
-          pattern: coverage-data-*
+          pattern: coverage-data-docker-*
+          merge-multiple: true
+
+      - name: Combine coverage & fail if it goes down
+        run: |
+          uv tool install 'coverage[toml]'
+
+          coverage combine
+          coverage html --skip-covered --skip-empty
+
+          # Report and write to summary.
+          coverage report --format=markdown >> $GITHUB_STEP_SUMMARY
+
+          # Higher target for Docker tests since they include LM Studio functionality
+          coverage report --fail-under=75
+
+      - name: Upload HTML report if check failed
+        uses: actions/upload-artifact@v4
+        with:
+          name: html-report-docker
+          path: htmlcov
+        if: ${{ failure() }}
+
+  # Coverage check for Windows tests (lower target since they skip LM Studio tests)
+  coverage-windows:
+    name: Windows test coverage
+    if: always()
+    needs: tests-windows
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - uses: hynek/setup-cached-uv@757bedc3f972eb7227a1aa657651f15a8527c817
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: coverage-data-windows-*
           merge-multiple: true
 
       - name: Combine coverage & fail if it goes down
@@ -145,17 +261,12 @@ jobs:
           # Report again and fail if under 50%.
           # Highest historical coverage: 65%
           # Last noted local test coverage level: 94%
-          # CI coverage percentage is low because many of the tests
-          # aren't CI compatible (they need a local LM Studio instance).
-          # It's only as high as it is because the generated data model
-          # classes make up such a large portion of the total SDK code.
-          # Accept anything over 50% until CI is set up to run LM Studio
-          # in headless mode, and hence is able to run end-to-end tests.
+          # Lower target for Windows tests since they skip LM Studio functionality
           coverage report --fail-under=50
 
       - name: Upload HTML report if check failed
         uses: actions/upload-artifact@v4
         with:
-          name: html-report
+          name: html-report-windows
           path: htmlcov
         if: ${{ failure() }}
