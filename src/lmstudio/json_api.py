@@ -1098,13 +1098,16 @@ if sys.version_info < (3, 11):
     class ToolParamDefDict(TypedDict):
         type: type[Any]
         default: NotRequired[Any]
+
     ParamDefDict: TypeAlias = ToolParamDefDict
 else:
 
     class ToolParamDefDict(TypedDict, Generic[T]):
         type: type[T]
         default: NotRequired[T]
+
     ParamDefDict: TypeAlias = ToolParamDefDict[Any]
+
 
 class ToolFunctionDefDict(TypedDict):
     """SDK input format to specify an LLM tool call and its implementation (as a dict)."""
