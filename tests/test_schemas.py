@@ -1,5 +1,8 @@
 """Test schema processing support."""
 
+# Work around https://github.com/jcrist/msgspec/issues/847
+from __future__ import annotations
+
 from typing import Any, Type
 
 import pytest
