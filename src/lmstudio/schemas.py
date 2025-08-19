@@ -65,10 +65,10 @@ def _to_json_schema(cls: type, *, omit: Sequence[str] = ()) -> DictSchema:
         for field in omit:
             named_schema.pop(field, None)
         json_schema.update(named_schema)
-    
+
     # msgspec automatically handles default values in the generated JSON schema
     # when they are properly defined in the Struct fields
-    
+
     return json_schema
 
 

@@ -41,6 +41,7 @@ from typing_extensions import (
     # Native in 3.11+
     assert_never,
     NoReturn,
+    NotRequired,
     Self,
 )
 
@@ -1090,15 +1091,10 @@ class GetOrLoadEndpoint(
         super().__init__(model_key, params, on_load_progress)
 
 
-# Add new type definitions for inline parameter format
-from typing import TypeVar
-from typing_extensions import NotRequired
-
-T = TypeVar('T')
-
 class ToolParamDefDict(TypedDict, Generic[T]):
     type: type[T]
     default: NotRequired[T]
+
 
 class ToolFunctionDefDict(TypedDict):
     """SDK input format to specify an LLM tool call and its implementation (as a dict)."""
@@ -1107,6 +1103,10 @@ class ToolFunctionDefDict(TypedDict):
     description: str
     parameters: Mapping[str, type[Any] | ToolParamDefDict[Any]]
     implementation: Callable[..., Any]
+
+
+# Sentinel for parameters with no defined default value
+_NO_DEFAULT = object()
 
 
 @dataclass(kw_only=True, frozen=True, slots=True)
@@ -1118,30 +1118,35 @@ class ToolFunctionDef:
     parameters: Mapping[str, type[Any] | ToolParamDefDict[Any]]
     implementation: Callable[..., Any]
 
-    def _extract_type_and_default(self, param_name: str, param_value: type[Any] | ToolParamDefDict[Any]) -> tuple[type[Any], Any | None]:
+    @staticmethod
+    def _extract_type_and_default(
+        param_value: type[Any] | ToolParamDefDict[Any],
+    ) -> tuple[type[Any], Any]:
         """Extract type and default value from parameter definition."""
-        if isinstance(param_value, dict) and "type" in param_value:
+        if isinstance(param_value, dict):
             # Inline format: {"type": type, "default": value}
-            param_type = param_value["type"]
-            default_value = param_value.get("default")
+            param_type = param_value.get("type", None)
+            if param_type is None:
+                raise TypeError(
+                    f"Missing 'type' key in tool parameter definition {param_value!r}"
+                )
+            default_value = param_value.get("default", _NO_DEFAULT)
             return param_type, default_value
         else:
             # Simple format: just the type
-            return param_value, None
+            return param_value, _NO_DEFAULT
 
     def _to_llm_tool_def(self) -> tuple[type[Struct], LlmTool]:
         params_struct_name = f"{self.name.capitalize()}Parameters"
-        
         # Build fields list with defaults
-        fields: list[tuple[str, Any] | tuple[str, Any, Any]] = []
+        fields: list[tuple[str, type[Any]] | tuple[str, type[Any], Any]] = []
         for param_name, param_value in self.parameters.items():
-            param_type, default_value = self._extract_type_and_default(param_name, param_value)
-            
-            if default_value is not None:
-                fields.append((param_name, param_type, default_value))
-            else:
+            param_type, default_value = self._extract_type_and_default(param_value)
+            if default_value is _NO_DEFAULT:
                 fields.append((param_name, param_type))
-        
+            else:
+                fields.append((param_name, param_type, default_value))
+        # Define msgspec struct and API tool definition from the field list
         params_struct = defstruct(params_struct_name, fields, kw_only=True)
         return params_struct, LlmTool._from_api_dict(
             {
@@ -1193,27 +1198,25 @@ class ToolFunctionDef:
             ) from exc
         # Tool definitions only annotate the input parameters, not the return type
         parameters.pop("return", None)
-        
+
         # Extract default values from function signature and convert to inline format
         try:
             sig = inspect.signature(f)
+        except Exception:
+            # If we can't extract defaults, continue without them
+            pass
+        else:
             for param_name, param in sig.parameters.items():
                 if param.default is not inspect.Parameter.empty:
                     # Convert to inline format: {"type": type, "default": value}
                     original_type = parameters[param_name]
                     parameters[param_name] = {
                         "type": original_type,
-                        "default": param.default
+                        "default": param.default,
                     }
-        except Exception as exc:
-            # If we can't extract defaults, continue without them
-            pass
-        
+
         return cls(
-            name=name, 
-            description=description, 
-            parameters=parameters, 
-            implementation=f
+            name=name, description=description, parameters=parameters, implementation=f
         )
 
 
@@ -1654,8 +1657,7 @@ class ChatResponseEndpoint(PredictionEndpoint):
                 tool_def = ToolFunctionDef.from_callable(tool)
             else:
                 # Handle dictionary-based tool definition
-                tool_dict = cast(ToolFunctionDefDict, tool)
-                tool_def = ToolFunctionDef(**tool_dict)
+                tool_def = ToolFunctionDef(**tool)
             if tool_def.name in client_tool_map:
                 raise LMStudioValueError(
                     f"Duplicate tool names are not permitted ({tool_def.name!r} repeated)"
