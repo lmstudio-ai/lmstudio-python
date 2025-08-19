@@ -13,6 +13,7 @@ import asyncio
 import copy
 import inspect
 import json
+import sys
 import uuid
 import warnings
 
@@ -1091,9 +1092,17 @@ class GetOrLoadEndpoint(
         super().__init__(model_key, params, on_load_progress)
 
 
-class ToolParamDefDict(TypedDict, Generic[T]):
-    type: type[T]
-    default: NotRequired[T]
+if sys.version_info < (3, 11):
+    # Generic typed dictionaries aren't supported in Python 3.10
+    # https://github.com/python/cpython/issues/89026
+    class ToolParamDefDict(TypedDict):
+        type: type[Any]
+        default: NotRequired[Any]
+else:
+
+    class ToolParamDefDict(TypedDict, Generic[T]):
+        type: type[T]
+        default: NotRequired[T]
 
 
 class ToolFunctionDefDict(TypedDict):
