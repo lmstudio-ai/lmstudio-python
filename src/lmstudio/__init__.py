@@ -1,6 +1,6 @@
 """LM Studio Python SDK."""
 
-__version__ = "1.5.0b2"
+__version__ = "1.5.0"
 
 
 # In addition to publishing the main SDK client API,
