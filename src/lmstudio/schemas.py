@@ -90,6 +90,12 @@ class BaseModel(Struct, omit_defaults=True, kw_only=True):
     # Allows structured predictions using a `pydantic.BaseModel` inspired format,
     # even in applications that don't otherwise depend on Pydantic
 
+    def __init_subclass__(cls, *args: Any, **kwds: Any) -> None:
+        # Eagerly populate annotations on Python 3.14+
+        # Workaround for https://github.com/lmstudio-ai/lmstudio-python/issues/153
+        cls.__annotations__
+        super().__init_subclass__()
+
     @classmethod
     def model_json_schema(cls) -> DictSchema:
         """Returns JSON Schema dict describing the format of this class."""
@@ -185,6 +191,12 @@ class LMStudioStruct(Generic[TWireFormat], Struct, omit_defaults=True, kw_only=T
     # * "None" fields should be omitted, not sent as "null"
     # * Allow non-default fields after default fields
     #
+
+    def __init_subclass__(cls, *args: Any, **kwds: Any) -> None:
+        # Eagerly populate annotations on Python 3.14+
+        # Workaround for https://github.com/lmstudio-ai/lmstudio-python/issues/153
+        cls.__annotations__
+        super().__init_subclass__(*args, **kwds)
 
     # This is actually defined in msgspec.Struct,
     # but is missing from the published type stubs:

@@ -1,8 +1,5 @@
 """Common test support interfaces and expected value definitions."""
 
-# Work around https://github.com/jcrist/msgspec/issues/847
-from __future__ import annotations
-
 import logging
 import sys
 
