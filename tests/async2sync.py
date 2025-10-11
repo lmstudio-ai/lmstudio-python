@@ -8,6 +8,7 @@ import re
 import subprocess
 from pathlib import Path
 from os.path import commonpath
+from typing import List
 
 GENERATED_FILE_HEADER = """\
 #####################################################################
@@ -29,7 +30,7 @@ def convert_file(input_file: Path, sync_dir: Path) -> None:
     # Note: some replacements will only be relevant after dropping 3.10 support
     #       (as the native asyncio API were only added in 3.11)
 
-    replacements = [
+    replacements: List[tuple[str, str]] = [
         (r"AsyncPredictionC", "SyncPredictionC"),  # Channel & CM
         (r"AsyncSession", "SyncSession"),
         (r"@pytest\.mark\.asyncio\n*", ""),
@@ -46,7 +47,7 @@ def convert_file(input_file: Path, sync_dir: Path) -> None:
         (r"aexit", "exit"),
         (r"anext", "next"),
         (r"Async", ""),
-        (r"await +", ""),
+    (r"await\s+", ""),
         # Switch to native asyncio APIs when dropping Python 3.10 support
         (r"import anyio\n", ""),
         (r"anyio\.fail_after\([^)]*\)", "nullcontext()"),
@@ -64,8 +65,12 @@ def convert_file(input_file: Path, sync_dir: Path) -> None:
             content,
         )
 
-    # Use commonpath, as there's no `walk_up` parameter on `relative_to`` in Python 3.11
-    base_path = commonpath((input_file, output_file))
+    # Ensure the output directory exists
+    sync_dir.mkdir(parents=True, exist_ok=True)
+
+    # Use commonpath, as there's no `walk_up` parameter on `relative_to` in Python 3.11
+    # commonpath expects strings
+    base_path = commonpath((str(input_file), str(output_file)))
     relative_input_path = str(input_file.relative_to(base_path).as_posix())
     output_header = GENERATED_FILE_HEADER.format(relative_input_path)
     output_text = output_header + content

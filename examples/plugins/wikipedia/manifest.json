@@ -3,5 +3,11 @@
   "runner": "python",
   "owner": "lmstudio",
   "name": "py-wikipedia",
-  "revision": 1
+  "revision": 1,
+  "version": "0.1.0",
+  "description": "A small Wikipedia lookup plugin for examples/demos.",
+  "entry": "py_wikipedia.py",
+  "requirements": ["requests>=2.28"],
+  "license": "MIT",
+  "homepage": "https://example.org/py-wikipedia"
 }
