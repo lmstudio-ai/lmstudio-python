@@ -13,6 +13,7 @@ import asyncio
 import copy
 import inspect
 import json
+import re
 import sys
 import uuid
 import warnings
@@ -196,6 +197,10 @@ T = TypeVar("T")
 TStruct = TypeVar("TStruct", bound=AnyLMStudioStruct)
 
 DEFAULT_TTL = 60 * 60  # By default, leaves idle models loaded for an hour
+
+_LMSTUDIO_API_TOKEN_REGEX = re.compile(
+    r"^sk-lm-(?P<clientIdentifier>[A-Za-z0-9]{8}):(?P<clientPasskey>[A-Za-z0-9]{20})$"
+)
 
 # Require a coroutine (not just any awaitable) for run_coroutine_threadsafe compatibility
 SendMessageAsync: TypeAlias = Callable[[DictObject], Coroutine[Any, Any, None]]
@@ -2032,10 +2037,12 @@ TLMStudioWebsocket = TypeVar("TLMStudioWebsocket", bound=LMStudioWebsocket[Any])
 class ClientBase:
     """Common base class for SDK client interfaces."""
 
-    def __init__(self, api_host: str | None = None) -> None:
+    def __init__(
+        self, api_host: str | None = None, api_token: str | None = None
+    ) -> None:
         """Initialize API client."""
         self._api_host = api_host
-        self._auth_details = self._create_auth_message()
+        self._auth_details = self._create_auth_message(api_token)
 
     @property
     def api_host(self) -> str:
@@ -2086,7 +2093,9 @@ class ClientBase:
         # sufficient to prevent accidental conflicts and, in combination with secure
         # websocket support, would be sufficient to ensure that access to the running
         # client was required to extract the auth details.
-        client_identifier = client_id if client_id is not None else str(uuid.uuid4())
+        client_identifier = (
+            client_id if client_id is not None else f"guest:{str(uuid.uuid4())}"
+        )
         client_passkey = client_key if client_key is not None else str(uuid.uuid4())
         return {
             "authVersion": 1,
@@ -2094,8 +2103,25 @@ class ClientBase:
             "clientPasskey": client_passkey,
         }
 
-    def _create_auth_message(self) -> DictObject:
+    def _create_auth_message(self, api_token: str | None = None) -> DictObject:
         """Create an LM Studio websocket authentication message."""
+        if api_token is not None:
+            match = _LMSTUDIO_API_TOKEN_REGEX.match(api_token)
+            if match is None:
+                raise LMStudioValueError(
+                    "The api_token argument does not look like a valid LM Studio API token.\n\n"
+                    "LM Studio API tokens are obtained from LM Studio, and they look like this:\n"
+                    "sk-lm-xxxxxxxxxxxxxxxxxxxxxxxxxxxxx."
+                )
+            groups = match.groupdict()
+            client_identifier = groups.get("clientIdentifier")
+            client_passkey = groups.get("clientPasskey")
+            if client_identifier is None or client_passkey is None:
+                raise LMStudioValueError(
+                    "Unexpected error parsing api_token: required token fields were not detected."
+                )
+            return self._format_auth_message(client_identifier, client_passkey)
+
         return self._format_auth_message()
 
 

@@ -1492,9 +1492,11 @@ TAsyncSession = TypeVar("TAsyncSession", bound=_AsyncSession)
 class AsyncClient(ClientBase):
     """Async SDK client interface."""
 
-    def __init__(self, api_host: str | None = None) -> None:
+    def __init__(
+        self, api_host: str | None = None, api_token: str | None = None
+    ) -> None:
         """Initialize API client."""
-        super().__init__(api_host)
+        super().__init__(api_host, api_token)
         self._resources = AsyncExitStack()
         self._sessions: dict[str, _AsyncSession] = {}
         self._task_manager = AsyncTaskManager()
