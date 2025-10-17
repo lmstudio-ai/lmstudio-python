@@ -1,7 +1,10 @@
 """Test common client session behaviour."""
 
 import logging
+import os
+
 from typing import Generator
+from unittest import mock
 
 import pytest
 from pytest import LogCaptureFixture as LogCap
@@ -9,6 +12,7 @@ from pytest import LogCaptureFixture as LogCap
 from lmstudio import (
     AsyncClient,
     Client,
+    LMStudioValueError,
     LMStudioWebsocketError,
 )
 from lmstudio.async_api import (
@@ -16,6 +20,7 @@ from lmstudio.async_api import (
     _AsyncSession,
     _AsyncSessionSystem,
 )
+from lmstudio.json_api import ClientBase
 from lmstudio.sync_api import (
     SyncLMStudioWebsocket,
     _SyncSession,
@@ -23,6 +28,93 @@ from lmstudio.sync_api import (
 )
 from lmstudio._ws_impl import AsyncTaskManager
 from lmstudio._ws_thread import AsyncWebsocketThread
+
+# This API token is structurally valid
+_VALID_API_TOKEN = "sk-lm-abcDEF78:abcDEF7890abcDEF7890"
+
+
+@pytest.mark.parametrize("client_cls", [AsyncClient, Client])
+def test_auth_message_default(client_cls: ClientBase) -> None:
+    with mock.patch.dict(os.environ) as env:
+        env.pop("LMSTUDIO_API_TOKEN", None)
+        auth_message = client_cls._create_auth_from_token(None)
+        assert auth_message["authVersion"] == 1
+        assert auth_message["clientIdentifier"].startswith("guest:")
+        client_key = auth_message["clientPasskey"]
+        assert client_key != ""
+        assert isinstance(client_key, str)
+
+
+@pytest.mark.parametrize("client_cls", [AsyncClient, Client])
+def test_auth_message_empty_token(client_cls: ClientBase) -> None:
+    with mock.patch.dict(os.environ) as env:
+        # Set a valid token in the env to ensure it is ignored
+        env["LMSTUDIO_API_TOKEN"] = _VALID_API_TOKEN
+        auth_message = client_cls._create_auth_from_token("")
+        assert auth_message["authVersion"] == 1
+        assert auth_message["clientIdentifier"].startswith("guest:")
+        client_key = auth_message["clientPasskey"]
+        assert client_key != ""
+        assert isinstance(client_key, str)
+
+
+@pytest.mark.parametrize("client_cls", [AsyncClient, Client])
+def test_auth_message_empty_token_from_env(client_cls: ClientBase) -> None:
+    with mock.patch.dict(os.environ) as env:
+        env["LMSTUDIO_API_TOKEN"] = ""
+        auth_message = client_cls._create_auth_from_token(None)
+        assert auth_message["authVersion"] == 1
+        assert auth_message["clientIdentifier"].startswith("guest:")
+        client_key = auth_message["clientPasskey"]
+        assert client_key != ""
+        assert isinstance(client_key, str)
+
+
+@pytest.mark.parametrize("client_cls", [AsyncClient, Client])
+def test_auth_message_valid_token(client_cls: ClientBase) -> None:
+    auth_message = client_cls._create_auth_from_token(_VALID_API_TOKEN)
+    assert auth_message["authVersion"] == 1
+    assert auth_message["clientIdentifier"] == "abcDEF78"
+    assert auth_message["clientPasskey"] == "abcDEF7890abcDEF7890"
+
+
+@pytest.mark.parametrize("client_cls", [AsyncClient, Client])
+def test_auth_message_valid_token_from_env(client_cls: ClientBase) -> None:
+    with mock.patch.dict(os.environ) as env:
+        env["LMSTUDIO_API_TOKEN"] = _VALID_API_TOKEN
+        auth_message = client_cls._create_auth_from_token(None)
+        assert auth_message["authVersion"] == 1
+        assert auth_message["clientIdentifier"] == "abcDEF78"
+        assert auth_message["clientPasskey"] == "abcDEF7890abcDEF7890"
+
+
+_INVALID_TOKENS = [
+    "missing-token-prefix",
+    "sk-lm-missing-id-and-key-separator",
+    "sk-lm-invalid_id:invalid_key",
+    "sk-lm-idtoolong:abcDEF7890abcDEF7890",
+    "sk-lm-abcDEF78:keytooshort",
+]
+
+
+@pytest.mark.parametrize("client_cls", [AsyncClient, Client])
+@pytest.mark.parametrize("api_token", _INVALID_TOKENS)
+def test_auth_message_invalid_token(client_cls: ClientBase, api_token: str) -> None:
+    with mock.patch.dict(os.environ) as env:
+        env["LMSTUDIO_API_TOKEN"] = _VALID_API_TOKEN
+        with pytest.raises(LMStudioValueError):
+            client_cls._create_auth_from_token(api_token)
+
+
+@pytest.mark.parametrize("client_cls", [AsyncClient, Client])
+@pytest.mark.parametrize("api_token", _INVALID_TOKENS)
+def test_auth_message_invalid_token_from_env(
+    client_cls: ClientBase, api_token: str
+) -> None:
+    with mock.patch.dict(os.environ) as env:
+        env["LMSTUDIO_API_TOKEN"] = api_token
+        with pytest.raises(LMStudioValueError):
+            client_cls._create_auth_from_token(None)
 
 
 async def check_connected_async_session(session: _AsyncSession) -> None:
@@ -160,7 +252,7 @@ WS_CLOSING_STATES = (WS_STATE_LOCAL_CLOSING, WS_STATE_CLOSED)
 async def test_websocket_cm_async(caplog: LogCap) -> None:
     caplog.set_level(logging.DEBUG)
     api_host = await AsyncClient.find_default_local_api_host()
-    auth_details = AsyncClient._format_auth_message()
+    auth_details = AsyncClient._create_auth_from_token(None)
     tm = AsyncTaskManager(on_activation=None)
     lmsws = _AsyncLMStudioWebsocket(tm, f"http://{api_host}/system", auth_details)
     # SDK client websockets start out disconnected
@@ -200,7 +292,7 @@ def ws_thread() -> Generator[AsyncWebsocketThread, None, None]:
 def test_websocket_cm_sync(ws_thread: AsyncWebsocketThread, caplog: LogCap) -> None:
     caplog.set_level(logging.DEBUG)
     api_host = Client.find_default_local_api_host()
-    auth_details = Client._format_auth_message()
+    auth_details = Client._create_auth_from_token(None)
     lmsws = SyncLMStudioWebsocket(ws_thread, f"http://{api_host}/system", auth_details)
     # SDK client websockets start out disconnected
     assert not lmsws.connected

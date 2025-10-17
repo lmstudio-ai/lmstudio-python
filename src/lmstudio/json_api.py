@@ -409,7 +409,9 @@ class LMStudioServerError(LMStudioError):
         if display_data:
             specific_error: LMStudioServerError | None = None
             match display_data:
-                case {"code": "generic.noModelMatchingQuery"}:
+                case {"code": "generic.noModelMatchingQuery"} | {
+                    "code": "generic.pathNotFound"
+                }:
                     specific_error = LMStudioModelNotFoundError(str(default_error))
                 case {"code": "generic.presetNotFound"}:
                     specific_error = LMStudioPresetNotFoundError(str(default_error))
@@ -2116,11 +2118,16 @@ class ClientBase:
             "clientPasskey": client_passkey,
         }
 
-    def _create_auth_message(self, api_token: str | None = None) -> DictObject:
-        """Create an LM Studio websocket authentication message."""
+    @classmethod
+    def _create_auth_from_token(cls, api_token: str | None) -> DictObject:
+        """Create an LM Studio websocket auth message from an API token.
+
+        If no token is given, and none is set in the environment,
+        falls back to generating a client scoped guest identifier
+        """
         if api_token is None:
-            api_token = os.getenv(_ENV_API_TOKEN, None)
-        if api_token is not None:
+            api_token = os.environ.get(_ENV_API_TOKEN, None)
+        if api_token:  # Accept empty string as equivalent to None
             match = _LMS_API_TOKEN_REGEX.match(api_token.strip())
             if match is None:
                 raise LMStudioValueError(
@@ -2135,9 +2142,14 @@ class ClientBase:
                 raise LMStudioValueError(
                     "Unexpected error parsing api_token: required token fields were not detected."
                 )
-            return self._format_auth_message(client_identifier, client_passkey)
+            return cls._format_auth_message(client_identifier, client_passkey)
 
-        return self._format_auth_message()
+        return cls._format_auth_message()
+
+    def _create_auth_message(self, api_token: str | None = None) -> DictObject:
+        """Create an LM Studio websocket authentication message."""
+        # This is an instance method purely so subclasses may override it
+        return self._create_auth_from_token(api_token)
 
 
 TClient = TypeVar("TClient", bound=ClientBase)
