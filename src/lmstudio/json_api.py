@@ -2098,14 +2098,15 @@ class ClientBase:
         client_id: str | None = None, client_key: str | None = None
     ) -> DictObject:
         """Create an LM Studio websocket authentication message."""
-        # Note: authentication (in its current form) is primarily a cooperative
+        # Note: the authentication fields are used for two distinct purposes.
+        # When extracted from an API token (see _create_auth_message below),
+        # they are an actual authentication & authorisation mechanism.
+        # When generated internally by the SDK, they are instead a cooperative
         # resource management mechanism that allows the server to appropriately
         # manage client-scoped resources (such as temporary file handles).
-        # As such, the client ID and client passkey are currently more a two part
-        # client identifier than they are an adversarial security measure. This is
-        # sufficient to prevent accidental conflicts and, in combination with secure
-        # websocket support, would be sufficient to ensure that access to the running
-        # client was required to extract the auth details.
+        # As such, when the API host isn't configured to require API tokens,
+        # the client ID and client key are more a two part client
+        # identifier than they are an adversarial security measure.
         client_identifier = (
             client_id if client_id is not None else f"guest:{str(uuid.uuid4())}"
         )
