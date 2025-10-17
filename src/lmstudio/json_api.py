@@ -13,6 +13,7 @@ import asyncio
 import copy
 import inspect
 import json
+import os
 import re
 import sys
 import uuid
@@ -198,7 +199,10 @@ TStruct = TypeVar("TStruct", bound=AnyLMStudioStruct)
 
 DEFAULT_TTL = 60 * 60  # By default, leaves idle models loaded for an hour
 
-_LMSTUDIO_API_TOKEN_REGEX = re.compile(
+# API token environment variable name currently has an underscore prefix
+# The prefix will be removed once the interface has been set by lmstudio-js
+_ENV_API_TOKEN = "_LMS_SDK_API_TOKEN"
+_LMS_API_TOKEN_REGEX = re.compile(
     r"^sk-lm-(?P<clientIdentifier>[A-Za-z0-9]{8}):(?P<clientPasskey>[A-Za-z0-9]{20})$"
 )
 
@@ -2114,8 +2118,10 @@ class ClientBase:
 
     def _create_auth_message(self, api_token: str | None = None) -> DictObject:
         """Create an LM Studio websocket authentication message."""
+        if api_token is None:
+            api_token = os.getenv(_ENV_API_TOKEN, None)
         if api_token is not None:
-            match = _LMSTUDIO_API_TOKEN_REGEX.match(api_token)
+            match = _LMS_API_TOKEN_REGEX.match(api_token)
             if match is None:
                 raise LMStudioValueError(
                     "The api_token argument does not look like a valid LM Studio API token.\n\n"
