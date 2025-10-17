@@ -1701,30 +1701,33 @@ class Client(ClientBase):
 
 
 # Convenience API
-_default_api_host = None
+_default_api_host: str | None = None
+_default_api_token: str | None = None
 _default_client: Client | None = None
 
 
 @sdk_public_api()
-def configure_default_client(api_host: str) -> None:
+def configure_default_client(api_host: str, api_token: str | None = None) -> None:
     """Set the server API host for the default global client (without creating the client)."""
     global _default_api_host
     if _default_client is not None:
         raise LMStudioClientError(
-            "Default client is already created, cannot set its API host."
+            "Default client is already created, cannot set its API host or token."
         )
     _default_api_host = api_host
+    _default_api_token = api_token
 
 
 @sdk_public_api()
 def get_default_client(api_host: str | None = None) -> Client:
     """Get the default global client (creating it if necessary)."""
+    # Note: call configure_default_client() explicitly to set the API token
     global _default_client
     if api_host is not None:
         # This will raise an exception if the client already exists
         configure_default_client(api_host)
     if _default_client is None:
-        _default_client = Client(_default_api_host)
+        _default_client = Client(_default_api_host, _default_api_token)
         _default_client._ensure_api_host_is_valid()
     return _default_client
 
@@ -1732,9 +1735,9 @@ def get_default_client(api_host: str | None = None) -> Client:
 def _reset_default_client() -> None:
     # Allow the test suite to reset the client without
     # having to poke directly at the module's internals
-    global _default_api_host, _default_client
+    global _default_api_host, _default_api_token, _default_client
     previous_client = _default_client
-    _default_api_host = _default_client = None
+    _default_api_host = _default_api_token = _default_client = None
     if previous_client is not None:
         previous_client.close()
 
