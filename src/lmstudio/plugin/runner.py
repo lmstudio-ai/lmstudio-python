@@ -103,10 +103,10 @@ class PluginClient(AsyncClient):
         _AsyncSessionPlugins,
     )
 
-    def _create_auth_message(self) -> DictObject:
+    def _create_auth_message(self, api_token: str | None = None) -> DictObject:
         """Create an LM Studio websocket authentication message."""
         if self._client_id is None or self._client_key is None:
-            return super()._create_auth_message()
+            return super()._create_auth_message(api_token)
         # Use plugin credentials to unlock the full plugin client API
         return self._format_auth_message(self._client_id, self._client_key)
 
