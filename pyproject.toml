@@ -1,6 +1,6 @@
 [project]
 name = "lmstudio"
-version = "1.5.0"
+version = "1.6.0b1"
 description = "LM Studio Python SDK"
 authors = [
     {name = "LM Studio", email = "team@lmstudio.ai"},
