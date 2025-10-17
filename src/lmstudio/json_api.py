@@ -340,7 +340,16 @@ class LMStudioServerError(LMStudioError):
             self._raw_error = self.server_error = None
             formatted_message = message
         else:
-            raw_details = dict(details)
+            raw_details: DictObject
+            try:
+                raw_details = dict(details)
+            except ValueError:
+                # Server *should* be providing the details as an error dict,
+                # but avoid crashing if it sends a string or array instead
+                raw_details = {
+                    "title": "Server API error",
+                    "cause": str(details),
+                }
             raw_details.pop("stack", None)
             self._raw_error = raw_details
             try:
