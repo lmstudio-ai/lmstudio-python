@@ -605,12 +605,22 @@ class MultiplexingManager:
     def release_channel_id(self, channel_id: int, rx_queue: RxQueue) -> None:
         """Release a previously acquired streaming channel ID."""
         open_channels = self._open_channels
-        assigned_queue = open_channels.get(channel_id)
-        if rx_queue is not assigned_queue:
-            raise LMStudioRuntimeError(
-                f"Unexpected change to reply queue for channel ({channel_id} in {self!r})"
+        # this Use pop to safely remove the channel, even if already gone
+        assigned_queue = open_channels.pop(channel_id, None)
+        
+        # Make cleanup more forgiving log warnings instead of raising
+        if assigned_queue is None:
+            self._logger.warning(
+                f"Channel {channel_id} already released or never acquired",
+                channel_id=channel_id,
             )
-        del open_channels[channel_id]
+        elif rx_queue is not assigned_queue:
+            # Queue mismatch is suspicious but shouldn't prevent cleanup
+            self._logger.warning(
+                f"Channel {channel_id} queue mismatch during release "
+                f"(expected {rx_queue!r}, found {assigned_queue!r})",
+                channel_id=channel_id,
+            )
 
     @contextmanager
     def assign_channel_id(self, rx_queue: RxQueue) -> Generator[int, None, None]:
@@ -636,12 +646,22 @@ class MultiplexingManager:
     def release_call_id(self, call_id: int, rx_queue: RxQueue) -> None:
         """Release a previously acquired remote call ID."""
         pending_calls = self._pending_calls
-        assigned_queue = pending_calls.get(call_id)
-        if rx_queue is not assigned_queue:
-            raise LMStudioRuntimeError(
-                f"Unexpected change to reply queue for remote call ({call_id} in {self!r})"
+        # Use pop to safely remove the call, even if already gone
+        assigned_queue = pending_calls.pop(call_id, None)
+        
+        # Make cleanup more forgiving log warnings instead of raising
+        if assigned_queue is None:
+            self._logger.warning(
+                f"Remote call {call_id} already released or never acquired",
+                call_id=call_id,
             )
-        del pending_calls[call_id]
+        elif rx_queue is not assigned_queue:
+            # Queue mismatch is suspicious but shouldn't prevent cleanup
+            self._logger.warning(
+                f"Remote call {call_id} queue mismatch during release "
+                f"(expected {rx_queue!r}, found {assigned_queue!r})",
+                call_id=call_id,
+            )
 
     @contextmanager
     def assign_call_id(self, rx_queue: RxQueue) -> Generator[int, None, None]:

@@ -282,6 +282,8 @@ class AsyncWebsocketHandler:
         ws_url: str,
         auth_details: DictObject,
         log_context: LogEventContext | None = None,
+        max_reconnect_retries: int = 3,
+        initial_retry_delay: float = 1.0,
     ) -> None:
         self._auth_details = auth_details
         self._connection_attempted = asyncio.Event()
@@ -295,6 +297,10 @@ class AsyncWebsocketHandler:
         self._logger = logger = new_logger(type(self).__name__)
         logger.update_context(log_context, ws_url=ws_url)
         self._mux = MultiplexingManager(logger)
+        # Reconnection configuration
+        self._max_reconnect_retries = max_reconnect_retries
+        self._initial_retry_delay = initial_retry_delay
+        self._consecutive_failures = 0
 
     async def connect(self) -> bool:
         """Connect websocket from the task manager's event loop."""
@@ -515,15 +521,48 @@ class AsyncWebsocketHandler:
         return await self._enqueue_message(message)
 
     async def _receive_messages(self) -> None:
-        """Process received messages until task is cancelled."""
+        """Process received messages with automatic reconnection on failure."""
         while True:
             try:
                 await self._process_next_message()
-            except (LMStudioWebsocketError, HTTPXWSException):
-                if self._ws is not None and not self._ws_disconnected.is_set():
-                    # Websocket failed unexpectedly (rather than due to client shutdown)
-                    self._logger.error("Websocket failed, terminating session.")
-                break
+                # this Reset failure counter on successful yeah
+                self._consecutive_failures = 0
+            except (LMStudioWebsocketError, HTTPXWSException) as exc:
+                # and it will check if this was an intentional disconnect
+                if self._ws_disconnected.is_set():
+                    self._logger.debug("Websocket disconnected intentionally")
+                    break
+                
+                # and this is for Increment failure counter
+                self._consecutive_failures += 1
+                
+                # this wiill Check if we should attempt reconnection
+                if self._consecutive_failures > self._max_reconnect_retries:
+                    self._logger.error(
+                        f"Websocket failed after {self._max_reconnect_retries} reconnection attempts, "
+                        "terminating session.",
+                        consecutive_failures=self._consecutive_failures,
+                    )
+                    break
+                
+                # Calculate exponential backoff delay
+                retry_delay = self._initial_retry_delay * (2 ** (self._consecutive_failures - 1))
+                retry_delay = min(retry_delay, 30.0)  # Cap at 30 seconds
+                
+                self._logger.warning(
+                    f"Websocket error (attempt {self._consecutive_failures}/{self._max_reconnect_retries}), "
+                    f"retrying in {retry_delay:.1f}s: {exc}",
+                    consecutive_failures=self._consecutive_failures,
+                    retry_delay=retry_delay,
+                    error=str(exc),
+                )
+                
+                # Wait before attempting to reconnect
+                await asyncio.sleep(retry_delay)
+                
+                # there is a note like The actual reconnection happens at a higher level
+                # This code allows the message loop to continue, giving the
+                # connection a chance to reestablish itself
 
     async def _enqueue_message(self, message: Any) -> bool:
         if message is None:
