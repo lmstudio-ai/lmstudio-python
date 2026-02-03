@@ -1709,7 +1709,7 @@ _default_client: Client | None = None
 @sdk_public_api()
 def configure_default_client(api_host: str, api_token: str | None = None) -> None:
     """Set the server API host for the default global client (without creating the client)."""
-    global _default_api_host
+    global _default_api_host, _default_api_token
     if _default_client is not None:
         raise LMStudioClientError(
             "Default client is already created, cannot set its API host or token."
