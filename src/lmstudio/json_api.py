@@ -2010,6 +2010,8 @@ class LMStudioWebsocket(Generic[TWebsocket]):
     ) -> LMStudioWebsocketError:
         problem = f"LM Studio is not reachable at {self._ws_url}"
         suggestion = "Is LM Studio running?"
+        if httpx.URL(self._ws_url).scheme == "wss":
+            suggestion += " Check the TLS configuration of the server or reverse proxy."
         if exc is None:
             err_msg = f"{problem}. {suggestion}"
         else:
@@ -2068,8 +2070,31 @@ class ClientBase:
     _DEFAULT_API_PORTS = _api_server_ports.default_api_ports
 
     @staticmethod
-    def _get_probe_url(api_host: str) -> str:
-        return f"http://{api_host}/lmstudio-greeting"
+    def _get_api_url(api_host: str, endpoint: str, *, websocket: bool) -> str:
+        """Resolve a native API endpoint from a host or full URL."""
+        url = httpx.URL(api_host if "://" in api_host else f"http://{api_host}")
+        schemes = {"http": "ws", "ws": "ws", "https": "wss", "wss": "wss"}
+        if url.scheme not in schemes:
+            raise LMStudioClientError(
+                f"Unsupported API host URL scheme: {url.scheme!r}. "
+                "Use HTTP, HTTPS, WS, or WSS."
+            )
+        scheme = schemes[url.scheme]
+        if not websocket:
+            scheme = "https" if scheme == "wss" else "http"
+        # Keep encoded separators in reverse-proxy paths intact.
+        base_path = url.copy_with(query=None).raw_path.rstrip(b"/")
+        path = base_path + b"/" + endpoint.encode("ascii")
+        endpoint_url = url.copy_with(scheme=scheme, raw_path=path)
+        return str(endpoint_url.copy_with(query=url.query or None))
+
+    @classmethod
+    def _get_probe_url(cls, api_host: str) -> str:
+        return cls._get_api_url(api_host, "lmstudio-greeting", websocket=False)
+
+    @classmethod
+    def _get_session_url(cls, api_host: str, namespace: str) -> str:
+        return cls._get_api_url(api_host, namespace, websocket=True)
 
     @classmethod
     def _iter_default_api_hosts(cls) -> Iterable[str]:
@@ -2092,6 +2117,8 @@ class ClientBase:
             api_host = "any default port"
         problem = f"LM Studio is not reachable at {api_host}"
         suggestion = "Is LM Studio running?"
+        if "://" in api_host and httpx.URL(api_host).scheme in {"https", "wss"}:
+            suggestion += " Check the TLS configuration of the server or reverse proxy."
         return LMStudioClientError(f"{problem}. {suggestion}")
 
     @staticmethod

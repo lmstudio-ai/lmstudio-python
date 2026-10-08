@@ -384,7 +384,7 @@ class _AsyncSession(ClientSession["AsyncClient", _AsyncLMStudioWebsocket]):
             raise LMStudioClientError(
                 f"No API namespace defined for {type(self).__name__}"
             )
-        session_url = f"ws://{api_host}/{namespace}"
+        session_url = self._client._get_session_url(api_host, namespace)
         resources = self._resource_manager
         client = self._client
         self._lmsws = lmsws = await resources.enter_async_context(
