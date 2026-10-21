@@ -135,8 +135,26 @@ def _snake_case_keys_to_camelCase(data: DictObject) -> DictObject:
         queued_dict_ids.add(dict_id)
         dicts_to_process.append((input_dict, output_dict))
 
+    def _copy_json_value(value: Any) -> Any:
+        if not isinstance(value, (Mapping, list, tuple)):
+            return value
+        value_id = id(value)
+        if value_id in queued_dict_ids:
+            raise LMStudioValueError("Data structure cycles are not supported.")
+        queued_dict_ids.add(value_id)
+        try:
+            if isinstance(value, Mapping):
+                return {key: _copy_json_value(item) for key, item in value.items()}
+            return [_copy_json_value(item) for item in value]
+        finally:
+            queued_dict_ids.remove(value_id)
+
     for input_dict, output_dict in dicts_to_process:
         for k, v in input_dict.items():
+            if k == "arguments":
+                # Tool arguments are caller JSON, not SDK fields to normalize.
+                output_dict[k] = _copy_json_value(v)
+                continue
             match v:
                 case {}:
                     if k in _SKIP_FIELD_RECURSION:

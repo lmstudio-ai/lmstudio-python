@@ -3,7 +3,7 @@
 import copy
 import json
 
-from typing import Callable, cast
+from typing import Any, Callable, cast
 
 import pytest
 
@@ -22,6 +22,7 @@ from lmstudio.history import (
     FileHandleDict,
     _LocalFileData,
     TextData,
+    ToolCallRequest,
 )
 from lmstudio.json_api import (
     LlmInfo,
@@ -456,6 +457,104 @@ def test_append() -> None:
     for message in INPUT_ENTRIES:
         chat.append(cast(AnyChatMessageDict, message))
     assert chat._get_history_for_prediction() == EXPECTED_HISTORY
+
+
+TOOL_ARGUMENT_PAYLOADS: list[dict[str, Any]] = [
+    {"order_id": "A-42", "shipping": {"postal_code": "12345"}},
+    {"order_id": "snake", "orderId": "camel"},
+    {"orderId": "camel", "order_id": "snake"},
+    {
+        "line_items": [
+            {"item_id": 1, "itemId": 2, "options_list": [[{"postal_code": "12345"}]]}
+        ]
+    },
+]
+
+
+def _chat_with_tool_arguments(arguments: dict[str, Any]) -> Chat:
+    chat = Chat()
+    request = ToolCallRequest(
+        type="function", name="lookup_order", id="call-1", arguments=arguments
+    )
+    chat.add_assistant_response("Preparing order", [request])
+    return chat
+
+
+def _wire_tool_arguments(history: ChatHistoryDataDict) -> dict[str, Any]:
+    response = history["messages"][0]
+    assert response["role"] == "assistant"
+    request = response["content"][1]
+    assert request["type"] == "toolCallRequest"
+    arguments = request["toolCallRequest"]["arguments"]
+    assert isinstance(arguments, dict)
+    return arguments
+
+
+@pytest.mark.parametrize("arguments", TOOL_ARGUMENT_PAYLOADS)
+@pytest.mark.parametrize("entry_path", ["history_dict", "append_dict", "append_struct"])
+def test_tool_argument_history_preservation(
+    arguments: dict[str, Any], entry_path: str
+) -> None:
+    source = _chat_with_tool_arguments(copy.deepcopy(arguments))
+    wire = source._get_history_for_prediction()
+    original = copy.deepcopy(wire)
+    if entry_path == "history_dict":
+        parsed = Chat.from_history(wire)
+    else:
+        parsed = Chat()
+        if entry_path == "append_dict":
+            parsed.append(wire["messages"][0])
+        else:
+            parsed.append(source._history.messages[0])
+    assert parsed._get_history_for_prediction() == original
+    assert wire == original
+    assert source._get_history_for_prediction() == original
+
+
+@pytest.mark.parametrize("entry_path", ["history_dict", "append_dict", "append_struct"])
+def test_tool_argument_history_copy_independence(entry_path: str) -> None:
+    arguments: dict[str, Any] = {"line_items": [{"item_id": []}]}
+    source = _chat_with_tool_arguments(arguments)
+    wire = source._get_history_for_prediction()
+    if entry_path == "history_dict":
+        parsed = Chat.from_history(wire)
+        source_arguments = _wire_tool_arguments(wire)
+    elif entry_path == "append_dict":
+        parsed = Chat()
+        parsed.append(wire["messages"][0])
+        source_arguments = _wire_tool_arguments(wire)
+    else:
+        parsed = Chat()
+        parsed.append(source._history.messages[0])
+        source_arguments = arguments
+    result = parsed._history.messages[0]
+    assert result.role == "assistant"
+    request_part = result.content[1]
+    assert request_part.type == "toolCallRequest"
+    result_arguments = request_part.tool_call_request.arguments
+    assert source_arguments is not None and result_arguments is not None
+    source_arguments["line_items"][0]["item_id"].append("source")
+    assert result_arguments["line_items"][0]["item_id"] == []
+    result_arguments["line_items"][0]["item_id"].append("result")
+    assert source_arguments["line_items"][0]["item_id"] == ["source"]
+
+
+@pytest.mark.parametrize("clone", [Chat.copy, Chat.from_history])
+def test_tool_argument_chat_copy_independence(clone: Callable[[Chat], Chat]) -> None:
+    arguments: dict[str, Any] = {"line_items": [{"item_id": []}]}
+    source = _chat_with_tool_arguments(arguments)
+    parsed = clone(source)
+    assert parsed._get_history_for_prediction() == source._get_history_for_prediction()
+    response = parsed._history.messages[0]
+    assert response.role == "assistant"
+    request = response.content[1]
+    assert request.type == "toolCallRequest"
+    result_arguments = request.tool_call_request.arguments
+    assert result_arguments is not None
+    arguments["line_items"][0]["item_id"].append("source")
+    assert result_arguments["line_items"][0]["item_id"] == []
+    result_arguments["line_items"][0]["item_id"].append("result")
+    assert arguments["line_items"][0]["item_id"] == ["source"]
 
 
 def test_add_entries_dict_content() -> None:
